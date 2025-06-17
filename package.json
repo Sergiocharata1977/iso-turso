@@ -1,0 +1,38 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@libsql/client": "^0.15.4",
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.4",
+    "@babel/preset-env": "^7.27.2",
+    "@tailwindcss/postcss": "^4.1.8",
+    "babel-jest": "^30.0.0",
+    "cross-env": "^7.0.3",
+    "jest": "^30.0.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.1"
+  },
+  "scripts": {
+    "dev": "nodemon backend/index.js",
+    "init-db": "node backend/scripts/initDatabase.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:puestos": "jest backend/__tests__/puestos.test.js",
+    "test:personal": "jest backend/__tests__/personal.test.js",
+    "test:documentos": "jest backend/__tests__/documentos.test.js",
+    "test:normas": "jest backend/__tests__/normas.test.js",
+    "test:all": "jest backend/__tests__/"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    }
+  }
+}
