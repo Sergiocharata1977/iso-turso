@@ -1,4 +1,6 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+const apiClient = createApiClient('/capacitaciones');
 
 /**
  * Servicio para gestionar capacitaciones a través de la API backend
@@ -10,7 +12,7 @@ export const capacitacionesService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/capacitaciones');
+      const response = await apiClient.get('');
       return response;
     } catch (error) {
       console.error('Error al obtener capacitaciones:', error);
@@ -25,7 +27,7 @@ export const capacitacionesService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/capacitaciones/${id}`);
+      const response = await apiClient.get(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al obtener capacitación con ID ${id}:`, error);
@@ -40,7 +42,7 @@ export const capacitacionesService = {
    */
   async create(capacitacion) {
     try {
-      const response = await apiService.post('/capacitaciones', capacitacion);
+      const response = await apiClient.post('', capacitacion);
       return response;
     } catch (error) {
       console.error('Error al crear capacitación:', error);
@@ -56,7 +58,7 @@ export const capacitacionesService = {
    */
   async update(id, capacitacion) {
     try {
-      const response = await apiService.put(`/capacitaciones/${id}`, capacitacion);
+      const response = await apiClient.put(`/${id}`, capacitacion);
       return response;
     } catch (error) {
       console.error(`Error al actualizar capacitación con ID ${id}:`, error);
@@ -71,7 +73,7 @@ export const capacitacionesService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/capacitaciones/${id}`);
+      const response = await apiClient.delete(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al eliminar capacitación con ID ${id}:`, error);

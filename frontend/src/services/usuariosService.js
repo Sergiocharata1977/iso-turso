@@ -1,4 +1,9 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+/**
+ * Servicio para gestionar usuarios a través de la API backend
+ */
+const apiClient = createApiClient('/usuarios');
 
 /**
  * Servicio para gestionar usuarios a través de la API backend
@@ -10,11 +15,11 @@ export const usuariosService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/usuarios');
-      return response.data;
+      const data = await apiClient.get('/');
+      return data;
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar los usuarios');
+      throw new Error(error.message || 'Error al cargar los usuarios');
     }
   },
 
@@ -25,11 +30,11 @@ export const usuariosService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/usuarios/${id}`);
-      return response.data;
+      const data = await apiClient.get(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al obtener usuario con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar el usuario');
+      throw new Error(error.message || 'Error al cargar el usuario');
     }
   },
 
@@ -40,11 +45,11 @@ export const usuariosService = {
    */
   async create(usuario) {
     try {
-      const response = await apiService.post('/api/usuarios', usuario);
-      return response.data;
+      const data = await apiClient.post('/', usuario);
+      return data;
     } catch (error) {
       console.error('Error al crear usuario:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear el usuario');
+      throw new Error(error.message || 'Error al crear el usuario');
     }
   },
 
@@ -56,11 +61,11 @@ export const usuariosService = {
    */
   async update(id, usuario) {
     try {
-      const response = await apiService.put(`/api/usuarios/${id}`, usuario);
-      return response.data;
+      const data = await apiClient.put(`/${id}`, usuario);
+      return data;
     } catch (error) {
       console.error(`Error al actualizar usuario con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar el usuario');
+      throw new Error(error.message || 'Error al actualizar el usuario');
     }
   },
 
@@ -71,11 +76,11 @@ export const usuariosService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/usuarios/${id}`);
-      return response.data;
+      const data = await apiClient.delete(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al eliminar usuario con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar el usuario');
+      throw new Error(error.message || 'Error al eliminar el usuario');
     }
   },
 
@@ -87,11 +92,11 @@ export const usuariosService = {
    */
   async login(username, password) {
     try {
-      const response = await apiService.post('/api/usuarios/login', { username, password });
-      return response.data;
+      const data = await apiClient.post('/login', { username, password });
+      return data;
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
-      throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
+      throw new Error(error.message || 'Error al iniciar sesión');
     }
   },
 
@@ -106,7 +111,7 @@ export const usuariosService = {
       return allUsuarios.filter(usuario => usuario.rol === rol);
     } catch (error) {
       console.error(`Error al obtener usuarios con rol ${rol}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al filtrar usuarios por rol');
+      throw new Error(error.message || 'Error al filtrar usuarios por rol');
     }
   }
 };

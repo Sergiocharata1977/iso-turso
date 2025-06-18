@@ -1,12 +1,12 @@
 // Servicio para gestionar puestos - Migrado a API Backend
-import apiService from './apiService.js';
+import { createApiClient } from './apiService.js';
 
-const ENDPOINT = '/puestos';
+const apiClient = createApiClient('/puestos');
 
 export const puestosService = {
   async getAll() {
     try {
-      const response = await apiService.get(ENDPOINT);
+      const response = await apiClient.get('');
       return response || [];
     } catch (error) {
       console.error('Error al obtener puestos:', error);
@@ -16,7 +16,7 @@ export const puestosService = {
 
   async getById(id) {
     try {
-      const response = await apiService.get(`${ENDPOINT}/${id}`);
+      const response = await apiClient.get(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al obtener puesto con ID ${id}:`, error);
@@ -26,7 +26,7 @@ export const puestosService = {
 
   async create(puesto) {
     try {
-      const response = await apiService.post(ENDPOINT, puesto);
+      const response = await apiClient.post('', puesto);
       return response;
     } catch (error) {
       console.error('Error al crear puesto:', error);
@@ -36,7 +36,7 @@ export const puestosService = {
 
   async update(id, puesto) {
     try {
-      const response = await apiService.put(`${ENDPOINT}/${id}`, puesto);
+      const response = await apiClient.put(`/${id}`, puesto);
       return response;
     } catch (error) {
       console.error(`Error al actualizar puesto con ID ${id}:`, error);
@@ -46,7 +46,7 @@ export const puestosService = {
 
   async delete(id) {
     try {
-      const response = await apiService.delete(`${ENDPOINT}/${id}`);
+      const response = await apiClient.delete(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al eliminar puesto con ID ${id}:`, error);

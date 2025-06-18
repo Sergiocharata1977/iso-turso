@@ -6,15 +6,23 @@ const router = Router();
 
 // GET /api/mediciones - Listar todas las mediciones
 router.get('/', async (req, res) => {
+  const { indicador_id } = req.query;
   try {
-    const result = await tursoClient.execute({
-      sql: `
-        SELECT m.*, i.nombre as indicador_nombre 
-        FROM mediciones m
-        LEFT JOIN indicadores i ON m.indicador_id = i.id
-        ORDER BY m.fecha_medicion DESC
-      `
-    });
+    let sql = `
+      SELECT m.*, i.nombre as indicador_nombre 
+      FROM mediciones m
+      LEFT JOIN indicadores i ON m.indicador_id = i.id
+    `;
+    const params = [];
+
+    if (indicador_id) {
+      sql += ' WHERE m.indicador_id = ?';
+      params.push(indicador_id);
+    }
+
+    sql += ' ORDER BY m.fecha_medicion DESC';
+
+    const result = await tursoClient.execute({ sql, args: params });
     res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener mediciones:', error);

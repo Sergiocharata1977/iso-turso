@@ -285,10 +285,10 @@ const DocumentosList = () => {
   };
 
   // Verificar si hay algún error
-  const error = contextError || documentosError || procesosError || localError;
+  const error = documentosError || procesosError || localError;
   
   // Verificar si está cargando
-  const isLoading = contextLoading || loadingDocumentos || loadingProcesos || 
+  const isLoading = loadingDocumentos || loadingProcesos || 
                    createDocumentoMutation.isLoading || updateDocumentoMutation.isLoading || 
                    deleteDocumentoMutation.isLoading;
 
@@ -355,7 +355,7 @@ const DocumentosList = () => {
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
           <AlertCircle className="mr-2" />
-          <span>{error}</span>
+          <span>{typeof error === 'string' ? error : error?.message || 'Ocurrió un error desconocido'}</span>
         </div>
       )}
       

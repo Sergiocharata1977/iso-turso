@@ -1,4 +1,9 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+/**
+ * Servicio para gestionar encuestas a través de la API backend
+ */
+const apiClient = createApiClient('/encuestas');
 
 /**
  * Servicio para gestionar encuestas a través de la API backend
@@ -10,11 +15,11 @@ export const encuestasService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/encuestas');
-      return response.data;
+      const data = await apiClient.get('/');
+      return data;
     } catch (error) {
       console.error('Error al obtener encuestas:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar las encuestas');
+      throw new Error(error.message || 'Error al cargar las encuestas');
     }
   },
 
@@ -25,11 +30,11 @@ export const encuestasService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/encuestas/${id}`);
-      return response.data;
+      const data = await apiClient.get(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al obtener encuesta con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar la encuesta');
+      throw new Error(error.message || 'Error al cargar la encuesta');
     }
   },
 
@@ -40,11 +45,11 @@ export const encuestasService = {
    */
   async create(encuesta) {
     try {
-      const response = await apiService.post('/api/encuestas', encuesta);
-      return response.data;
+      const data = await apiClient.post('/', encuesta);
+      return data;
     } catch (error) {
       console.error('Error al crear encuesta:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear la encuesta');
+      throw new Error(error.message || 'Error al crear la encuesta');
     }
   },
 
@@ -56,11 +61,11 @@ export const encuestasService = {
    */
   async update(id, encuesta) {
     try {
-      const response = await apiService.put(`/api/encuestas/${id}`, encuesta);
-      return response.data;
+      const data = await apiClient.put(`/${id}`, encuesta);
+      return data;
     } catch (error) {
       console.error(`Error al actualizar encuesta con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar la encuesta');
+      throw new Error(error.message || 'Error al actualizar la encuesta');
     }
   },
 
@@ -71,11 +76,11 @@ export const encuestasService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/encuestas/${id}`);
-      return response.data;
+      const data = await apiClient.delete(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al eliminar encuesta con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar la encuesta');
+      throw new Error(error.message || 'Error al eliminar la encuesta');
     }
   },
 
@@ -87,11 +92,11 @@ export const encuestasService = {
    */
   async enviarRespuestas(id, respuestas) {
     try {
-      const response = await apiService.post(`/api/encuestas/${id}/respuestas`, respuestas);
-      return response.data;
+      const data = await apiClient.post(`/${id}/respuestas`, respuestas);
+      return data;
     } catch (error) {
       console.error(`Error al enviar respuestas a la encuesta ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al enviar las respuestas');
+      throw new Error(error.message || 'Error al enviar las respuestas');
     }
   },
 
@@ -106,7 +111,7 @@ export const encuestasService = {
       return allEncuestas.filter(encuesta => encuesta.tipo === tipo);
     } catch (error) {
       console.error(`Error al obtener encuestas del tipo ${tipo}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al filtrar encuestas por tipo');
+      throw new Error(error.message || 'Error al filtrar encuestas por tipo');
     }
   }
 };

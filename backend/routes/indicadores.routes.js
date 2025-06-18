@@ -5,8 +5,19 @@ const router = Router();
 
 // GET /api/indicadores - Listar todos los indicadores
 router.get('/', async (req, res) => {
+  const { objetivo_id } = req.query;
   try {
-    const result = await tursoClient.execute('SELECT * FROM indicadores ORDER BY nombre');
+    let query = 'SELECT * FROM indicadores';
+    const params = [];
+
+    if (objetivo_id) {
+      query += ' WHERE objetivo_id = ?';
+      params.push(objetivo_id);
+    }
+
+    query += ' ORDER BY nombre';
+
+    const result = await tursoClient.execute({ sql: query, args: params });
     res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener indicadores:', error);

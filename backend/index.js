@@ -28,6 +28,8 @@ import objetivosCalidadRouter from './routes/objetivos_calidad.routes.js';
 import normasRouter from './routes/normas.routes.js';
 import capacitacionesRouter from './routes/capacitaciones.routes.js';
 import evaluacionesRouter from './routes/evaluaciones.routes.js';
+import indicadoresRouter from './routes/indicadores.routes.js';
+import medicionesRouter from './routes/mediciones.routes.js';
 
 
 
@@ -42,6 +44,8 @@ app.use('/api/objetivos-calidad', objetivosCalidadRouter);
 app.use('/api/normas', normasRouter);
 app.use('/api/capacitaciones', capacitacionesRouter);
 app.use('/api/evaluaciones', evaluacionesRouter);
+app.use('/api/indicadores', indicadoresRouter);
+app.use('/api/mediciones', medicionesRouter);
 
 
 

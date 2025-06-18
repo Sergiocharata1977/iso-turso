@@ -1,4 +1,9 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+/**
+ * Servicio para gestionar mejoras a través de la API backend
+ */
+const apiClient = createApiClient('/mejoras');
 
 /**
  * Servicio para gestionar mejoras a través de la API backend
@@ -10,11 +15,11 @@ export const mejorasService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/mejoras');
-      return response.data;
+      const data = await apiClient.get('/');
+      return data;
     } catch (error) {
       console.error('Error al obtener mejoras:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar las mejoras');
+      throw new Error(error.message || 'Error al cargar las mejoras');
     }
   },
 
@@ -25,11 +30,11 @@ export const mejorasService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/mejoras/${id}`);
-      return response.data;
+      const data = await apiClient.get(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al obtener mejora con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar la mejora');
+      throw new Error(error.message || 'Error al cargar la mejora');
     }
   },
 
@@ -40,11 +45,11 @@ export const mejorasService = {
    */
   async create(mejora) {
     try {
-      const response = await apiService.post('/api/mejoras', mejora);
-      return response.data;
+      const data = await apiClient.post('/', mejora);
+      return data;
     } catch (error) {
       console.error('Error al crear mejora:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear la mejora');
+      throw new Error(error.message || 'Error al crear la mejora');
     }
   },
 
@@ -56,11 +61,11 @@ export const mejorasService = {
    */
   async update(id, mejora) {
     try {
-      const response = await apiService.put(`/api/mejoras/${id}`, mejora);
-      return response.data;
+      const data = await apiClient.put(`/${id}`, mejora);
+      return data;
     } catch (error) {
       console.error(`Error al actualizar mejora con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar la mejora');
+      throw new Error(error.message || 'Error al actualizar la mejora');
     }
   },
 
@@ -71,11 +76,11 @@ export const mejorasService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/mejoras/${id}`);
-      return response.data;
+      const data = await apiClient.delete(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al eliminar mejora con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar la mejora');
+      throw new Error(error.message || 'Error al eliminar la mejora');
     }
   },
 
@@ -90,7 +95,7 @@ export const mejorasService = {
       return allMejoras.filter(mejora => mejora.estado === estado);
     } catch (error) {
       console.error(`Error al obtener mejoras con estado ${estado}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al filtrar mejoras por estado');
+      throw new Error(error.message || 'Error al filtrar mejoras por estado');
     }
   },
 
@@ -105,7 +110,7 @@ export const mejorasService = {
       return allMejoras.filter(mejora => mejora.prioridad === prioridad);
     } catch (error) {
       console.error(`Error al obtener mejoras con prioridad ${prioridad}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al filtrar mejoras por prioridad');
+      throw new Error(error.message || 'Error al filtrar mejoras por prioridad');
     }
   },
 
@@ -120,7 +125,7 @@ export const mejorasService = {
       return allMejoras.filter(mejora => mejora.proceso_id === procesoId);
     } catch (error) {
       console.error(`Error al obtener mejoras del proceso ${procesoId}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al filtrar mejoras por proceso');
+      throw new Error(error.message || 'Error al filtrar mejoras por proceso');
     }
   }
 };

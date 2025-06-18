@@ -1,12 +1,13 @@
 // Servicio para el módulo de Personal - Migrado a Backend API
-import apiService from './apiService.js';
+import { createApiClient } from './apiService.js';
 
-const ENDPOINT = '/personal';
+const apiClient = createApiClient('/personal');
+const ENDPOINT = '/personal'; // Kept for reference if used elsewhere, though apiClient encapsulates it
 
 // Obtener todos los registros de personal
 export async function getAllPersonal() {
   try {
-    return await apiService.get(ENDPOINT);
+    return await apiClient.get('');
   } catch (error) {
     console.error('Error al obtener personal:', error);
     throw error;
@@ -16,7 +17,7 @@ export async function getAllPersonal() {
 // Obtener un registro de personal por ID
 export async function getPersonalById(id) {
   try {
-    return await apiService.get(`${ENDPOINT}/${id}`);
+    return await apiClient.get(`/${id}`);
   } catch (error) {
     console.error(`Error al obtener personal con ID ${id}:`, error);
     throw error;
@@ -37,7 +38,7 @@ export async function getPersonalConPuesto() {
 // Crear un nuevo registro de personal
 export async function createPersonal(data) {
   try {
-    return await apiService.post(ENDPOINT, data);
+    return await apiClient.post('', data);
   } catch (error) {
     console.error('Error al crear personal:', error);
     throw error;
@@ -47,7 +48,7 @@ export async function createPersonal(data) {
 // Actualizar un registro de personal
 export async function updatePersonal(id, data) {
   try {
-    return await apiService.put(`${ENDPOINT}/${id}`, data);
+    return await apiClient.put(`/${id}`, data);
   } catch (error) {
     console.error(`Error al actualizar personal con ID ${id}:`, error);
     throw error;
@@ -57,7 +58,7 @@ export async function updatePersonal(id, data) {
 // Eliminar un registro de personal
 export async function deletePersonal(id) {
   try {
-    return await apiService.delete(`${ENDPOINT}/${id}`);
+    return await apiClient.delete(`/${id}`);
   } catch (error) {
     console.error(`Error al eliminar personal con ID ${id}:`, error);
     throw error;

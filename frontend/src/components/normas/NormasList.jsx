@@ -54,6 +54,7 @@ const NormasList = () => {
   // Estado para modo edición
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Manejar cambios en el formulario
   const handleChange = (e) => {
@@ -67,7 +68,7 @@ const NormasList = () => {
   // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setIsSubmitting(true);
     try {
       const normaData = {
         codigo: formData.codigo,
@@ -100,6 +101,8 @@ const NormasList = () => {
       console.error('Error al guardar datos:', err);
       setLocalError('Error al guardar los datos. Por favor, intenta de nuevo.');
       toast.error('Error al guardar la norma');
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -229,7 +232,7 @@ const NormasList = () => {
           <button
             onClick={handleOpenNewModal}
             className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center"
-            disabled={isLoading || loadingData}
+            disabled={loadingData}
           >
             <Plus size={18} className="mr-2" />
             Nuevo Punto de Norma
@@ -237,7 +240,7 @@ const NormasList = () => {
         </div>
       </div>
       
-      {(error || localError) && (
+      {localError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
           <AlertCircle className="mr-2" />
           <span>{localError || error}</span>
@@ -366,9 +369,9 @@ const NormasList = () => {
             <button
               type="submit"
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none"
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
-              {isLoading ? 'Guardando...' : (editMode ? 'Actualizar' : 'Guardar')}
+              {isSubmitting ? 'Guardando...' : (editMode ? 'Actualizar' : 'Guardar')}
             </button>
           </div>
         </form>
@@ -442,7 +445,7 @@ const NormasList = () => {
       {/* Vista de tarjetas */}
       {viewMode === 'card' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading || loadingData ? (
+          {loadingData ? (
             <div className="col-span-full flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
             </div>

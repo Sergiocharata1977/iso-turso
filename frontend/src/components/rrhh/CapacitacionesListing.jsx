@@ -21,7 +21,7 @@ import CapacitacionModal from "./CapacitacionModal";
 import CapacitacionSingle from "./CapacitacionSingle";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import apiService from '../../services/apiService';
+import capacitacionesService from '../../services/capacitacionesService.js';
 
 function CapacitacionesListing() {
   const { toast } = useToast();
@@ -98,7 +98,7 @@ function CapacitacionesListing() {
     setIsLoading(true);
     setError(null);
     try {
-      const responseData = await apiService.get('/capacitaciones');
+      const responseData = await capacitacionesService.getAll();
       
       const capacitacionesFromApi = Array.isArray(responseData) ? responseData : (responseData.data || []);
 

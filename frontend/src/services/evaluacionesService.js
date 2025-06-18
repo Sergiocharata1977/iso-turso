@@ -1,4 +1,6 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+const apiClient = createApiClient('/evaluaciones');
 
 /**
  * Servicio para gestionar evaluaciones de personal a través de la API backend
@@ -10,7 +12,7 @@ export const evaluacionesService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/evaluaciones');
+      const response = await apiClient.get('');
       return response;
     } catch (error) {
       console.error('Error al obtener evaluaciones:', error);
@@ -25,7 +27,7 @@ export const evaluacionesService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/evaluaciones/${id}`);
+      const response = await apiClient.get(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al obtener evaluación con ID ${id}:`, error);
@@ -40,7 +42,7 @@ export const evaluacionesService = {
    */
   async create(evaluacion) {
     try {
-      const response = await apiService.post('/evaluaciones', evaluacion);
+      const response = await apiClient.post('', evaluacion);
       return response;
     } catch (error) {
       console.error('Error al crear evaluación:', error);
@@ -56,7 +58,7 @@ export const evaluacionesService = {
    */
   async update(id, evaluacion) {
     try {
-      const response = await apiService.put(`/evaluaciones/${id}`, evaluacion);
+      const response = await apiClient.put(`/${id}`, evaluacion);
       return response;
     } catch (error) {
       console.error(`Error al actualizar evaluación con ID ${id}:`, error);
@@ -71,7 +73,7 @@ export const evaluacionesService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/evaluaciones/${id}`);
+      const response = await apiClient.delete(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al eliminar evaluación con ID ${id}:`, error);
@@ -86,8 +88,8 @@ export const evaluacionesService = {
    */
   async getByPersonalId(personalId) {
     try {
-      const allEvaluaciones = await this.getAll();
-      return allEvaluaciones.filter(evaluacion => evaluacion.personal_id === personalId);
+      const response = await apiClient.get(`/?personal_id=${personalId}`);
+      return response;
     } catch (error) {
       console.error(`Error al obtener evaluaciones del empleado ${personalId}:`, error);
       throw new Error(error.response?.data?.message || 'Error al cargar las evaluaciones del empleado');

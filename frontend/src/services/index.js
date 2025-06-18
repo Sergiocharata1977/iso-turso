@@ -1,18 +1,17 @@
 // Índice de servicios para exportación centralizada
-import apiService from './apiService.js';
 import auth from './auth.js';
 import departamentos from './departamentos.js';
 import puestos from './puestos.js';
 import personalService from './personalService.js';
 import auditoriasService from './auditoriasService.js';
-import indicadoresService from './indicadoresService.js';
-import medicionesService from './medicionesService.js';
-import mejorasService from './mejorasService.js';
-import capacitacionesService from './capacitacionesService.js';
-import evaluacionesService from './evaluacionesService.js';
-import productosService from './productosService.js';
-import encuestasService from './encuestasService.js';
-import usuariosService from './usuariosService.js';
+import { indicadoresService } from './indicadoresService.js';
+import { medicionesService } from './medicionesService.js';
+import { mejorasService } from './mejorasService.js';
+import { capacitacionesService } from './capacitacionesService.js';
+import { evaluacionesService } from './evaluacionesService.js';
+import { productosService } from './productosService.js';
+import { encuestasService } from './encuestasService.js';
+import { usuariosService } from './usuariosService.js';
 import ticketsService from './ticketsService.js';
 import documentosService from './documentosService.js';
 import normasService from './normasService.js';
@@ -21,7 +20,6 @@ import objetivosCalidadService from './objetivosCalidadService.js';
 
 // Exportaciones nombradas para acceso directo
 export { 
-  apiService,
   auth,
   departamentos,
   puestos,
@@ -44,7 +42,6 @@ export {
 
 // Exportación por defecto
 export default {
-  api: apiService,
   auth,
   departamentos,
   puestos,

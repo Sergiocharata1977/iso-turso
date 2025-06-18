@@ -1,12 +1,12 @@
 // Servicio para gestionar tickets - Migrado a API Backend
-import apiService from './apiService.js';
+import { createApiClient } from './apiService.js';
 
-const ENDPOINT = '/api/tickets';
+const apiClient = createApiClient('/tickets');
 
 export const ticketsService = {
   async getAll() {
     try {
-      const response = await apiService.get(ENDPOINT);
+      const response = await apiClient.get('');
       return response || [];
     } catch (error) {
       console.error('Error al obtener tickets:', error);
@@ -16,7 +16,7 @@ export const ticketsService = {
 
   async create(ticket) {
     try {
-      const response = await apiService.post(ENDPOINT, ticket);
+      const response = await apiClient.post('', ticket);
       return response;
     } catch (error) {
       console.error('Error al crear ticket:', error);
@@ -26,7 +26,7 @@ export const ticketsService = {
 
   async update(id, ticket) {
     try {
-      const response = await apiService.put(`${ENDPOINT}/${id}`, ticket);
+      const response = await apiClient.put(`/${id}`, ticket);
       return response;
     } catch (error) {
       console.error(`Error al actualizar ticket con ID ${id}:`, error);
@@ -36,7 +36,7 @@ export const ticketsService = {
 
   async delete(id) {
     try {
-      const response = await apiService.delete(`${ENDPOINT}/${id}`);
+      const response = await apiClient.delete(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al eliminar ticket con ID ${id}:`, error);

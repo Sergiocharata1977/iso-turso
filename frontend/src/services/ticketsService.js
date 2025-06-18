@@ -1,65 +1,65 @@
 // Servicio para el módulo de Tickets - Backend API
-import apiService from './apiService.js';
+import { createApiClient } from './apiService.js';
 
-const ENDPOINT = '/tickets';
+const apiClient = createApiClient('/tickets');
 
 // Obtener todos los tickets
 export async function getAllTickets() {
   try {
-    return await apiService.get(ENDPOINT);
+    return await apiClient.get('');
   } catch (error) {
     // console.error('Error al obtener tickets:', error);
-    throw new Error(`Error al obtener los tickets: ${error.message}`);
+    throw new Error(error.message || 'Error al obtener los tickets');
   }
 }
 
 // Obtener un ticket por ID
 export async function getTicketById(id) {
   try {
-    return await apiService.get(`${ENDPOINT}/${id}`);
+    return await apiClient.get(`/${id}`);
   } catch (error) {
     // console.error(`Error al obtener ticket con ID ${id}:`, error);
-    throw new Error(`Error al obtener el ticket ${id}: ${error.message}`);
+    throw new Error(error.message || `Error al obtener el ticket ${id}`);
   }
 }
 
 // Crear un nuevo ticket
 export async function createTicket(data) {
   try {
-    return await apiService.post(ENDPOINT, data);
+    return await apiClient.post('', data);
   } catch (error) {
     // console.error('Error al crear ticket:', error);
-    throw new Error(`Error al crear el ticket: ${error.message}`);
+    throw new Error(error.message || 'Error al crear el ticket');
   }
 }
 
 // Actualizar un ticket
 export async function updateTicket(id, data) {
   try {
-    return await apiService.put(`${ENDPOINT}/${id}`, data);
+    return await apiClient.put(`/${id}`, data);
   } catch (error) {
     // console.error(`Error al actualizar ticket con ID ${id}:`, error);
-    throw new Error(`Error al actualizar el ticket ${id}: ${error.message}`);
+    throw new Error(error.message || `Error al actualizar el ticket ${id}`);
   }
 }
 
 // Eliminar un ticket
 export async function deleteTicket(id) {
   try {
-    return await apiService.delete(`${ENDPOINT}/${id}`);
+    return await apiClient.delete(`/${id}`);
   } catch (error) {
     // console.error(`Error al eliminar ticket con ID ${id}:`, error);
-    throw new Error(`Error al eliminar el ticket ${id}: ${error.message}`);
+    throw new Error(error.message || `Error al eliminar el ticket ${id}`);
   }
 }
 
 // Buscar tickets por estado
 export async function getTicketsByEstado(estado) {
   try {
-    return await apiService.get(`${ENDPOINT}/estado/${estado}`);
+    return await apiClient.get(`/estado/${estado}`);
   } catch (error) {
     console.error('Error al obtener tickets por estado:', error);
-    throw error;
+    throw new Error(error.message || 'Error al obtener tickets por estado');
   }
 }
 
@@ -70,7 +70,7 @@ export async function getTicketsByDepartamento(departamentoId) {
     return tickets.filter(ticket => ticket.departamento_id === departamentoId);
   } catch (error) {
     console.error('Error al obtener tickets por departamento:', error);
-    throw error;
+    throw new Error(error.message || 'Error al obtener tickets por departamento');
   }
 }
 
@@ -81,7 +81,7 @@ export async function getTicketsBySolicitante(solicitanteId) {
     return tickets.filter(ticket => ticket.solicitante_id === solicitanteId);
   } catch (error) {
     console.error('Error al obtener tickets por solicitante:', error);
-    throw error;
+    throw new Error(error.message || 'Error al obtener tickets por solicitante');
   }
 }
 
@@ -92,17 +92,17 @@ export async function getTicketsByAsignado(asignadoId) {
     return tickets.filter(ticket => ticket.asignado_a === asignadoId);
   } catch (error) {
     console.error('Error al obtener tickets por asignado:', error);
-    throw error;
+    throw new Error(error.message || 'Error al obtener tickets por asignado');
   }
 }
 
 // Añadir comentario a un ticket
 export async function addComentario(ticketId, comentarioData) {
   try {
-    return await apiService.post(`${ENDPOINT}/${ticketId}/comentario`, comentarioData);
+    return await apiClient.post(`/${ticketId}/comentario`, comentarioData);
   } catch (error) {
     console.error(`Error al añadir comentario al ticket ${ticketId}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al añadir comentario al ticket ${ticketId}`);
   }
 }
 
@@ -118,7 +118,7 @@ export async function searchTickets(term) {
     );
   } catch (error) {
     console.error('Error al buscar tickets:', error);
-    throw error;
+    throw new Error(error.message || 'Error al buscar tickets');
   }
 }
 

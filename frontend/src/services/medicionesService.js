@@ -1,4 +1,6 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+const apiClient = createApiClient('/mediciones');
 
 /**
  * Servicio para gestionar mediciones de indicadores a través de la API backend
@@ -10,7 +12,7 @@ export const medicionesService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/mediciones_gestion');
+      const response = await apiClient.get('');
       return response;
     } catch (error) {
       console.error('Error al obtener mediciones:', error);
@@ -25,7 +27,7 @@ export const medicionesService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/mediciones_gestion/${id}`);
+      const response = await apiClient.get(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al obtener medición con ID ${id}:`, error);
@@ -40,7 +42,7 @@ export const medicionesService = {
    */
   async create(medicion) {
     try {
-      const response = await apiService.post('/mediciones_gestion', medicion);
+      const response = await apiClient.post('', medicion);
       return response;
     } catch (error) {
       console.error('Error al crear medición:', error);
@@ -56,7 +58,7 @@ export const medicionesService = {
    */
   async update(id, medicion) {
     try {
-      const response = await apiService.put(`/mediciones_gestion/${id}`, medicion);
+      const response = await apiClient.put(`/${id}`, medicion);
       return response;
     } catch (error) {
       console.error(`Error al actualizar medición con ID ${id}:`, error);
@@ -71,7 +73,7 @@ export const medicionesService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/mediciones_gestion/${id}`);
+      const response = await apiClient.delete(`/${id}`);
       return response;
     } catch (error) {
       console.error(`Error al eliminar medición con ID ${id}:`, error);
@@ -86,8 +88,9 @@ export const medicionesService = {
    */
   async getByIndicador(indicadorId) {
     try {
-      const response = await apiService.get(`/mediciones_gestion?indicador_id=${indicadorId}`);
-      return response;
+      // El backend ahora filtra en GET /?indicador_id=INDICADOR_ID
+      const response = await apiClient.get(`/?indicador_id=${indicadorId}`);
+      return response; // Esto debería ser un array de mediciones directamente
     } catch (error) {
       console.error(`Error al obtener mediciones del indicador ${indicadorId}:`, error);
       throw new Error(error.response?.data?.message || 'Error al filtrar mediciones por indicador');
@@ -104,7 +107,7 @@ export const medicionesService = {
     try {
       // TODO: Consider implementing backend filtering for performance if not already done.
       // For now, this uses the corrected getAll which hits the proper endpoint.
-      const allMediciones = await this.getAll(); 
+      const allMediciones = await apiClient.get(''); // Usa apiClient directamente 
       return allMediciones.filter(medicion => {
         const fecha = new Date(medicion.fecha);
         return fecha.getFullYear() === año && 

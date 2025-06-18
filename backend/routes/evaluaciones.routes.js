@@ -5,13 +5,23 @@ const router = Router();
 
 // GET /api/evaluaciones - Listar todas las evaluaciones
 router.get('/', async (req, res) => {
+  const { personal_id } = req.query;
   try {
-    const result = await tursoClient.execute(`
+    let sql = `
       SELECT e.*, p.nombre as personal_nombre, p.apellido as personal_apellido
       FROM evaluaciones e
       LEFT JOIN personal p ON e.personal_id = p.id
-      ORDER BY e.fecha DESC
-    `);
+    `;
+    const params = [];
+
+    if (personal_id) {
+      sql += ' WHERE e.personal_id = ?';
+      params.push(personal_id);
+    }
+
+    sql += ' ORDER BY e.fecha DESC';
+
+    const result = await tursoClient.execute({ sql, args: params });
     res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener evaluaciones:', error);

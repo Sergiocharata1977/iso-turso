@@ -1,14 +1,14 @@
 // Servicio para el módulo de Procesos
-import apiService from './apiService.js';
+import { createApiClient } from './apiService.js';
 
-const ENDPOINT = '/procesos';
+const apiClient = createApiClient('/procesos');
 
 const procesosService = {
-  getAll: () => apiService.get(ENDPOINT),
-  getById: (id) => apiService.get(`${ENDPOINT}/${id}`),
-  create: (data) => apiService.post(ENDPOINT, data),
-  update: (id, data) => apiService.put(`${ENDPOINT}/${id}`, data),
-  delete: (id) => apiService.delete(`${ENDPOINT}/${id}`)
+  getAll: () => apiClient.get(''),
+  getById: (id) => apiClient.get(`/${id}`),
+  create: (data) => apiClient.post('', data),
+  update: (id, data) => apiClient.put(`/${id}`, data),
+  delete: (id) => apiClient.delete(`/${id}`)
 };
 
 export default procesosService;

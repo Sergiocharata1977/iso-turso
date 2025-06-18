@@ -1,14 +1,14 @@
 // Servicio para el módulo de Documentos - Migrado a Backend API
-import apiService from './apiService.js';
+import { createApiClient } from './apiService.js';
 
-const ENDPOINT = '/documentos';
+const documentosApiClient = createApiClient('/documentos');
+const categoriasApiClient = createApiClient('/categorias-documentos');
 
 // Obtener todos los documentos
 export async function getAllDocumentos() {
   try {
-    return await apiService.get(ENDPOINT);
+    return await documentosApiClient.get('/');
   } catch (error) {
-    // console.error('Error al obtener documentos:', error);
     throw new Error(`Error al obtener los documentos: ${error.message}`);
   }
 }
@@ -16,9 +16,8 @@ export async function getAllDocumentos() {
 // Obtener un documento por ID
 export async function getDocumentoById(id) {
   try {
-    return await apiService.get(`${ENDPOINT}/${id}`);
+    return await documentosApiClient.get(`/${id}`);
   } catch (error) {
-    // console.error(`Error al obtener documento con ID ${id}:`, error);
     throw new Error(`Error al obtener el documento ${id}: ${error.message}`);
   }
 }
@@ -26,9 +25,8 @@ export async function getDocumentoById(id) {
 // Crear un nuevo documento
 export async function createDocumento(data) {
   try {
-    return await apiService.post(ENDPOINT, data);
+    return await documentosApiClient.post('/', data);
   } catch (error) {
-    // console.error('Error al crear documento:', error);
     throw new Error(`Error al crear el documento: ${error.message}`);
   }
 }
@@ -36,9 +34,8 @@ export async function createDocumento(data) {
 // Actualizar un documento
 export async function updateDocumento(id, data) {
   try {
-    return await apiService.put(`${ENDPOINT}/${id}`, data);
+    return await documentosApiClient.put(`/${id}`, data);
   } catch (error) {
-    // console.error(`Error al actualizar documento con ID ${id}:`, error);
     throw new Error(`Error al actualizar el documento ${id}: ${error.message}`);
   }
 }
@@ -46,9 +43,8 @@ export async function updateDocumento(id, data) {
 // Eliminar un documento
 export async function deleteDocumento(id) {
   try {
-    return await apiService.delete(`${ENDPOINT}/${id}`);
+    return await documentosApiClient.delete(`/${id}`);
   } catch (error) {
-    // console.error(`Error al eliminar documento con ID ${id}:`, error);
     throw new Error(`Error al eliminar el documento ${id}: ${error.message}`);
   }
 }
@@ -56,7 +52,7 @@ export async function deleteDocumento(id) {
 // Buscar documentos por estado
 export async function getDocumentosByEstado(estado) {
   try {
-    const documentos = await getAllDocumentos();
+    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
     return documentos.filter(doc => doc.estado === estado);
   } catch (error) {
     console.error('Error al obtener documentos por estado:', error);
@@ -67,7 +63,7 @@ export async function getDocumentosByEstado(estado) {
 // Buscar documentos por proceso
 export async function getDocumentosByProceso(procesoId) {
   try {
-    const documentos = await getAllDocumentos();
+    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
     return documentos.filter(doc => doc.proceso_id === procesoId);
   } catch (error) {
     console.error('Error al obtener documentos por proceso:', error);
@@ -78,7 +74,7 @@ export async function getDocumentosByProceso(procesoId) {
 // Buscar documentos por autor
 export async function getDocumentosByAutor(autor) {
   try {
-    const documentos = await getAllDocumentos();
+    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
     return documentos.filter(doc => doc.autor && doc.autor.toLowerCase().includes(autor.toLowerCase()));
   } catch (error) {
     console.error('Error al obtener documentos por autor:', error);
@@ -89,7 +85,7 @@ export async function getDocumentosByAutor(autor) {
 // Buscar documentos por término
 export async function searchDocumentos(term) {
   try {
-    const documentos = await getAllDocumentos();
+    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
     return documentos.filter(doc => 
       doc.titulo.toLowerCase().includes(term.toLowerCase()) || 
       (doc.descripcion && doc.descripcion.toLowerCase().includes(term.toLowerCase())) ||
@@ -104,8 +100,7 @@ export async function searchDocumentos(term) {
 // Obtener todas las categorías de documentos
 export async function getAllCategorias() {
   try {
-    const response = await apiService.get('/categorias-documentos');
-    return response.data;
+    return await categoriasApiClient.get('/');
   } catch (error) {
     console.error('Error al obtener categorías:', error);
     throw error;

@@ -1,5 +1,8 @@
 import { jwtDecode } from 'jwt-decode';
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+const authApiClient = createApiClient('/auth');
+const usersApiClient = createApiClient('/usuarios');
 
 // Servicio de autenticación adaptado para usar los nuevos endpoints de TursoDB
 export const authService = {
@@ -14,7 +17,7 @@ export const authService = {
       console.log('Intentando login con endpoint /auth/login');
       
       // La base de datos muestra que podemos usar el email directamente como username
-      const response = await apiService.post('/auth/login', { 
+      const response = await authApiClient.post('/login', { 
         username: email, // El email funciona como username
         password 
       });
@@ -45,7 +48,7 @@ export const authService = {
       
       try {
         // Fallback: intentar con el endpoint original
-        const response = await apiService.post('/usuarios/login', { username: email, password });
+        const response = await usersApiClient.post('/login', { username: email, password });
         
         if (!response || !response.token) {
           throw new Error('Error al iniciar sesión');
@@ -82,7 +85,7 @@ export const authService = {
     try {
       console.log('Intentando registro con nuevo endpoint /auth/registro');
       // Llamar al endpoint de registro en el nuevo backend
-      const response = await apiService.post('/auth/registro', {
+      const response = await authApiClient.post('/registro', {
         email,
         username: email,
         password,
@@ -199,7 +202,7 @@ export const authService = {
       console.log('Actualizando perfil con nuevo endpoint /api/auth/perfil');
       
       // Llamar al endpoint de actualización de perfil en el nuevo backend
-      const response = await apiService.put('/auth/perfil', {
+      const response = await authApiClient.put('/perfil', {
         nombre: userData.nombre || currentUser.name,
         apellido: userData.apellido || '',
         email: userData.email || currentUser.email
@@ -229,7 +232,7 @@ export const authService = {
         if (!currentUser) throw new Error('No hay una sesión activa');
         
         // Llamar al endpoint de actualización de perfil en el backend original
-        const response = await apiService.put(`/usuarios/profile/${currentUser.id}`, {
+        const response = await usersApiClient.put(`/profile/${currentUser.id}`, {
           nombre: userData.nombre || currentUser.name,
           role: userData.role || currentUser.role
         });
@@ -267,7 +270,7 @@ export const authService = {
       console.log('Cambiando contraseña con nuevo endpoint /api/auth/cambiar-password');
       
       // Llamar al endpoint de cambio de contraseña
-      const response = await apiService.post('/auth/cambiar-password', {
+      const response = await authApiClient.post('/cambiar-password', {
         currentPassword,
         newPassword
       });

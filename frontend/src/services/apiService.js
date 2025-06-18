@@ -82,4 +82,17 @@ class ApiService {
   }
 }
 
-export default new ApiService();
+const masterApiService = new ApiService();
+
+export const createApiClient = (baseRoute) => {
+  if (!baseRoute.startsWith('/')) {
+    throw new Error('baseRoute must start with a slash (/)');
+  }
+  return {
+    get: (specificEndpoint = '') => masterApiService.get(`${baseRoute}${specificEndpoint}`),
+    post: (specificEndpoint = '', data) => masterApiService.post(`${baseRoute}${specificEndpoint}`, data),
+    put: (specificEndpoint = '', data) => masterApiService.put(`${baseRoute}${specificEndpoint}`, data),
+    delete: (specificEndpoint = '') => masterApiService.delete(`${baseRoute}${specificEndpoint}`),
+  };
+};
+

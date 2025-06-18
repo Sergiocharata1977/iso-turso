@@ -1,4 +1,6 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+const apiClient = createApiClient('/departamentos');
 
 /**
  * Servicio para gestionar departamentos a través de la API backend
@@ -10,8 +12,8 @@ export const departamentosService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/departamentos');
-      return response.data;
+      const response = await apiClient.get('');
+      return response;
     } catch (error) {
       console.error('Error al obtener departamentos:', error);
       throw new Error(error.response?.data?.message || 'Error al cargar los departamentos');
@@ -25,8 +27,8 @@ export const departamentosService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/departamentos/${id}`);
-      return response.data;
+      const response = await apiClient.get(`/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al obtener departamento con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al cargar el departamento');
@@ -40,8 +42,8 @@ export const departamentosService = {
    */
   async create(departamento) {
     try {
-      const response = await apiService.post('/departamentos', departamento);
-      return response.data;
+      const response = await apiClient.post('', departamento);
+      return response;
     } catch (error) {
       console.error('Error al crear departamento:', error);
       throw new Error(error.response?.data?.message || 'Error al crear el departamento');
@@ -56,8 +58,8 @@ export const departamentosService = {
    */
   async update(id, departamento) {
     try {
-      const response = await apiService.put(`/departamentos/${id}`, departamento);
-      return response.data;
+      const response = await apiClient.put(`/${id}`, departamento);
+      return response;
     } catch (error) {
       console.error(`Error al actualizar departamento con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al actualizar el departamento');
@@ -71,8 +73,8 @@ export const departamentosService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/departamentos/${id}`);
-      return response.data;
+      const response = await apiClient.delete(`/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al eliminar departamento con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al eliminar el departamento');

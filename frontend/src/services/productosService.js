@@ -1,4 +1,9 @@
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
+
+/**
+ * Servicio para gestionar productos a través de la API backend
+ */
+const apiClient = createApiClient('/productos');
 
 /**
  * Servicio para gestionar productos a través de la API backend
@@ -10,11 +15,11 @@ export const productosService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/productos');
-      return response.data;
+      const data = await apiClient.get('/');
+      return data;
     } catch (error) {
       console.error('Error al obtener productos:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar los productos');
+      throw new Error(error.message || 'Error al cargar los productos');
     }
   },
 
@@ -25,11 +30,11 @@ export const productosService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/productos/${id}`);
-      return response.data;
+      const data = await apiClient.get(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al obtener producto con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar el producto');
+      throw new Error(error.message || 'Error al cargar el producto');
     }
   },
 
@@ -40,11 +45,11 @@ export const productosService = {
    */
   async create(producto) {
     try {
-      const response = await apiService.post('/api/productos', producto);
-      return response.data;
+      const data = await apiClient.post('/', producto);
+      return data;
     } catch (error) {
       console.error('Error al crear producto:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear el producto');
+      throw new Error(error.message || 'Error al crear el producto');
     }
   },
 
@@ -56,11 +61,11 @@ export const productosService = {
    */
   async update(id, producto) {
     try {
-      const response = await apiService.put(`/api/productos/${id}`, producto);
-      return response.data;
+      const data = await apiClient.put(`/${id}`, producto);
+      return data;
     } catch (error) {
       console.error(`Error al actualizar producto con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar el producto');
+      throw new Error(error.message || 'Error al actualizar el producto');
     }
   },
 
@@ -71,11 +76,11 @@ export const productosService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/productos/${id}`);
-      return response.data;
+      const data = await apiClient.delete(`/${id}`);
+      return data;
     } catch (error) {
       console.error(`Error al eliminar producto con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar el producto');
+      throw new Error(error.message || 'Error al eliminar el producto');
     }
   },
 
@@ -90,7 +95,7 @@ export const productosService = {
       return allProductos.filter(producto => producto.categoria === categoria);
     } catch (error) {
       console.error(`Error al obtener productos de la categoría ${categoria}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al filtrar productos por categoría');
+      throw new Error(error.message || 'Error al filtrar productos por categoría');
     }
   }
 };

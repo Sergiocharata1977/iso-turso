@@ -1,29 +1,29 @@
 // Servicio para el módulo de Auditorías - Migrado a API
-import apiService from './apiService';
+import { createApiClient } from './apiService.js';
 
-// Endpoints
-const AUDITORIAS_ENDPOINT = '/api/auditorias';
-const HALLAZGOS_ENDPOINT = '/api/hallazgos';
+// API Clients
+const auditoriasApiClient = createApiClient('/auditorias');
+const hallazgosApiClient = createApiClient('/hallazgos');
 
 // Obtener todas las auditorías
 export async function getAllAuditorias() {
   try {
-    const response = await apiService.get(AUDITORIAS_ENDPOINT);
-    return response.data || [];
+    const data = await auditoriasApiClient.get('/');
+    return data || [];
   } catch (error) {
     console.error('Error al obtener auditorías:', error);
-    throw error;
+    throw new Error(error.message || 'Error al cargar las auditorías');
   }
 }
 
 // Obtener una auditoría por ID
 export async function getAuditoriaById(id) {
   try {
-    const response = await apiService.get(`${AUDITORIAS_ENDPOINT}/${id}`);
-    return response.data || null;
+    const data = await auditoriasApiClient.get(`/${id}`);
+    return data || null;
   } catch (error) {
     console.error(`Error al obtener auditoría con ID ${id}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al cargar la auditoría con ID ${id}`);
   }
 }
 
@@ -36,11 +36,11 @@ export async function createAuditoria(data) {
       created_at: data.created_at || new Date().toISOString(),
       updated_at: data.updated_at || new Date().toISOString()
     };
-    const response = await apiService.post(AUDITORIAS_ENDPOINT, auditoriaData);
-    return response.data;
+    const dataResponse = await auditoriasApiClient.post('/', auditoriaData);
+    return dataResponse;
   } catch (error) {
     console.error('Error al crear auditoría:', error);
-    throw error;
+    throw new Error(error.message || 'Error al crear la auditoría');
   }
 }
 
@@ -52,55 +52,55 @@ export async function updateAuditoria(id, data) {
       ...data,
       updated_at: new Date().toISOString()
     };
-    const response = await apiService.put(`${AUDITORIAS_ENDPOINT}/${id}`, auditoriaData);
-    return response.data;
+    const dataResponse = await auditoriasApiClient.put(`/${id}`, auditoriaData);
+    return dataResponse;
   } catch (error) {
     console.error(`Error al actualizar auditoría con ID ${id}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al actualizar la auditoría con ID ${id}`);
   }
 }
 
 // Eliminar una auditoría
 export async function deleteAuditoria(id) {
   try {
-    const response = await apiService.delete(`${AUDITORIAS_ENDPOINT}/${id}`);
-    return response.data;
+    const dataResponse = await auditoriasApiClient.delete(`/${id}`);
+    return dataResponse;
   } catch (error) {
     console.error(`Error al eliminar auditoría con ID ${id}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al eliminar la auditoría con ID ${id}`);
   }
 }
 
 // Buscar auditorías por filtros
 export async function searchAuditorias(filters) {
   try {
-    const response = await apiService.get(`${AUDITORIAS_ENDPOINT}/search`, { params: filters });
-    return response.data || [];
+    const data = await auditoriasApiClient.get('/search', { params: filters });
+    return data || [];
   } catch (error) {
     console.error('Error al buscar auditorías:', error);
-    throw error;
+    throw new Error(error.message || 'Error al buscar auditorías');
   }
 }
 
 // Obtener todos los hallazgos de una auditoría
 export async function getHallazgosByAuditoriaId(auditoriaId) {
   try {
-    const response = await apiService.get(`${HALLAZGOS_ENDPOINT}/auditoria/${auditoriaId}`);
-    return response.data || [];
+    const data = await hallazgosApiClient.get(`/auditoria/${auditoriaId}`);
+    return data || [];
   } catch (error) {
     console.error(`Error al obtener hallazgos de la auditoría ${auditoriaId}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al cargar los hallazgos de la auditoría ${auditoriaId}`);
   }
 }
 
 // Obtener un hallazgo por ID
 export async function getHallazgoById(id) {
   try {
-    const response = await apiService.get(`${HALLAZGOS_ENDPOINT}/${id}`);
-    return response.data || null;
+    const data = await hallazgosApiClient.get(`/${id}`);
+    return data || null;
   } catch (error) {
     console.error(`Error al obtener hallazgo con ID ${id}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al cargar el hallazgo con ID ${id}`);
   }
 }
 
@@ -113,11 +113,11 @@ export async function createHallazgo(data) {
       created_at: data.created_at || new Date().toISOString(),
       updated_at: data.updated_at || new Date().toISOString()
     };
-    const response = await apiService.post(HALLAZGOS_ENDPOINT, hallazgoData);
-    return response.data;
+    const dataResponse = await hallazgosApiClient.post('/', hallazgoData);
+    return dataResponse;
   } catch (error) {
     console.error('Error al crear hallazgo:', error);
-    throw error;
+    throw new Error(error.message || 'Error al crear el hallazgo');
   }
 }
 
@@ -129,33 +129,33 @@ export async function updateHallazgo(id, data) {
       ...data,
       updated_at: new Date().toISOString()
     };
-    const response = await apiService.put(`${HALLAZGOS_ENDPOINT}/${id}`, hallazgoData);
-    return response.data;
+    const dataResponse = await hallazgosApiClient.put(`/${id}`, hallazgoData);
+    return dataResponse;
   } catch (error) {
     console.error(`Error al actualizar hallazgo con ID ${id}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al actualizar el hallazgo con ID ${id}`);
   }
 }
 
 // Eliminar un hallazgo
 export async function deleteHallazgo(id) {
   try {
-    const response = await apiService.delete(`${HALLAZGOS_ENDPOINT}/${id}`);
-    return response.data;
+    const dataResponse = await hallazgosApiClient.delete(`/${id}`);
+    return dataResponse;
   } catch (error) {
     console.error(`Error al eliminar hallazgo con ID ${id}:`, error);
-    throw error;
+    throw new Error(error.message || `Error al eliminar el hallazgo con ID ${id}`);
   }
 }
 
 // Obtener resumen de auditorías por estado
 export async function getResumenAuditoriasPorEstado() {
   try {
-    const response = await apiService.get(`${AUDITORIAS_ENDPOINT}/resumen/estado`);
-    return response.data || [];
+    const data = await auditoriasApiClient.get('/resumen/estado');
+    return data || [];
   } catch (error) {
     console.error('Error al obtener resumen de auditorías por estado:', error);
-    throw error;
+    throw new Error(error.message || 'Error al obtener el resumen de auditorías por estado');
   }
 }
 
