@@ -12,7 +12,7 @@ import { evaluacionesService } from './evaluacionesService.js';
 import { productosService } from './productosService.js';
 import { encuestasService } from './encuestasService.js';
 import { usuariosService } from './usuariosService.js';
-import ticketsService from './ticketsService.js';
+
 import documentosService from './documentosService.js';
 import normasService from './normasService.js';
 import procesosService from './procesosService.js';
@@ -33,7 +33,7 @@ export {
   productosService,
   encuestasService,
   usuariosService,
-  ticketsService,
+
   documentosService,
   normasService,
   procesosService,
@@ -55,7 +55,7 @@ export default {
   productos: productosService,
   encuestas: encuestasService,
   usuarios: usuariosService,
-  tickets: ticketsService,
+
   documentos: documentosService,
   normas: normasService,
   procesos: procesosService,

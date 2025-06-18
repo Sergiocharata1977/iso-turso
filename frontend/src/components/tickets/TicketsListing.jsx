@@ -22,7 +22,7 @@ import ReactECharts from 'echarts-for-react';
 import TicketModal from "./TicketModal";
 import TicketSingle from "./TicketSingle";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { ticketsService } from "@/services/tickets";
+import ticketsService from "@/services/ticketsService";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
