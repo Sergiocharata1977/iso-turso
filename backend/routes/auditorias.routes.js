@@ -5,7 +5,7 @@ import crypto from 'crypto';
 const router = Router();
 
 // GET /api/auditorias - Listar todas las auditorías
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const result = await tursoClient.execute({
       sql: `
@@ -15,13 +15,12 @@ router.get('/', async (req, res) => {
     });
     res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener auditorías:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
 // POST /api/auditorias - Crear una nueva auditoría
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   const { 
     codigo,
     titulo, 
@@ -36,29 +35,32 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   if (!codigo || !titulo) {
-    return res.status(400).json({ error: 'Los campos "codigo" y "titulo" son obligatorios.' });
+    const err = new Error('Los campos "codigo" y "titulo" son obligatorios.');
+    err.statusCode = 400;
+    return next(err);
   }
 
   try {
-    // Verificar si ya existe una auditoría con el mismo código
     const existingAuditoria = await tursoClient.execute({
       sql: 'SELECT id FROM auditorias WHERE codigo = ?',
       args: [codigo]
     });
 
     if (existingAuditoria.rows.length > 0) {
-      return res.status(400).json({ error: 'Ya existe una auditoría con ese código.' });
+      const err = new Error('Ya existe una auditoría con ese código.');
+      err.statusCode = 400;
+      return next(err);
     }
 
     const fechaCreacion = new Date().toISOString();
     const id = crypto.randomUUID();
     
-    const result = await tursoClient.execute({
+    await tursoClient.execute({
       sql: `INSERT INTO auditorias (
               id, codigo, titulo, tipo, alcance, 
               fecha_inicio, fecha_fin, responsable, auditores, 
               resultado, estado, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
       args: [
         id,
         codigo,
@@ -75,38 +77,31 @@ router.post('/', async (req, res) => {
       ],
     });
 
-    // Devolver la auditoría recién creada
-    const newAuditoria = await tursoClient.execute({
+    const newAuditoriaResult = await tursoClient.execute({
       sql: 'SELECT * FROM auditorias WHERE id = ?',
       args: [id]
     });
     
-    if (newAuditoria.rows.length > 0) {
-      res.status(201).json(newAuditoria.rows[0]);
+    // Aunque la inserción fue exitosa, la consulta SELECT podría no devolver filas si hay replicación o algún delay.
+    // Es más robusto devolver el objeto construido con los datos de entrada si la inserción no falló.
+    if (newAuditoriaResult.rows.length > 0) {
+        res.status(201).json(newAuditoriaResult.rows[0]);
     } else {
-      res.status(201).json({ 
-        id, 
-        codigo,
-        titulo, 
-        tipo, 
-        alcance, 
-        fecha_inicio,
-        fecha_fin,
-        responsable,
-        auditores,
-        resultado,
-        estado: estado || 'planificada',
-        fecha_creacion: fechaCreacion
-      });
+        // Si la SELECT no devuelve nada, pero la inserción fue OK, devolvemos los datos que teníamos.
+        // Esto es un fallback, idealmente la SELECT siempre debería funcionar tras un INSERT exitoso.
+        res.status(201).json({ 
+            id, codigo, titulo, tipo, alcance, fecha_inicio, fecha_fin, 
+            responsable, auditores, resultado, estado: estado || 'planificada', fecha_creacion: fechaCreacion
+        });
     }
+
   } catch (error) {
-    console.error('Error al crear la auditoría:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
 // GET /api/auditorias/:id - Obtener una auditoría por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
     const result = await tursoClient.execute({
@@ -115,17 +110,18 @@ router.get('/:id', async (req, res) => {
     });
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Auditoría no encontrada.' });
+      const err = new Error('Auditoría no encontrada.');
+      err.statusCode = 404;
+      return next(err);
     }
     res.json(result.rows[0]);
   } catch (error) {
-    console.error(`Error al obtener la auditoría ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
 // PUT /api/auditorias/:id - Actualizar una auditoría
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   const { id } = req.params;
   const { 
     codigo,
@@ -141,36 +137,40 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   if (!codigo || !titulo) {
-    return res.status(400).json({ error: 'Los campos "codigo" y "titulo" son obligatorios.' });
+    const err = new Error('Los campos "codigo" y "titulo" son obligatorios.');
+    err.statusCode = 400;
+    return next(err);
   }
 
   try {
-    // Verificar que la auditoría existe
     const existsCheck = await tursoClient.execute({
       sql: 'SELECT id FROM auditorias WHERE id = ?',
       args: [id]
     });
     
     if (existsCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Auditoría no encontrada.' });
+      const err = new Error('Auditoría no encontrada.');
+      err.statusCode = 404;
+      return next(err);
     }
 
-    // Verificar que no exista otra auditoría con el mismo código (excepto esta misma)
     const duplicateCheck = await tursoClient.execute({
       sql: 'SELECT id FROM auditorias WHERE codigo = ? AND id != ?',
       args: [codigo, id]
     });
 
     if (duplicateCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Ya existe otra auditoría con ese código.' });
+      const err = new Error('Ya existe otra auditoría con ese código.');
+      err.statusCode = 400;
+      return next(err);
     }
 
-    const result = await tursoClient.execute({
+    await tursoClient.execute({
       sql: `UPDATE auditorias SET 
               codigo = ?, titulo = ?, tipo = ?, alcance = ?, 
               fecha_inicio = ?, fecha_fin = ?, responsable = ?,
               auditores = ?, resultado = ?, estado = ?
-            WHERE id = ?`,
+            WHERE id = ?`, 
       args: [
         codigo,
         titulo, 
@@ -186,21 +186,19 @@ router.put('/:id', async (req, res) => {
       ],
     });
 
-    // Devolver la auditoría actualizada
-    const updatedAuditoria = await tursoClient.execute({
+    const updatedAuditoriaResult = await tursoClient.execute({
       sql: 'SELECT * FROM auditorias WHERE id = ?',
       args: [id]
     });
 
-    res.json(updatedAuditoria.rows[0]);
+    res.json(updatedAuditoriaResult.rows[0]);
   } catch (error) {
-    console.error(`Error al actualizar la auditoría ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
 // DELETE /api/auditorias/:id - Eliminar una auditoría
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
     const result = await tursoClient.execute({
@@ -209,17 +207,18 @@ router.delete('/:id', async (req, res) => {
     });
 
     if (result.rowsAffected === 0) {
-      return res.status(404).json({ error: 'Auditoría no encontrada.' });
+      const err = new Error('Auditoría no encontrada.');
+      err.statusCode = 404;
+      return next(err);
     }
-    res.status(204).send(); // No content
+    res.status(204).send();
   } catch (error) {
-    console.error(`Error al eliminar la auditoría ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
 // GET /api/auditorias/estado/:estado - Obtener auditorías por estado
-router.get('/estado/:estado', async (req, res) => {
+router.get('/estado/:estado', async (req, res, next) => {
   const { estado } = req.params;
   try {
     const result = await tursoClient.execute({
@@ -229,8 +228,7 @@ router.get('/estado/:estado', async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    console.error(`Error al obtener auditorías con estado ${estado}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@libsql/client";
 import { 
   Plus, 
   Search, 
@@ -15,12 +14,7 @@ import {
   Calendar
 } from "lucide-react";
 import MedicionModal from "./MedicionModal";
-
-// Cliente de Turso
-const client = createClient({
-  url: "libsql://iso103-1-sergiocharata1977.aws-us-east-1.turso.io",
-  authToken: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NDUzMjMwMjIsImlkIjoiNmY3ZjA4ZmEtNTQ0My00ZjQ2LWI4MTMtYmZjY2JhYWJiOTc3IiwicmlkIjoiYzRhNDEzYWItZDdmNi00Y2I4LWEzZjktYjA2MDBmYzM0MjM3In0.gZSBIQ1Xki6KJmWrY_21DLN5mnc7S5dPdSf-NN3vl9MH9M43VOLF1VGKiqQPHeBmwAC6_28cFr1tST5gUlODCQ"
-});
+import { medicionesService } from "@/services"; // Asegúrate que la ruta sea correcta y medicionesService esté exportado
 
 function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoTitulo, procesoId, procesoNombre, onBack }) {
   const { toast } = useToast();
@@ -35,38 +29,15 @@ function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoT
   }, [indicadorId]);
 
   const loadMediciones = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
-      // Intentamos cargar desde el servicio
-      try {
-        // Corregido: usar el método correcto del servicio
-        const result = await medicionesService.getByIndicador(indicadorId);
-        
-        if (result && result.length > 0) {
-          setMediciones(result);
-          setIsLoading(false);
-          return;
-        }
-      } catch (serviceError) {
-        console.error('Error al cargar mediciones desde el servicio:', serviceError);
-      }
-      
-      // Si llegamos aquí, no se pudieron cargar desde el servicio
-      // Intentamos cargar desde localStorage como respaldo
-      const saved = localStorage.getItem("mediciones");
-      if (saved) {
-        const allMediciones = JSON.parse(saved);
-        const filteredMediciones = allMediciones.filter(m => m.indicador_id === indicadorId);
-        setMediciones(filteredMediciones);
-      } else {
-        setMediciones([]);
-      }
+      const result = await medicionesService.getByIndicador(indicadorId);
+      setMediciones(result || []); 
     } catch (error) {
       console.error("Error al cargar mediciones:", error);
       toast({
-        title: "Error",
-        description: "No se pudieron cargar las mediciones",
+        title: "Error al cargar mediciones",
+        description: error.message || "No se pudieron obtener los datos de las mediciones.",
         variant: "destructive"
       });
       setMediciones([]);
@@ -77,40 +48,36 @@ function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoT
 
   const handleSave = async (medicionData) => {
     try {
-      let updatedMediciones;
-      const newId = selectedMedicion ? selectedMedicion.id : Date.now();
-      const newMedicion = { 
-        ...medicionData, 
-        id: newId,
-        indicador_id: indicadorId,
-        indicador_titulo: indicadorTitulo
+      // El ID debe ser manejado por el backend, no generado en el frontend (Date.now() no es ideal para IDs persistentes)
+      // Si el backend asigna el ID, no es necesario pasarlo en la creación.
+      // Para actualización, el ID del selectedMedicion es el correcto.
+      const dataToSave = {
+        ...medicionData,
+        indicador_id: indicadorId, // Asegurar que el ID del indicador se envía
+        // indicador_titulo no debería ser parte del modelo de datos de medición, sino del indicador
       };
-      
-      if (selectedMedicion) {
-        await medicionesService.updateMedicion(newMedicion);
-        updatedMediciones = mediciones.map(m => 
-          m.id === selectedMedicion.id ? newMedicion : m
-        );
+
+      if (selectedMedicion && selectedMedicion.id) {
+        await medicionesService.update(selectedMedicion.id, dataToSave);
+        toast({
+          title: "Medición actualizada",
+          description: "Los datos de la medición han sido actualizados exitosamente."
+        });
       } else {
-        await medicionesService.createMedicion(newMedicion);
-        updatedMediciones = [...mediciones, newMedicion];
+        await medicionesService.create(dataToSave);
+        toast({
+          title: "Medición creada",
+          description: "Se ha agregado una nueva medición exitosamente."
+        });
       }
-      
-      setMediciones(updatedMediciones);
       setIsModalOpen(false);
       setSelectedMedicion(null);
-      
-      toast({
-        title: selectedMedicion ? "Medición actualizada" : "Medición creada",
-        description: selectedMedicion 
-          ? "Los datos de la medición han sido actualizados exitosamente" 
-          : "Se ha agregado una nueva medición exitosamente"
-      });
+      loadMediciones(); // Recargar mediciones para reflejar los cambios
     } catch (error) {
       console.error("Error al guardar medición:", error);
       toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar la medición",
+        title: "Error al guardar",
+        description: error.message || "Ocurrió un error al guardar la medición.",
         variant: "destructive"
       });
     }
@@ -123,48 +90,23 @@ function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoT
 
   const handleDelete = async (id) => {
     try {
-      // Intentar eliminar usando el servicio
-      try {
-        // Corregido: usar el método correcto del servicio
-        await medicionesService.delete(id);
-        setMediciones(mediciones.filter(m => m.id !== id));
-      } catch (serviceError) {
-        console.error("Error al eliminar con el servicio:", serviceError);
-        
-        // Fallback a localStorage si falla el servicio
-        const saved = localStorage.getItem("mediciones");
-        if (saved) {
-          const allMediciones = JSON.parse(saved).filter(m => m.id !== id);
-          localStorage.setItem("mediciones", JSON.stringify(allMediciones));
-          
-          // Actualizar el estado local
-          setMediciones(mediciones.filter(m => m.id !== id));
-        } else {
-          // Si no hay respaldo en localStorage, propagar el error
-          throw serviceError;
-        }
-      }
-      
-      // Actualizar localStorage como respaldo en cualquier caso
-      const saved = localStorage.getItem("mediciones");
-      if (saved) {
-        const allMediciones = JSON.parse(saved).filter(m => m.id !== id);
-        localStorage.setItem("mediciones", JSON.stringify(allMediciones));
-      }
-      
+      // Aquí podrías añadir una confirmación antes de borrar, ej. usando un diálogo
+      await medicionesService.delete(id);
       toast({
         title: "Medición eliminada",
-        description: "La medición ha sido eliminada exitosamente"
+        description: "La medición ha sido eliminada exitosamente."
       });
+      loadMediciones(); // Recargar mediciones para reflejar los cambios
     } catch (error) {
-      console.error("Error al eliminar medición:", error);
+      console.error(`Error al eliminar medición con ID ${id}:`, error);
       toast({
-        title: "Error",
-        description: "Ocurrió un error al eliminar la medición",
+        title: "Error al eliminar",
+        description: error.message || "Ocurrió un error al eliminar la medición.",
         variant: "destructive"
       });
     }
   };
+
 
   const filteredMediciones = mediciones.filter(medicion =>
     medicion.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -21,6 +21,7 @@ import CapacitacionModal from "./CapacitacionModal";
 import CapacitacionSingle from "./CapacitacionSingle";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import apiService from '../../services/apiService';
 
 function CapacitacionesListing() {
   const { toast } = useToast();
@@ -97,12 +98,12 @@ function CapacitacionesListing() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await client.execute({
-        sql: 'SELECT * FROM capacitaciones ORDER BY fecha_inicio DESC',
-        args: {}
-      });
-      if (result.rows.length > 0) {
-        const capacitacionesData = result.rows.map(row => ({
+      const responseData = await apiService.get('/capacitaciones');
+      
+      const capacitacionesFromApi = Array.isArray(responseData) ? responseData : (responseData.data || []);
+
+      if (capacitacionesFromApi.length > 0) {
+        const capacitacionesData = capacitacionesFromApi.map(row => ({
           id: row.id,
           codigo: row.codigo || '',
           titulo: row.titulo || '',
@@ -110,26 +111,27 @@ function CapacitacionesListing() {
           instructor: row.instructor || '',
           departamento: row.departamento || '',
           duracion: row.duracion || '',
-          fechaInicio: row.fecha_inicio || '',
-          fechaFin: row.fecha_fin || '',
+          fechaInicio: row.fecha_inicio || row.fechaInicio || '', 
+          fechaFin: row.fecha_fin || row.fechaFin || '',
           horario: row.horario || '',
           lugar: row.lugar || '',
           modalidad: row.modalidad || '',
           estado: row.estado || '',
-          cupoMaximo: row.cupo_maximo || 0,
+          cupoMaximo: row.cupo_maximo || row.cupoMaximo || 0,
           objetivos: row.objetivos || '',
           contenido: row.contenido || '',
-          participantes: JSON.parse(row.participantes || '[]'),
+          participantes: typeof row.participantes === 'string' ? JSON.parse(row.participantes || '[]') : (row.participantes || []),
           evaluacion: row.evaluacion || ''
         }));
         setCapacitaciones(capacitacionesData);
         localStorage.setItem("capacitaciones", JSON.stringify(capacitacionesData));
       } else {
-        cargarDatosLocales(true); // Forzar uso de muestra si DB está vacía
+        console.log("No se encontraron capacitaciones en la API, cargando datos locales de muestra.");
+        cargarDatosLocales(true);
       }
     } catch (err) {
-      console.error("Error al cargar capacitaciones desde Turso:", err);
-      setError("Error al conectar con la base de datos. Mostrando datos locales.");
+      console.error("Error al cargar capacitaciones desde la API:", err.message);
+      setError(`Error al cargar capacitaciones: ${err.message}. Mostrando datos locales.`);
       cargarDatosLocales();
     } finally {
       setIsLoading(false);

@@ -10,11 +10,26 @@ export const indicadoresService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/indicadores');
-      return response.data;
+      const response = await apiService.get('/indicadores_gestion');
+      return response;
     } catch (error) {
       console.error('Error al obtener indicadores:', error);
       throw new Error(error.response?.data?.message || 'Error al cargar los indicadores');
+    }
+  },
+
+  /**
+   * Obtiene todos los indicadores para un objetivo específico
+   * @param {string|number} objetivoId - ID del objetivo
+   * @returns {Promise<Array>} Lista de indicadores para el objetivo
+   */
+  async getByObjetivo(objetivoId) {
+    try {
+      const response = await apiService.get(`/indicadores_gestion?objetivo_id=${objetivoId}`);
+      return response;
+    } catch (error) {
+      console.error(`Error al obtener indicadores para el objetivo ${objetivoId}:`, error);
+      throw new Error(error.response?.data?.message || 'Error al cargar los indicadores para el objetivo');
     }
   },
 
@@ -25,8 +40,8 @@ export const indicadoresService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/indicadores/${id}`);
-      return response.data;
+      const response = await apiService.get(`/indicadores_gestion/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al obtener indicador con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al cargar el indicador');
@@ -40,8 +55,8 @@ export const indicadoresService = {
    */
   async create(indicador) {
     try {
-      const response = await apiService.post('/api/indicadores', indicador);
-      return response.data;
+      const response = await apiService.post('/indicadores_gestion', indicador);
+      return response;
     } catch (error) {
       console.error('Error al crear indicador:', error);
       throw new Error(error.response?.data?.message || 'Error al crear el indicador');
@@ -56,8 +71,8 @@ export const indicadoresService = {
    */
   async update(id, indicador) {
     try {
-      const response = await apiService.put(`/api/indicadores/${id}`, indicador);
-      return response.data;
+      const response = await apiService.put(`/indicadores_gestion/${id}`, indicador);
+      return response;
     } catch (error) {
       console.error(`Error al actualizar indicador con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al actualizar el indicador');
@@ -71,8 +86,8 @@ export const indicadoresService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/indicadores/${id}`);
-      return response.data;
+      const response = await apiService.delete(`/indicadores_gestion/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al eliminar indicador con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al eliminar el indicador');

@@ -10,8 +10,8 @@ export const capacitacionesService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/capacitaciones');
-      return response.data;
+      const response = await apiService.get('/capacitaciones');
+      return response;
     } catch (error) {
       console.error('Error al obtener capacitaciones:', error);
       throw new Error(error.response?.data?.message || 'Error al cargar las capacitaciones');
@@ -25,8 +25,8 @@ export const capacitacionesService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/capacitaciones/${id}`);
-      return response.data;
+      const response = await apiService.get(`/capacitaciones/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al obtener capacitación con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al cargar la capacitación');
@@ -40,8 +40,8 @@ export const capacitacionesService = {
    */
   async create(capacitacion) {
     try {
-      const response = await apiService.post('/api/capacitaciones', capacitacion);
-      return response.data;
+      const response = await apiService.post('/capacitaciones', capacitacion);
+      return response;
     } catch (error) {
       console.error('Error al crear capacitación:', error);
       throw new Error(error.response?.data?.message || 'Error al crear la capacitación');
@@ -56,8 +56,8 @@ export const capacitacionesService = {
    */
   async update(id, capacitacion) {
     try {
-      const response = await apiService.put(`/api/capacitaciones/${id}`, capacitacion);
-      return response.data;
+      const response = await apiService.put(`/capacitaciones/${id}`, capacitacion);
+      return response;
     } catch (error) {
       console.error(`Error al actualizar capacitación con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al actualizar la capacitación');
@@ -71,8 +71,8 @@ export const capacitacionesService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/capacitaciones/${id}`);
-      return response.data;
+      const response = await apiService.delete(`/capacitaciones/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al eliminar capacitación con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al eliminar la capacitación');

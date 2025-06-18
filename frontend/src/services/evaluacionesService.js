@@ -10,8 +10,8 @@ export const evaluacionesService = {
    */
   async getAll() {
     try {
-      const response = await apiService.get('/api/evaluaciones');
-      return response.data;
+      const response = await apiService.get('/evaluaciones');
+      return response;
     } catch (error) {
       console.error('Error al obtener evaluaciones:', error);
       throw new Error(error.response?.data?.message || 'Error al cargar las evaluaciones');
@@ -25,8 +25,8 @@ export const evaluacionesService = {
    */
   async getById(id) {
     try {
-      const response = await apiService.get(`/api/evaluaciones/${id}`);
-      return response.data;
+      const response = await apiService.get(`/evaluaciones/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al obtener evaluación con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al cargar la evaluación');
@@ -40,8 +40,8 @@ export const evaluacionesService = {
    */
   async create(evaluacion) {
     try {
-      const response = await apiService.post('/api/evaluaciones', evaluacion);
-      return response.data;
+      const response = await apiService.post('/evaluaciones', evaluacion);
+      return response;
     } catch (error) {
       console.error('Error al crear evaluación:', error);
       throw new Error(error.response?.data?.message || 'Error al crear la evaluación');
@@ -56,8 +56,8 @@ export const evaluacionesService = {
    */
   async update(id, evaluacion) {
     try {
-      const response = await apiService.put(`/api/evaluaciones/${id}`, evaluacion);
-      return response.data;
+      const response = await apiService.put(`/evaluaciones/${id}`, evaluacion);
+      return response;
     } catch (error) {
       console.error(`Error al actualizar evaluación con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al actualizar la evaluación');
@@ -71,8 +71,8 @@ export const evaluacionesService = {
    */
   async delete(id) {
     try {
-      const response = await apiService.delete(`/api/evaluaciones/${id}`);
-      return response.data;
+      const response = await apiService.delete(`/evaluaciones/${id}`);
+      return response;
     } catch (error) {
       console.error(`Error al eliminar evaluación con ID ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Error al eliminar la evaluación');

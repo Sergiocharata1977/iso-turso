@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { testConnection } from './lib/tursoClient.js';
+import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002; 
@@ -25,6 +26,8 @@ import documentosRouter from './routes/documentos.routes.js';
 import personalRouter from './routes/personal.routes.js';
 import objetivosCalidadRouter from './routes/objetivos_calidad.routes.js';
 import normasRouter from './routes/normas.routes.js';
+import capacitacionesRouter from './routes/capacitaciones.routes.js';
+import evaluacionesRouter from './routes/evaluaciones.routes.js';
 
 
 
@@ -37,6 +40,8 @@ app.use('/api/documentos', documentosRouter);
 app.use('/api/personal', personalRouter);
 app.use('/api/objetivos-calidad', objetivosCalidadRouter);
 app.use('/api/normas', normasRouter);
+app.use('/api/capacitaciones', capacitacionesRouter);
+app.use('/api/evaluaciones', evaluacionesRouter);
 
 
 
@@ -48,7 +53,10 @@ async function startServer() {
 
     // 2. Si la conexión es exitosa, iniciar el servidor
     if (process.env.NODE_ENV !== 'test') {
-      app.listen(PORT, () => {
+      // Middleware de manejo de errores global (DEBE SER EL ÚLTIMO MIDDLEWARE)
+app.use(errorHandler);
+
+app.listen(PORT, () => {
         console.log(`🚀 Servidor backend listo y escuchando en http://localhost:${PORT}`);
       });
     }

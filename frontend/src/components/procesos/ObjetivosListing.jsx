@@ -33,118 +33,30 @@ function ObjetivosListing({ procesoId, procesoNombre, onBack }) {
   }, [procesoId]);
 
   const loadObjetivos = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
-      // Turso eliminado: ahora solo API backend
-      try {
-        
-        let args = [];
-        
-        if (procesoId) {
-          query += " WHERE proceso_id = ?";
-          args.push(procesoId);
-        }
-        
-        const result = await client.execute({
-          sql: query,
-          args: args
+      let fetchedObjetivos = await objetivosCalidadService.getAll();
+      if (procesoId) {
+        fetchedObjetivos = fetchedObjetivos.filter(obj => obj.proceso_id === procesoId);
+      }
+      setObjetivos(fetchedObjetivos);
+      if (fetchedObjetivos.length === 0) {
+        toast({
+          title: "Información",
+          description: procesoId 
+            ? "No se encontraron objetivos para este proceso en la API."
+            : "No se encontraron objetivos en la API.",
+          variant: "default",
         });
-        
-        if (result.rows.length > 0) {
-          setObjetivos(result.rows);
-          setIsLoading(false);
-          return;
-        }
-      } catch (dbError) {
-        console.error("Error al cargar desde Turso:", dbError);
       }
-      
-      // Intentar cargar desde localStorage
-      const saved = localStorage.getItem("objetivos");
-      let data = saved ? JSON.parse(saved) : [];
-      
-      // Si hay datos en localStorage, intentar sincronizarlos con Turso
-      if (data.length > 0) {
-        try {
-          for (const objetivo of data) {
-            await client.execute({
-              sql: `INSERT OR REPLACE INTO objetivos 
-                    (id, titulo, descripcion, responsable, proceso_id, proceso_nombre, 
-                     meta, fecha_inicio, fecha_fin, estado) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-              args: [
-                objetivo.id, 
-                objetivo.titulo, 
-                objetivo.descripcion || '', 
-                objetivo.responsable || '', 
-                objetivo.proceso_id || null, 
-                objetivo.proceso_nombre || '', 
-                objetivo.meta || '', 
-                objetivo.fecha_inicio || '', 
-                objetivo.fecha_fin || '', 
-                objetivo.estado || ''
-              ]
-            });
-          }
-          
-          // Recargar desde Turso después de sincronizar
-          
-          let args = [];
-          
-          if (procesoId) {
-            query += " WHERE proceso_id = ?";
-            args.push(procesoId);
-          }
-          
-          const syncResult = await client.execute({
-            sql: query,
-            args: args
-          });
-          
-          if (syncResult.rows.length > 0) {
-            setObjetivos(syncResult.rows);
-          } else {
-            // Filtrar objetivos por proceso si se proporciona un procesoId
-            const filteredData = procesoId ? data.filter(obj => obj.proceso_id === procesoId) : data;
-            setObjetivos(filteredData);
-          }
-        } catch (syncError) {
-          console.error("Error al sincronizar con Turso:", syncError);
-          // Filtrar objetivos por proceso si se proporciona un procesoId
-          const filteredData = procesoId ? data.filter(obj => obj.proceso_id === procesoId) : data;
-          setObjetivos(filteredData);
-        }
-      } else if (data.length === 0) {
-        // Si no hay datos, crear datos de muestra
-        const mockData = [
-          {
-            id: "sample-1",
-            titulo: "Objetivo de ejemplo",
-            descripcion: "Este es un objetivo de ejemplo para el proceso",
-            responsable: "Responsable de Calidad",
-            proceso_id: procesoId || "",
-            proceso_nombre: procesoNombre || "",
-            meta: "Alcanzar 95% de cumplimiento",
-            fecha_inicio: new Date().toISOString().split('T')[0],
-            fecha_fin: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().split('T')[0],
-            estado: "En progreso"
-          }
-        ];
-        
-        // Usar los datos de muestra
-        setObjetivos(mockData);
-      }
-      
-      setIsLoading(false);
-      
     } catch (error) {
-      console.error("Error al cargar objetivos:", error);
+      console.error("Error al cargar objetivos desde la API:", error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los objetivos.",
-        variant: "destructive"
+        description: error.message || "No se pudieron cargar los objetivos.",
+        variant: "destructive",
       });
+      setObjetivos([]); // Clear objectives on error or set to empty if preferred
     } finally {
       setIsLoading(false);
     }
@@ -153,9 +65,8 @@ function ObjetivosListing({ procesoId, procesoNombre, onBack }) {
   const handleSave = async (objetivoData) => {
     try {
       setIsLoading(true);
-      let response;
       if (selectedObjetivo && selectedObjetivo.id) {
-        response = await objetivosCalidadService.update(selectedObjetivo.id, {
+        await objetivosCalidadService.update(selectedObjetivo.id, {
           ...objetivoData,
           proceso_id: procesoId,
           proceso_nombre: procesoNombre
@@ -165,7 +76,7 @@ function ObjetivosListing({ procesoId, procesoNombre, onBack }) {
           description: "Los datos del objetivo han sido actualizados exitosamente"
         });
       } else {
-        response = await objetivosCalidadService.create({
+        await objetivosCalidadService.create({
           ...objetivoData,
           proceso_id: procesoId,
           proceso_nombre: procesoNombre
@@ -204,6 +115,7 @@ function ObjetivosListing({ procesoId, procesoNombre, onBack }) {
         title: "Objetivo eliminado",
         description: "El objetivo ha sido eliminado exitosamente"
       });
+      await loadObjetivos(); // Reload objectives after deletion
     } catch (error) {
       console.error("Error al eliminar objetivo:", error);
       toast({
