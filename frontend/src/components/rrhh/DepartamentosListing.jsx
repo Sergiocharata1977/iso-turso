@@ -367,55 +367,60 @@ function DepartamentosListing() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Departamentos</h1>
-        <Button onClick={() => {
-          setSelectedDepartamento(null);
-          setIsModalOpen(true);
-        }}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Departamento
-        </Button>
-      </div>
-      
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex items-center space-x-2 w-full sm:w-auto">
-          <div className="bg-background border border-input rounded-md p-1 flex items-center">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-              className="h-8 w-8 p-0 rounded-sm"
-            >
-              <LayoutGrid className="h-4 w-4" />
+      {/* Header Reestructurado */}
+      <div className="space-y-4"> {/* Contenedor principal para la cabecera, con espaciado vertical */}
+        {/* Fila 1: Título y Acciones Principales */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <h1 className="text-2xl font-bold">Departamentos</h1>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" onClick={() => { /* Lógica de Exportar - la original era onClick={() => {}} */ }}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
             </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className="h-8 w-8 p-0 rounded-sm"
-            >
-              <List className="h-4 w-4" />
+            <Button onClick={() => {
+                setSelectedDepartamento(null);
+                setIsModalOpen(true);
+              }}>
+              <Plus className="mr-2 h-4 w-4" /> 
+              Nuevo Departamento
             </Button>
           </div>
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        </div>
+
+        {/* Fila 2: Herramientas de Visualización y Búsqueda */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center space-x-2"> {/* Contenedor para Selector de Vista */}
+            <div className="bg-background border border-input rounded-md p-1 flex items-center">
+              <Button
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="h-8 w-8 p-0 rounded-sm"
+                aria-label="Vista de cuadrícula"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="h-8 w-8 p-0 rounded-sm"
+                aria-label="Vista de lista"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="relative flex-1 w-full sm:w-auto"> {/* Búsqueda, ocupa espacio flexible */}
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Buscar departamentos..."
-              className="pl-8 h-10 w-full sm:w-[300px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              className="pl-8 pr-3 py-2 h-10 w-full rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-        </div>
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          <Button variant="outline" onClick={() => {}}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
         </div>
       </div>
 
@@ -460,7 +465,6 @@ function DepartamentosListing() {
         }}
         onSave={handleSave}
         departamento={selectedDepartamento}
-        departamentos={departamentos}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import {
   Dialog,
@@ -8,174 +8,99 @@ import {
   DialogFooter,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { Label } from "../../components/ui/label";
-import { useState, useEffect } from "react";
 
-function DepartamentoModal({ isOpen, onClose, onSave, departamento, departamentos }) {
-  const [formData, setFormData] = useState({
-    nombre: "",
-    responsable: "",
-    descripcion: "",
-    objetivos: "",
-    departamentoPadreId: "",
-    email: "",
-    telefono: "",
-    ubicacion: "",
-    presupuesto: "",
-    fechaCreacion: "",
-    estado: "activo"
-  });
+const initialFormData = {
+  nombre: "",
+  descripcion: "",
+  objetivos: "", // Añadido para gestionar los objetivos
+  responsableId: "", // Campo para futuro uso, coincide con el schema
+};
+
+function DepartamentoModal({ isOpen, onClose, onSave, departamento }) {
+  const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
-    if (departamento) {
-      setFormData(departamento);
-    } else {
-      setFormData({
-        nombre: "",
-        responsable: "",
-        descripcion: "",
-        objetivos: "",
-        departamentoPadreId: "",
-        email: "",
-        telefono: "",
-        ubicacion: "",
-        presupuesto: "",
-        fechaCreacion: new Date().toISOString().split('T')[0],
-        estado: "activo"
-      });
-    }
-  }, [departamento]);
+    // Este efecto se ejecuta cuando el modal se abre/cierra o cuando cambia el departamento a editar
+    if (isOpen) {
+      if (departamento) {
+        // Modo Edición: Cargar datos del departamento existente
+        setFormData({
+          nombre: departamento.nombre || "",
+          descripcion: departamento.descripcion || "",
+          objetivos: departamento.objetivos || "",
+          responsableId: departamento.responsableId || "",
+          id: departamento.id, // Mantener el ID para la actualización
+        });
+      } else {
+        // Modo Creación: Resetear el formulario al estado inicial
+        setFormData(initialFormData);
+      }
+    } 
+  }, [departamento, isOpen]); // Depender de `isOpen` es crucial para el reseteo
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData);
   };
 
-  const departamentosPadre = departamentos.filter(d => 
-    d.id !== departamento?.id && !isDescendant(d.id, departamento?.id, departamentos)
-  );
-
-  function isDescendant(parentId, childId, deps) {
-    if (!childId) return false;
-    const child = deps.find(d => d.id === childId);
-    if (!child) return false;
-    if (child.departamentoPadreId === parentId) return true;
-    return isDescendant(parentId, child.departamentoPadreId, deps);
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="dark max-w-xl w-full rounded-xl shadow-2xl border-border max-h-[90vh] overflow-y-auto bg-background text-foreground">
+      <DialogContent className="dark max-w-lg w-full rounded-xl shadow-2xl border-border bg-background text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">{departamento ? "Editar Departamento" : "Nuevo Departamento"}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-foreground">
+            {departamento ? "Editar Departamento" : "Nuevo Departamento"}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre del Departamento</Label>
-              <Input
-                id="nombre"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="responsable">Responsable</Label>
-              <Input
-                id="responsable"
-                value={formData.responsable}
-                onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="telefono">Teléfono</Label>
-              <Input
-                id="telefono"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="departamentoPadreId">Departamento Superior</Label>
-              <select
-                id="departamentoPadreId"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                value={formData.departamentoPadreId}
-                onChange={(e) => setFormData({ ...formData, departamentoPadreId: e.target.value })}
-              >
-                <option value="">Ninguno (Departamento Principal)</option>
-                {departamentosPadre.map(d => (
-                  <option key={d.id} value={d.id}>{d.nombre}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ubicacion">Ubicación</Label>
-              <Input
-                id="ubicacion"
-                value={formData.ubicacion}
-                onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6 p-1">
+          <div className="space-y-2">
+            <Label htmlFor="nombre">Nombre del Departamento</Label>
+            <Input
+              id="nombre"
+              value={formData.nombre}
+              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              placeholder="Ej: Recursos Humanos"
+              required
+            />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="descripcion">Descripción</Label>
-            <Input
+            <Textarea
               id="descripcion"
+              rows={4}
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              required
+              placeholder="Describe la función principal del departamento..."
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="objetivos">Objetivos</Label>
-            <Input
+            <Textarea
               id="objetivos"
+              rows={4}
               value={formData.objetivos}
               onChange={(e) => setFormData({ ...formData, objetivos: e.target.value })}
-              required
+              placeholder="Define los objetivos clave del departamento..."
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="presupuesto">Presupuesto Anual</Label>
-              <Input
-                id="presupuesto"
-                type="number"
-                value={formData.presupuesto}
-                onChange={(e) => setFormData({ ...formData, presupuesto: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fechaCreacion">Fecha de Creación</Label>
-              <Input
-                id="fechaCreacion"
-                type="date"
-                value={formData.fechaCreacion}
-                onChange={(e) => setFormData({ ...formData, fechaCreacion: e.target.value })}
-                required
-              />
-            </div>
+          {/* Campo para responsableId (opcional, se puede implementar con un Select en el futuro) */}
+          {/* 
+          <div className="space-y-2">
+            <Label htmlFor="responsableId">Responsable (ID)</Label>
+            <Input
+              id="responsableId"
+              value={formData.responsableId}
+              onChange={(e) => setFormData({ ...formData, responsableId: e.target.value })}
+              placeholder="ID del usuario responsable (opcional)"
+            />
           </div>
+          */}
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -8,32 +8,59 @@ import {
   Download, 
   Pencil, 
   Trash2, 
-  Building2,
-  Users,
   LayoutGrid,
   List,
   ChevronRight,
-  Briefcase
+  Briefcase,
+  MoreHorizontal,
+  Filter
 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import PuestoModal from "./PuestoModal";
-import PuestoSingle from "./PuestoSingle";
+import PuestoSingle from "./PuestoSingle"; // Importamos el componente de vista detalle
+import PuestoCard from './PuestoCard';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { puestosService } from "@/services/puestos";
+import { puestosService } from "@/services/puestosService";
 
 // No se requiere cliente Turso - Migrado a API Backend
 
 function PuestosListing() {
   const { toast } = useToast();
+  // const alertDialogTitleId = useId();
+  // const alertDialogDescriptionId = useId();
+  const alertDialogTitleId = "puesto-alert-title";
+  const alertDialogDescriptionId = "puesto-alert-description";
+  console.log("[PuestosListing] Component Rendering...");
+  console.log("[PuestosListing] Top-level Static IDs for AlertDialog: titleId:", alertDialogTitleId, "descriptionId:", alertDialogDescriptionId);
+  // Estados para el modal de creación/edición
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPuesto, setSelectedPuesto] = useState(null);
+  // Estados de visualización y filtrado
   const [searchTerm, setSearchTerm] = useState("");
-  const [showSingle, setShowSingle] = useState(false);
-  const [currentPuesto, setCurrentPuesto] = useState(null);
   const [viewMode, setViewMode] = useState("grid");
+  // Estados para la confirmación de eliminación
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [puestoToDelete, setPuestoToDelete] = useState(null);
+  // Estado de los datos y carga
   const [puestos, setPuestos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  // Estados para la vista detalle (Single)
+  const [showSingle, setShowSingle] = useState(false);
+  const [currentPuesto, setCurrentPuesto] = useState(null);
 
   useEffect(() => {
     loadPuestos();
@@ -60,6 +87,7 @@ function PuestosListing() {
   };
 
   const handleSave = async (puestoData) => {
+    setIsSaving(true);
     try {
       let savedPuesto;
       
@@ -93,17 +121,42 @@ function PuestosListing() {
         description: error.message || "Ocurrió un error al guardar el puesto",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
+  // Maneja el clic en el botón de editar (ya sea desde la lista o desde la vista detalle)
   const handleEdit = (puesto) => {
+    console.log("[PuestosListing] handleEdit called with:", puesto);
     setSelectedPuesto(puesto);
     setIsModalOpen(true);
+    console.log("[PuestosListing] isModalOpen set to true, selectedPuesto:", puesto);
+  };
+  
+  // Maneja el clic en una tarjeta o fila para mostrar la vista detalle
+  const handleViewDetails = (puesto) => {
+    console.log("[PuestosListing] handleViewDetails called with:", puesto);
+    setCurrentPuesto(puesto);
+    setShowSingle(true);
+    console.log("[PuestosListing] showSingle set to true, currentPuesto:", puesto);
+  };
+  
+  // Maneja el regreso desde la vista detalle a la lista
+  const handleBackToList = () => {
+    console.log("[PuestosListing] handleBackToList called");
+    setShowSingle(false);
+    setCurrentPuesto(null);
+    console.log("[PuestosListing] showSingle set to false, currentPuesto cleared");
   };
 
   const handleDelete = (id) => {
-    setPuestoToDelete(puestos.find(p => p.id === id));
+    console.log("[PuestosListing] handleDelete called with id:", id);
+    const puestoFound = puestos.find(p => p.id === id);
+    console.log("[PuestosListing] Puesto to delete found:", puestoFound);
+    setPuestoToDelete(puestoFound);
     setDeleteDialogOpen(true);
+    console.log("[PuestosListing] deleteDialogOpen set to true, puestoToDelete:", puestoFound);
   };
 
   const confirmDelete = async () => {
@@ -123,10 +176,7 @@ function PuestosListing() {
       
       setDeleteDialogOpen(false);
       
-      // Si estamos viendo el detalle del puesto eliminado, volver a la lista
-      if (showSingle && currentPuesto?.id === puestoToDelete.id) {
-        setShowSingle(false);
-      }
+
     } catch (error) {
       console.error("Error al eliminar puesto:", error);
       toast({
@@ -138,240 +188,197 @@ function PuestosListing() {
     }
   };
 
-  const handleViewPuesto = (puesto) => {
-    setCurrentPuesto(puesto);
-    setShowSingle(true);
-  };
-
   const filteredPuestos = puestos.filter(puesto =>
-    puesto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    puesto.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    puesto.departamento?.toLowerCase().includes(searchTerm.toLowerCase())
+    (puesto.titulo_puesto || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (puesto.codigo_puesto || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (puesto.departamento_nombre || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (showSingle) {
-    return (
-      <PuestoSingle
-        puesto={currentPuesto}
-        onBack={() => setShowSingle(false)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center space-x-2 w-full sm:w-auto">
-          <div className="bg-background border border-input rounded-md p-1 flex items-center">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-              className="h-8 w-8 p-0 rounded-sm"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className="h-8 w-8 p-0 rounded-sm"
-            >
-              <List className="h-4 w-4" />
-            </Button>
+    <div className="space-y-6 px-4 sm:px-6 lg:px-8">
+      {/* Si showSingle es true, mostramos la vista detalle (PuestoSingle) */}
+      {showSingle && currentPuesto ? (
+        <PuestoSingle 
+          puesto={currentPuesto} 
+          onBack={handleBackToList} 
+          onEdit={handleEdit} 
+          onDelete={handleDelete}
+        />
+      ) : (
+        /* Si showSingle es false, mostramos la lista de puestos */
+        <>
+          {/* Cabecera Principal */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-slate-100">Gestión de Puestos</h1>
+              <p className="text-muted-foreground mt-1">Administra los puestos de trabajo según ISO 9001.</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </Button>
+              <Button onClick={() => {
+                setSelectedPuesto(null);
+                setIsModalOpen(true);
+              }} className="bg-teal-600 hover:bg-teal-700 text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Puesto
+              </Button>
+            </div>
           </div>
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar puestos..."
-              className="pl-8 h-10 w-full sm:w-[300px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          <Button variant="outline" onClick={() => {}}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
-          <Button onClick={() => {
-            setSelectedPuesto(null);
-            setIsModalOpen(true);
-          }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Puesto
-          </Button>
-        </div>
-      </div>
 
-      {/* Lista de puestos */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Cargando puestos...</p>
-          </div>
-        ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPuestos.map((puesto) => (
-              <motion.div
-                key={puesto.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors cursor-pointer"
-                onClick={() => handleViewPuesto(puesto)}
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center space-x-3">
-                      <Briefcase className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-semibold text-lg">{puesto.nombre}</h3>
-                        <p className="text-sm text-muted-foreground">{puesto.codigo}</p>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      puesto.estado === "activo"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}>
-                      {puesto.estado}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>{puesto.departamento || "No especificado"}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>Supervisor: {puesto.supervisor || "No especificado"}</span>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm line-clamp-3">{puesto.descripcion}</p>
-                  <div className="mt-4 flex justify-end space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(puesto);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(puesto.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-            {filteredPuestos.length === 0 && (
-              <div className="col-span-3 text-center py-12">
-                <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  No hay puestos registrados. Haz clic en "Nuevo Puesto" para comenzar.
-                </p>
+          {/* Barra de Herramientas */}
+          <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar puestos, departamentos..."
+                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-slate-50 dark:bg-slate-800 dark:border-slate-700 focus:ring-teal-500 focus:border-teal-500 transition"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros
+              </Button>
+              <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex items-center">
+                <Button
+                  variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1 text-sm ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
+                >
+                  Tarjetas
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 text-sm ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
+                >
+                  Tabla
+                </Button>
               </div>
-            )}
+            </div>
           </div>
-        ) : (
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted">
-                  <th className="text-left p-4">Puesto</th>
-                  <th className="text-left p-4">Departamento</th>
-                  <th className="text-left p-4">Supervisor</th>
-                  <th className="text-left p-4">Estado</th>
-                  <th className="text-right p-4">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPuestos.map((puesto) => (
-                  <motion.tr
-                    key={puesto.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="border-b border-border cursor-pointer hover:bg-accent/50"
-                    onClick={() => handleViewPuesto(puesto)}
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <Briefcase className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-medium">{puesto.nombre}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {puesto.codigo}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">{puesto.departamento}</td>
-                    <td className="p-4">{puesto.supervisor}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        puesto.estado === "activo"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
-                        {puesto.estado}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(puesto);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(puesto.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredPuestos.length === 0 && (
+
+          {/* Contenedor de la lista de puestos */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {isLoading ? (
               <div className="text-center py-12">
-                <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  No hay puestos registrados. Haz clic en "Nuevo Puesto" para comenzar.
-                </p>
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Cargando puestos...</p>
               </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredPuestos.length > 0 ? (
+                  filteredPuestos.map((puesto) => (
+                    <PuestoCard 
+                      key={puesto.id}
+                      puesto={puesto}
+                      onViewDetails={handleViewDetails}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12 col-span-full">
+                    <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-4 text-muted-foreground">
+                      No hay puestos que coincidan con la búsqueda.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border bg-muted">
+                        <th className="text-left p-4">Puesto</th>
+                        <th className="text-left p-4">Departamento</th>
+                        <th className="text-left p-4">Supervisor</th>
+                        <th className="text-left p-4">Estado</th>
+                        <th className="text-right p-4">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPuestos.map((puesto) => (
+                        <motion.tr 
+                          key={puesto.id}
+                          className="border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-800"
+                          whileHover={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}
+                          onClick={() => handleViewDetails(puesto)}
+                        >
+                          <td className="p-4">
+                            <div className="flex items-center space-x-3">
+                              <Briefcase className="h-5 w-5 text-primary" />
+                              <div>
+                                <p className="font-medium">{puesto.titulo_puesto}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {puesto.codigo_puesto}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">{puesto.departamento_nombre}</td>
+                          <td className="p-4">{puesto.supervisor || 'N/A'}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              puesto.estado === "activo"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}>
+                              {puesto.estado}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(puesto);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(puesto.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredPuestos.length === 0 && (
+                    <div className="text-center py-12">
+                      <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <p className="mt-4 text-muted-foreground">
+                        No hay puestos registrados. Haz clic en "Nuevo Puesto" para comenzar.
+                      </p>
+                    </div>
+                  )}
+                </div>
             )}
-          </div>
-        )}
-      </motion.div>
+        </motion.div>
+        </>
+      )}
 
       {/* Modals */}
       <PuestoModal
@@ -382,14 +389,15 @@ function PuestosListing() {
         }}
         onSave={handleSave}
         puesto={selectedPuesto}
+        isSaving={isSaving}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent aria-labelledby={alertDialogTitleId} aria-describedby={alertDialogDescriptionId}>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el puesto {puestoToDelete?.nombre}.
+            <AlertDialogTitle id={alertDialogTitleId}>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription id={alertDialogDescriptionId}>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el puesto {puestoToDelete?.titulo_puesto}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

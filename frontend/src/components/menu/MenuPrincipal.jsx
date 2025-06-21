@@ -15,6 +15,7 @@ import {
   FileCheck,
   Settings,
   Building2,
+  Building,
   Briefcase,
   Target,
   Activity,
@@ -34,13 +35,12 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// Importar componentes de dropdown
+// Importar componentes de UI
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 // Importar directamente nuestros componentes
 import PersonalListing from "../personal/PersonalListing";
@@ -69,9 +69,16 @@ import Noticias from "../noticias/Noticias";
 
 const MenuPrincipal = () => {
   const { isDark } = useTheme();
-  const [selectedSection, setSelectedSection] = useState("noticias");
+  const [selectedSection, setSelectedSection] = useState("puestos");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [openMenus, setOpenMenus] = useState(['recursos-humanos']); // 'recursos-humanos' abierto por defecto
   const navigate = useNavigate();
+
+  const toggleMenu = (menu) => {
+    setOpenMenus(prev => 
+      prev.includes(menu) ? prev.filter(m => m !== menu) : [...prev, menu]
+    );
+  };
 
   const handleSectionChange = (id) => {
     setSelectedSection(id);
@@ -226,130 +233,76 @@ const MenuPrincipal = () => {
                 <span>Auditorías</span>
               </button>
 
-            {/* Recursos Humanos */}
-            <div className="mt-2 px-4 py-1 text-xs font-semibold text-gray-400 uppercase">
-              Recursos Humanos
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={`flex items-center w-full px-4 py-2 text-left ${
-                    [
-                      "personal",
-                      "departamentos",
-                      "puestos",
-                      "capacitaciones",
-                      "evaluaciones",
-                    ].includes(selectedSection)
-                      ? "bg-green-600 text-white"
-                      : "text-gray-300 hover:bg-gray-800"
-                  }`}
-                >
+            {/* --- Recursos Humanos --- */}
+            <Collapsible open={openMenus.includes('recursos-humanos')} onOpenChange={() => toggleMenu('recursos-humanos')}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-800">
                   <Users className="h-5 w-5 mr-2" />
                   <span>Recursos Humanos</span>
-                  <ChevronDown className="ml-auto h-5 w-5" />
+                  <ChevronDown className={`ml-auto h-5 w-5 transition-transform ${openMenus.includes('recursos-humanos') ? 'rotate-180' : ''}`} />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                className={`min-w-[220px] ${isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}
-              >
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("personal")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <Users className="h-5 w-5 mr-3" />
-                  <span>Personal</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("departamentos")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <Building2 className="h-5 w-5 mr-3" />
-                  <span>Departamentos</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("puestos")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <Briefcase className="h-5 w-5 mr-3" />
-                  <span>Puestos</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("capacitaciones")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <GraduationCap className="h-5 w-5 mr-3" />
-                  <span>Capacitaciones</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("evaluaciones")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <ClipboardCheck className="h-5 w-5 mr-3" />
-                  <span>Evaluaciones</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 pr-4 py-1 space-y-1 bg-gray-900/50">
+                {[ 
+                  { id: 'departamentos', label: 'Departamentos', icon: Building },
+                  { id: 'puestos', label: 'Puestos', icon: Briefcase },
+                  { id: 'personal', label: 'Personal', icon: UserCheck },
+                  { id: 'capacitaciones', label: 'Capacitaciones', icon: GraduationCap },
+                  { id: 'evaluaciones', label: 'Evaluaciones', icon: ClipboardCheck },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSectionChange(item.id)}
+                      className={`flex items-center w-full px-4 py-2 text-left rounded-md transition-colors ${
+                        selectedSection === item.id
+                          ? "bg-emerald-600 text-white"
+                          : "text-gray-300 hover:bg-gray-700/80"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 mr-3" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
 
-            {/* Procesos - Ahora con dropdown */}
-            <div className="mt-2 px-4 py-1 text-xs font-semibold text-gray-400 uppercase">
-              Sistema de Gestión
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={`flex items-center w-full px-4 py-2 text-left ${
-                    [
-                      "procesos",
-                      "objetivos",
-                      "indicadores",
-                      "mediciones",
-                      "mejoras",
-                    ].includes(selectedSection)
-                      ? "bg-green-600 text-white"
-                      : "text-gray-300 hover:bg-gray-800"
-                  }`}
-                >
-                  <Activity className="h-5 w-5 mr-2" />
+            {/* --- Procesos --- */}
+            <Collapsible open={openMenus.includes('procesos')} onOpenChange={() => toggleMenu('procesos')}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-800">
+                  <FileText className="h-5 w-5 mr-2" />
                   <span>Procesos</span>
-                  <ChevronDown className="ml-auto h-5 w-5" />
+                  <ChevronDown className={`ml-auto h-5 w-5 transition-transform ${openMenus.includes('procesos') ? 'rotate-180' : ''}`} />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                className={`min-w-[220px] ${isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}
-              >
-                <DropdownMenuItem 
-                  onClick={() => handleSectionChange("procesos")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <Activity className="h-5 w-5 mr-3" />
-                  <span>Procesos</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleSectionChange("objetivos")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <Target className="h-5 w-5 mr-3" />
-                  <span>Objetivos</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("indicadores")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <LineChart className="h-5 w-5 mr-3" />
-                  <span>Indicadores</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSectionChange("mediciones")}
-                  className={isDark ? 'hover:bg-gray-700 focus:bg-gray-700' : 'hover:bg-gray-100 focus:bg-gray-100'}
-                >
-                  <BarChart2 className="h-5 w-5 mr-3" />
-                  <span>Mediciones</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 pr-4 py-1 space-y-1 bg-gray-900/50">
+                {[
+                  { id: 'procesos', label: 'Procesos', icon: FileText },
+                  { id: 'objetivos', label: 'Objetivos', icon: Target },
+                  { id: 'indicadores', label: 'Indicadores', icon: LineChart },
+                  { id: 'mediciones', label: 'Mediciones', icon: BarChart },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSectionChange(item.id)}
+                      className={`flex items-center w-full px-4 py-2 text-left rounded-md transition-colors ${
+                        selectedSection === item.id
+                          ? "bg-emerald-600 text-white"
+                          : "text-gray-300 hover:bg-gray-700/80"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 mr-3" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
 
             <button
               onClick={() => handleSectionChange("documentos")}

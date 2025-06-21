@@ -1,93 +1,97 @@
-import React from "react";
+import React from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Eye } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
 
-function PersonalTableView({ data, onView, onEdit, onDelete }) {
+function PersonalTableView({ personal, onView, onEdit, onDelete }) {
+  const getInitials = (name) => {
+    if (!name) return "SN";
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <div className="w-full overflow-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-muted">
-          <tr>
-            <th className="p-2 text-left">Foto</th>
-            <th className="p-2 text-left">Nombre</th>
-            <th className="p-2 text-left">Puesto</th>
-            <th className="p-2 text-left">Departamento</th>
-            <th className="p-2 text-left">Email</th>
-            <th className="p-2 text-right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <AnimatePresence>
-            {data.map(person => (
-              <motion.tr
-                key={person.id}
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="border-b hover:bg-muted/50 cursor-pointer"
-                onClick={() => onView(person)}
-              >
-                <td className="p-4">
-                  <div className="h-10 w-10 rounded-full overflow-hidden">
-                    <img
-                      src={person.imagen || "/images/personal/v3_0277343.jpg"}
-                      alt={person.nombre}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.target.src = "/images/personal/v3_0277343.jpg";
-                      }}
-                    />
+    <div className="border rounded-lg w-full">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[300px]">Nombre</TableHead>
+            <TableHead>Departamento</TableHead>
+            <TableHead>Puesto</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {personal.map((person) => (
+            <TableRow key={person.id} className="hover:bg-muted/50">
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarImage src={person.imagen} alt={person.nombre} />
+                    <AvatarFallback>{getInitials(person.nombre)}</AvatarFallback>
+                  </Avatar>
+                  <div className="grid gap-0.5">
+                    <span className="font-medium">{person.nombre}</span>
+                    <span className="text-xs text-muted-foreground">{person.email}</span>
                   </div>
-                </td>
-                <td className="p-4 font-medium">{person.nombre}</td>
-                <td className="p-4">{person.puesto}</td>
-                <td className="p-4">{person.departamento}</td>
-                <td className="p-4">{person.email}</td>
-                <td className="p-4 text-right space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView(person);
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-1 text-blue-600" />
-                    <span className="text-blue-600">Ver</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-green-50 hover:bg-green-100 border-green-200"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(person);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4 mr-1 text-green-600" />
-                    <span className="text-green-600">Editar</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-red-50 hover:bg-red-100 border-red-200"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(person.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1 text-red-600" />
-                    <span className="text-red-600">Borrar</span>
-                  </Button>
-                </td>
-              </motion.tr>
-            ))}
-          </AnimatePresence>
-        </tbody>
-      </table>
+                </div>
+              </TableCell>
+              <TableCell>{person.departamento}</TableCell>
+              <TableCell>{person.puesto}</TableCell>
+              <TableCell>
+                <Badge className="bg-green-100 text-green-800 border border-green-200 hover:bg-green-200">
+                  Activo
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onView(person)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Ver Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onEdit(person)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onDelete(person.id)}
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

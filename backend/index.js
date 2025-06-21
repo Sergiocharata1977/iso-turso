@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 3002;
 
 // Middleware
 app.use(cors()); 
-app.use(express.json()); 
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true })); 
 
 
 
@@ -30,6 +31,7 @@ import capacitacionesRouter from './routes/capacitaciones.routes.js';
 import evaluacionesRouter from './routes/evaluaciones.routes.js';
 import indicadoresRouter from './routes/indicadores.routes.js';
 import medicionesRouter from './routes/mediciones.routes.js';
+import ticketsRouter from './routes/tickets.routes.js';
 
 
 
@@ -46,6 +48,7 @@ app.use('/api/capacitaciones', capacitacionesRouter);
 app.use('/api/evaluaciones', evaluacionesRouter);
 app.use('/api/indicadores', indicadoresRouter);
 app.use('/api/mediciones', medicionesRouter);
+app.use('/api/tickets', ticketsRouter);
 
 
 

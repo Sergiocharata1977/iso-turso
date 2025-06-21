@@ -25,8 +25,10 @@ export const puestosService = {
   },
 
   async create(puesto) {
+    const { departamentoId, ...rest } = puesto;
+    const payload = { ...rest, departamento_id: departamentoId };
     try {
-      const response = await apiClient.post('', puesto);
+      const response = await apiClient.post('', payload);
       return response;
     } catch (error) {
       console.error('Error al crear puesto:', error);
@@ -35,8 +37,10 @@ export const puestosService = {
   },
 
   async update(id, puesto) {
+    const { departamentoId, ...rest } = puesto;
+    const payload = { ...rest, departamento_id: departamentoId };
     try {
-      const response = await apiClient.put(`/${id}`, puesto);
+      const response = await apiClient.put(`/${id}`, payload);
       return response;
     } catch (error) {
       console.error(`Error al actualizar puesto con ID ${id}:`, error);

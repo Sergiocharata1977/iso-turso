@@ -6,12 +6,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, // Importar DialogDescription
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { 
   Building2, 
   Users, 
@@ -24,73 +25,104 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { departamentosService } from "@/services/departamentos";
+import { puestosService } from "@/services/puestosService"; // Asumiendo que este servicio existe
 import { useToast } from "@/components/ui/use-toast";
 
-function PuestoModal({ isOpen, onClose, onSave, puesto }) {
+function PuestoModal({ isOpen, onClose, onSave, puesto, isSaving }) {
+  console.log("[PuestoModal] Rendering. isOpen:", isOpen, "puesto:", puesto ? puesto.titulo_puesto : null);
+  // const titleId = useId();
+  // const descriptionId = useId();
+  const titleId = "puesto-modal-title";
+  const descriptionId = "puesto-modal-description";
+  console.log("[PuestoModal] Static IDs for Dialog: titleId:", titleId, "descriptionId:", descriptionId);
   const [formData, setFormData] = useState({
-    nombre: "",
-    departamento: "",
-    supervisor: "",
+    titulo_puesto: "",
+    departamento_id: "", // Cambiado de departamentoId
+    reporta_a_puesto_id: "", // Cambiado de supervisor y para almacenar ID
     nivel: "",
-    descripcion: "",
+    proposito_general: "",
     requisitos: "",
-    competencias: "",
-    funciones: "",
-    responsabilidades: "",
-    experiencia: "",
-    formacion: "",
-    estado: "activo"
+    competencias_necesarias: "",
+    principales_responsabilidades: "",
+    experiencia_requerida: "",
+    formacion_requerida: "",
+    estado_puesto: "activo"
   });
 
   const { toast } = useToast();
   const [departamentos, setDepartamentos] = useState([]);
   const [loadingDepartamentos, setLoadingDepartamentos] = useState(false);
+  const [puestosParaSupervisor, setPuestosParaSupervisor] = useState([]);
+  const [loadingPuestos, setLoadingPuestos] = useState(false);
 
-  // Cargar departamentos desde la API
   useEffect(() => {
-    const loadDepartamentos = async () => {
+    const initializeModal = async () => {
       try {
         setLoadingDepartamentos(true);
-        const data = await departamentosService.getAll();
-        setDepartamentos(data);
+        setLoadingPuestos(true);
+        const depts = await departamentosService.getAll();
+        const allPuestos = await puestosService.getAll();
+
+        console.log("[PuestoModal] Datos recibidos de departamentosService:", depts);
+        console.log("[PuestoModal] ¿depts es un array?", Array.isArray(depts));
+        console.log("[PuestoModal] Datos recibidos de puestosService:", allPuestos);
+        console.log("[PuestoModal] ¿allPuestos es un array?", Array.isArray(allPuestos));
+
+        setDepartamentos(depts);
+        
+        const filteredPuestos = puesto ? allPuestos.filter(p => p.id !== puesto.id) : allPuestos;
+        setPuestosParaSupervisor(filteredPuestos);
+
       } catch (error) {
-        console.error('Error al cargar departamentos:', error);
+        console.error("Error al cargar datos para selectores:", error);
         toast({
-          title: "Error",
-          description: "No se pudieron cargar los departamentos",
-          variant: "destructive"
+          title: "Error de Carga",
+          description: "No se pudieron cargar los datos necesarios para el formulario.",
+          variant: "destructive",
         });
       } finally {
         setLoadingDepartamentos(false);
+        setLoadingPuestos(false);
+      }
+
+      if (puesto) {
+        setFormData({
+          ...puesto,
+          departamento_id: puesto.departamento_id || "",
+          reporta_a_puesto_id: puesto.reporta_a_puesto_id || "",
+          titulo_puesto: puesto.titulo_puesto || "",
+          nivel: puesto.nivel || "",
+          proposito_general: puesto.proposito_general || "",
+          requisitos: puesto.requisitos || "",
+          competencias_necesarias: puesto.competencias_necesarias || "",
+          principales_responsabilidades: puesto.principales_responsabilidades || "",
+          experiencia_requerida: puesto.experiencia_requerida || "",
+          formacion_requerida: puesto.formacion_requerida || "",
+          estado_puesto: puesto.estado_puesto || "activo",
+        });
+      } else {
+        setFormData({
+          titulo_puesto: "",
+          departamento_id: "",
+          reporta_a_puesto_id: "",
+          nivel: "",
+          proposito_general: "",
+          requisitos: "",
+          competencias_necesarias: "",
+          principales_responsabilidades: "",
+          experiencia_requerida: "",
+          formacion_requerida: "",
+          estado_puesto: "activo"
+        });
       }
     };
 
     if (isOpen) {
-      loadDepartamentos();
+      console.log("[PuestoModal] Initializing modal. Puesto:", puesto ? puesto.titulo_puesto : 'new');
+      initializeModal();
     }
-  }, [isOpen, toast]);
+  }, [isOpen, puesto]);
 
-  // Inicializar o actualizar el formulario cuando cambia el puesto seleccionado
-  useEffect(() => {
-    if (puesto) {
-      setFormData(puesto);
-    } else {
-      setFormData({
-        nombre: "",
-        departamento: "",
-        supervisor: "",
-        nivel: "",
-        descripcion: "",
-        requisitos: "",
-        competencias: "",
-        funciones: "",
-        responsabilidades: "",
-        experiencia: "",
-        formacion: "",
-        estado: "activo"
-      });
-    }
-  }, [puesto]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -99,9 +131,12 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="dark max-w-xl w-full rounded-xl shadow-2xl border-border max-h-[90vh] overflow-y-auto bg-background text-foreground">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">{puesto ? "Editar Puesto" : "Nuevo Puesto"}</DialogTitle>
+      <DialogContent aria-labelledby={titleId} aria-describedby={descriptionId} className="dark w-[70vw] max-w-[1200px] rounded-xl shadow-2xl border-border max-h-[90vh] overflow-y-auto bg-background text-foreground">
+        <DialogHeader className="bg-muted p-6 rounded-t-lg">
+          <DialogTitle id={titleId}>{puesto ? "Editar Puesto" : "Nuevo Puesto"}</DialogTitle>
+          <DialogDescription id={descriptionId}>
+            Por favor, complete la información del puesto.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="general" className="w-full">
@@ -115,28 +150,28 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
             <TabsContent value="general" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre" className="flex items-center gap-2">
+                  <Label htmlFor="titulo_puesto" className="flex items-center gap-2">
                     <Briefcase className="h-4 w-4" />
                     Nombre del Puesto
                   </Label>
                   <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    id="titulo_puesto"
+                    value={formData.titulo_puesto}
+                    onChange={(e) => setFormData({ ...formData, titulo_puesto: e.target.value })}
                     required
                     placeholder="Ej: Gerente de Calidad"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="departamento" className="flex items-center gap-2">
+                  <Label htmlFor="departamento_id" className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
                     Departamento
                   </Label>
                   <select
-                    id="departamento"
+                    id="departamento_id"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    value={formData.departamento}
-                    onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
+                    value={formData.departamento_id} 
+                    onChange={(e) => setFormData({ ...formData, departamento_id: e.target.value })} 
                     required
                     disabled={loadingDepartamentos}
                   >
@@ -145,7 +180,7 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
                       <option value="" disabled>Cargando departamentos...</option>
                     ) : (
                       departamentos.map(dept => (
-                        <option key={dept._id || dept.id} value={dept.nombre}>{dept.nombre}</option>
+                        <option key={dept.id} value={dept.id}>{dept.nombre}</option>
                       ))
                     )}
                   </select>
@@ -154,17 +189,28 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="supervisor" className="flex items-center gap-2">
+                  <Label htmlFor="reporta_a_puesto_id" className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Supervisor
+                    Reporta a (Supervisor)
                   </Label>
-                  <Input
-                    id="supervisor"
-                    value={formData.supervisor}
-                    onChange={(e) => setFormData({ ...formData, supervisor: e.target.value })}
-                    required
-                    placeholder="Ej: Director General"
-                  />
+                  <select
+                    id="reporta_a_puesto_id"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    value={formData.reporta_a_puesto_id} 
+                    onChange={(e) => setFormData({ ...formData, reporta_a_puesto_id: e.target.value })} 
+                    // Considerar si este campo es 'required'. Si no, quitar el atributo.
+                    // required 
+                    disabled={loadingPuestos}
+                  >
+                    <option value="">Ninguno / Nivel más alto</option>
+                    {loadingPuestos ? (
+                      <option value="" disabled>Cargando puestos...</option>
+                    ) : (
+                      puestosParaSupervisor.map(p => (
+                        <option key={p.id} value={p.id}>{p.titulo_puesto}</option>
+                      ))
+                    )}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="nivel" className="flex items-center gap-2">
@@ -195,8 +241,8 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
                 </Label>
                 <Textarea
                   id="descripcion"
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  value={formData.proposito_general}
+                  onChange={(e) => setFormData({ ...formData, proposito_general: e.target.value })}
                   required
                   className="min-h-[100px]"
                   placeholder="Describa las responsabilidades generales y el propósito del puesto..."
@@ -210,8 +256,8 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
                 <select
                   id="estado"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                  value={formData.estado}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                  value={formData.estado_puesto} 
+                  onChange={(e) => setFormData({ ...formData, estado_puesto: e.target.value })}
                 >
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
@@ -221,39 +267,14 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
             
             <TabsContent value="funciones" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="funciones" className="flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Funciones
-                </Label>
+                <Label htmlFor="funciones" className="text-lg font-semibold text-foreground mb-2">Funciones y Responsabilidades Principales</Label>
                 <Textarea
                   id="funciones"
-                  value={formData.funciones}
-                  onChange={(e) => setFormData({ ...formData, funciones: e.target.value })}
+                  value={formData.principales_responsabilidades}
+                  onChange={(e) => setFormData({ ...formData, principales_responsabilidades: e.target.value })}
                   required
                   className="min-h-[200px]"
-                  placeholder="Lista las funciones principales (una por línea)..."
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ingrese cada función en una línea separada. Ejemplo:
-                  <br />
-                  Desarrollar y mantener el SGC
-                  <br />
-                  Gestionar auditorías internas y externas
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="responsabilidades" className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Responsabilidades
-                </Label>
-                <Textarea
-                  id="responsabilidades"
-                  value={formData.responsabilidades}
-                  onChange={(e) => setFormData({ ...formData, responsabilidades: e.target.value })}
-                  required
-                  className="min-h-[200px]"
-                  placeholder="Lista las responsabilidades principales (una por línea)..."
+                  placeholder="Lista las funciones y responsabilidades principales (una por línea)..."
                 />
                 <p className="text-xs text-muted-foreground">
                   Ingrese cada responsabilidad en una línea separada.
@@ -285,8 +306,8 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
                   </Label>
                   <Input
                     id="experiencia"
-                    value={formData.experiencia}
-                    onChange={(e) => setFormData({ ...formData, experiencia: e.target.value })}
+                    value={formData.experiencia_requerida}
+                    onChange={(e) => setFormData({ ...formData, experiencia_requerida: e.target.value })}
                     required
                     placeholder="Ej: 3 años en puestos similares"
                   />
@@ -298,8 +319,8 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
                   </Label>
                   <Input
                     id="formacion"
-                    value={formData.formacion}
-                    onChange={(e) => setFormData({ ...formData, formacion: e.target.value })}
+                    value={formData.formacion_requerida}
+                    onChange={(e) => setFormData({ ...formData, formacion_requerida: e.target.value })}
                     required
                     placeholder="Ej: Licenciatura en Administración"
                   />
@@ -315,8 +336,8 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
                 </Label>
                 <Textarea
                   id="competencias"
-                  value={formData.competencias}
-                  onChange={(e) => setFormData({ ...formData, competencias: e.target.value })}
+                  value={formData.competencias_necesarias}
+                  onChange={(e) => setFormData({ ...formData, competencias_necesarias: e.target.value })}
                   required
                   className="min-h-[200px]"
                   placeholder="Lista las competencias requeridas (una por línea)..."
@@ -338,8 +359,8 @@ function PuestoModal({ isOpen, onClose, onSave, puesto }) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit">
-              {puesto ? "Guardar Cambios" : "Crear Puesto"}
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Guardando..." : (puesto ? "Guardar Cambios" : "Crear Puesto")}
             </Button>
           </DialogFooter>
         </form>

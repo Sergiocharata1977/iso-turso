@@ -42,15 +42,29 @@ class ApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        // Intenta obtener un mensaje de error del cuerpo JSON si está disponible
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          // El cuerpo del error no era JSON o estaba vacío
+        }
+        // Usar errorData.message si existe (más común para errores estructurados), sino errorData.error, o un mensaje genérico
+        throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
       }
 
+      // Si el estado es 204 (No Content), no hay cuerpo para parsear
+      if (response.status === 204) {
+        console.log(`[API] Response: Status 204 (No Content)`);
+        return null; // O podrías devolver un objeto como { success: true } o undefined
+      }
+
+      // Para otros estados OK (ej. 200, 201), parsear el JSON
       const data = await response.json();
       console.log(`[API] Response:`, data);
       return data;
     } catch (error) {
-      console.error(`[API] Error in ${config.method || 'GET'} ${url}:`, error);
+      console.error(`[API] Error in ${config.method || 'GET'} ${url}:`, error.message); // Mostrar error.message para claridad
       throw error;
     }
   }

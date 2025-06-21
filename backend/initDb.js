@@ -1,49 +1,48 @@
-// Script para inicializar la base de datos desde la raíz del proyecto
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-
-// Determinar la ruta absoluta al archivo .env
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const testFilePath = path.resolve(__dirname, 'test.txt'); // CAMBIADO A test.txt
-
-// --- DEBUGGING: Leer y mostrar contenido de test.txt --- 
-let testFileContent = "Error al leer test.txt";
-try {
-  testFileContent = fs.readFileSync(testFilePath, { encoding: 'utf8' });
-  console.log(`[DEBUG] Contenido crudo de ${testFilePath}:`);
-  console.log('-----------------------------------------');
-  console.log(testFileContent);
-  console.log('-----------------------------------------');
-} catch (err) {
-  console.error(`[DEBUG] Error al leer ${testFilePath} directamente:`, err);
-}
-// --- FIN DEBUGGING LECTURA CRUDA ---
-
-// Carga de .env deshabilitada temporalmente para el test
-// dotenv.config({ path: envPath }); 
-
-// --- DEBUGGING --- 
-console.log(`[DEBUG] Lectura de .env deshabilitada, probando test.txt.`);
-console.log('[DEBUG] Variables después de dotenv.config({ path: envPath }):');
-console.log(`[DEBUG] RAW TURSO_DATABASE_URL: ${process.env.TURSO_DATABASE_URL}`);
-console.log(`[DEBUG] RAW TURSO_AUTH_TOKEN: ${process.env.TURSO_AUTH_TOKEN ? 'Token Presente (longitud: ' + process.env.TURSO_AUTH_TOKEN.length + ')' : 'Token Ausente o Vacío'}`);
-// --- FIN DEBUGGING ---
-
-// Crear el cliente de Turso
-const tursoClient = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'libsql://iso103-1-sergiocharata1977.aws-us-east-1.turso.io',
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+// Script para inicializar la base de datos
+// Importa el cliente ya configurado desde tursoClient.js, que maneja las variables de entorno.
+import { tursoClient } from './lib/tursoClient.js';
 
 async function initDatabase() {
   try {
     console.log('Inicializando base de datos Turso...');
-    console.log('URL de la base de datos:', process.env.TURSO_DATABASE_URL);
-    
+
+    console.log('Iniciando el proceso de borrado de tablas...');
+    try {
+        // Desactivar las claves foráneas fuera de una transacción
+        console.log('Paso 1: Desactivando claves foráneas...');
+        await tursoClient.execute('PRAGMA foreign_keys = OFF;');
+        console.log('-> Claves foráneas desactivadas.');
+
+        // Ejecutar cada DROP como un comando separado
+        console.log('Paso 2: Eliminando tablas individualmente...');
+        const tablesToDrop = [
+            'evaluaciones_capacitaciones', 'personal', 'puestos', 'departamentos',
+            'indicadores', 'capacitaciones', 'procesos', 'usuarios', 'mejoras', 'noticias'
+        ];
+        for (const table of tablesToDrop) {
+            await tursoClient.execute(`DROP TABLE IF EXISTS ${table}`);
+            console.log(`-> Tabla ${table} eliminada.`);
+        }
+        console.log('-> Todas las tablas han sido eliminadas.');
+
+        // Reactivar las claves foráneas
+        console.log('Paso 3: Reactivando claves foráneas...');
+        await tursoClient.execute('PRAGMA foreign_keys = ON;');
+        console.log('-> Claves foráneas reactivadas.');
+        
+        console.log('✅ Proceso de borrado de tablas completado exitosamente.');
+    } catch (err) {
+        console.error('❌ Error durante el proceso de borrado de tablas.', err);
+        // Intentar reactivar las FKs incluso si algo falla
+        try {
+            await tursoClient.execute('PRAGMA foreign_keys = ON;');
+            console.log('-> Se intentó reactivar las claves foráneas por seguridad.');
+        } catch (reactivationError) {
+            console.error('!! No se pudieron reactivar las claves foráneas.', reactivationError);
+        }
+        throw err; // Re-lanzar el error original para detener el script
+    }
+
     // Crear tabla de usuarios
     await tursoClient.execute({
       sql: `
@@ -182,10 +181,66 @@ async function initDatabase() {
       `
     });
     console.log('Tabla evaluaciones_capacitaciones creada correctamente');
+
+    // Crear tabla de departamentos
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS departamentos (
+          id TEXT PRIMARY KEY,
+          nombre TEXT NOT NULL UNIQUE,
+          descripcion TEXT,
+          objetivos TEXT, -- Campo añadido para los objetivos del departamento
+          responsableId TEXT,
+          fecha_creacion TEXT NOT NULL,
+          fecha_actualizacion TEXT
+        )
+      `
+    });
+    console.log('Tabla departamentos creada correctamente');
+
+    // Crear tabla de puestos
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS puestos (
+          id TEXT PRIMARY KEY,
+          titulo_puesto TEXT NOT NULL,
+          descripcion TEXT,
+          departamentoId TEXT,
+          reporta_a_puesto_id TEXT, 
+          fecha_creacion TEXT NOT NULL,
+          fecha_actualizacion TEXT
+        )
+      `
+    });
+    console.log('Tabla puestos creada correctamente');
+
+    // Crear tabla de personal
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS personal (
+          id TEXT PRIMARY KEY,
+          nombre_completo TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          telefono TEXT,
+          foto_url TEXT,
+          departamentoId TEXT,
+          puestoId TEXT,
+          fecha_contratacion TEXT,
+          numero_legajo TEXT UNIQUE,
+          estado TEXT DEFAULT 'activo',
+          fecha_creacion TEXT NOT NULL,
+          fecha_actualizacion TEXT
+        )
+      `
+    });
+    console.log('Tabla personal creada correctamente');
     
     console.log('Base de datos inicializada completamente con nuevas tablas');
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);
+  } finally {
+    tursoClient.close();
+    console.log('Conexión con la base de datos cerrada.');
   }
 }
 
