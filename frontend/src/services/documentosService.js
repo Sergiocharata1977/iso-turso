@@ -1,121 +1,103 @@
-// Servicio para el módulo de Documentos - Migrado a Backend API
-import { createApiClient } from './apiService.js';
+import { createApiClient } from './apiService';
 
-const documentosApiClient = createApiClient('/documentos');
-const categoriasApiClient = createApiClient('/categorias-documentos');
+// El apiClient es para operaciones JSON estándar (GET, DELETE)
+const apiClient = createApiClient('/documentos');
 
-// Obtener todos los documentos
-export async function getAllDocumentos() {
-  try {
-    return await documentosApiClient.get('/');
-  } catch (error) {
-    throw new Error(`Error al obtener los documentos: ${error.message}`);
-  }
-}
+// El baseURL se necesita para las llamadas fetch directas (subir/descargar archivos)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// Obtener un documento por ID
-export async function getDocumentoById(id) {
-  try {
-    return await documentosApiClient.get(`/${id}`);
-  } catch (error) {
-    throw new Error(`Error al obtener el documento ${id}: ${error.message}`);
-  }
-}
+const documentosService = {
+  // 1. Obtener todos los documentos (solo metadatos) - Usa apiClient
+  getDocumentos: async () => {
+    try {
+      const data = await apiClient.get();
+      return data; // El apiClient ya devuelve el JSON, no response.data
+    } catch (error) {
+      console.error('Error en getDocumentos:', error);
+      throw error;
+    }
+  },
 
-// Crear un nuevo documento
-export async function createDocumento(data) {
-  try {
-    return await documentosApiClient.post('/', data);
-  } catch (error) {
-    throw new Error(`Error al crear el documento: ${error.message}`);
-  }
-}
+  // NUEVO: Obtener un solo documento por ID
+  getDocumento: async (id) => {
+    try {
+      const data = await apiClient.get(`/${id}`);
+      return data;
+    } catch (error) {
+      console.error(`Error en getDocumento para el id ${id}:`, error);
+      throw error;
+    }
+  },
 
-// Actualizar un documento
-export async function updateDocumento(id, data) {
-  try {
-    return await documentosApiClient.put(`/${id}`, data);
-  } catch (error) {
-    throw new Error(`Error al actualizar el documento ${id}: ${error.message}`);
-  }
-}
+  // 2. Descargar el archivo de un documento - Usa fetch directo para manejar 'blob'
+  downloadDocumento: async (id, filename) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/documentos/${id}/download`);
+      if (!response.ok) {
+        throw new Error(`Error al descargar el archivo: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(`Error en downloadDocumento para el id ${id}:`, error);
+      throw error;
+    }
+  },
 
-// Eliminar un documento
-export async function deleteDocumento(id) {
-  try {
-    return await documentosApiClient.delete(`/${id}`);
-  } catch (error) {
-    throw new Error(`Error al eliminar el documento ${id}: ${error.message}`);
-  }
-}
+  // 3. Crear un nuevo documento - Usa fetch directo para 'multipart/form-data'
+  createDocumento: async (formData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/documentos`, {
+        method: 'POST',
+        body: formData, // Con FormData, el navegador pone el Content-Type correcto
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al crear el documento');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error en createDocumento:', error);
+      throw error;
+    }
+  },
 
-// Buscar documentos por estado
-export async function getDocumentosByEstado(estado) {
-  try {
-    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
-    return documentos.filter(doc => doc.estado === estado);
-  } catch (error) {
-    console.error('Error al obtener documentos por estado:', error);
-    throw error;
-  }
-}
+  // 4. Actualizar un documento existente - Usa fetch directo para 'multipart/form-data'
+  updateDocumento: async (id, formData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/documentos/${id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al actualizar el documento');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Error en updateDocumento para el id ${id}:`, error);
+      throw error;
+    }
+  },
 
-// Buscar documentos por proceso
-export async function getDocumentosByProceso(procesoId) {
-  try {
-    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
-    return documentos.filter(doc => doc.proceso_id === procesoId);
-  } catch (error) {
-    console.error('Error al obtener documentos por proceso:', error);
-    throw error;
-  }
-}
-
-// Buscar documentos por autor
-export async function getDocumentosByAutor(autor) {
-  try {
-    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
-    return documentos.filter(doc => doc.autor && doc.autor.toLowerCase().includes(autor.toLowerCase()));
-  } catch (error) {
-    console.error('Error al obtener documentos por autor:', error);
-    throw error;
-  }
-}
-
-// Buscar documentos por término
-export async function searchDocumentos(term) {
-  try {
-    const documentos = await getAllDocumentos(); // Utiliza la versión refactorizada
-    return documentos.filter(doc => 
-      doc.titulo.toLowerCase().includes(term.toLowerCase()) || 
-      (doc.descripcion && doc.descripcion.toLowerCase().includes(term.toLowerCase())) ||
-      (doc.codigo && doc.codigo.toLowerCase().includes(term.toLowerCase()))
-    );
-  } catch (error) {
-    console.error('Error al buscar documentos:', error);
-    throw error;
-  }
-}
-
-// Obtener todas las categorías de documentos
-export async function getAllCategorias() {
-  try {
-    return await categoriasApiClient.get('/');
-  } catch (error) {
-    console.error('Error al obtener categorías:', error);
-    throw error;
-  }
-}
-
-export default {
-  getAllDocumentos,
-  getDocumentoById,
-  createDocumento,
-  updateDocumento,
-  deleteDocumento,
-  getDocumentosByEstado,
-  getDocumentosByProceso,
-  getDocumentosByAutor,
-  searchDocumentos,
-  getAllCategorias
+  // 5. Eliminar un documento - Usa apiClient
+  deleteDocumento: async (id) => {
+    try {
+      const data = await apiClient.delete(`/${id}`);
+      return data;
+    } catch (error) {
+      console.error(`Error en deleteDocumento para el id ${id}:`, error);
+      throw error;
+    }
+  },
 };
+
+export default documentosService;
+

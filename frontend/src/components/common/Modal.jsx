@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const Modal = React.memo(({ isOpen, onClose, title, children, size = 'md' }) => {
   // Prevenir scroll en el body cuando el modal está abierto
   useEffect(() => {
     if (isOpen) {
@@ -14,6 +14,19 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
       document.body.style.overflow = 'auto';
     };
   }, [isOpen]);
+
+  // Memoizar el handler de cierre
+  const handleClose = useCallback((e) => {
+    e.stopPropagation();
+    onClose();
+  }, [onClose]);
+
+  // Memoizar el handler de click en backdrop
+  const handleBackdropClick = useCallback((e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }, [onClose]);
   
   if (!isOpen) return null;
   
@@ -28,13 +41,19 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   const modalSize = sizeClasses[size] || sizeClasses.md;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className={`bg-white rounded-lg shadow-xl w-full ${modalSize} max-h-[90vh] flex flex-col`}>
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">{title}</h2>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className={`bg-slate-800 border border-slate-700 rounded-lg shadow-xl w-full ${modalSize} max-h-[90vh] flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-slate-700">
+          <h2 className="text-xl font-semibold text-white">{title}</h2>
           <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            onClick={handleClose}
+            className="text-slate-400 hover:text-white focus:outline-none transition-colors"
           >
             <X size={20} />
           </button>
@@ -46,6 +65,8 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
       </div>
     </div>
   );
-};
+});
+
+Modal.displayName = 'Modal';
 
 export default Modal;

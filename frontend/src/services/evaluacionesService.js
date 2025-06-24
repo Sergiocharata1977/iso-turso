@@ -94,6 +94,20 @@ export const evaluacionesService = {
       console.error(`Error al obtener evaluaciones del empleado ${personalId}:`, error);
       throw new Error(error.response?.data?.message || 'Error al cargar las evaluaciones del empleado');
     }
+  },
+
+  /**
+   * Obtiene la lista de personal para formularios
+   * @returns {Promise<Array>} Lista de personal
+   */
+  async getPersonal() {
+    try {
+      const response = await apiClient.get('/personal');
+      return response;
+    } catch (error) {
+      console.error('Error al obtener personal:', error);
+      throw new Error(error.response?.data?.message || 'Error al cargar el personal');
+    }
   }
 };
 

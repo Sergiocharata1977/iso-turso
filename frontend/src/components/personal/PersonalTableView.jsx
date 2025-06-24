@@ -34,8 +34,7 @@ function PersonalTableView({ personal, onView, onEdit, onDelete }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[300px]">Nombre</TableHead>
-            <TableHead>Departamento</TableHead>
-            <TableHead>Puesto</TableHead>
+
             <TableHead>Estado</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
@@ -55,8 +54,7 @@ function PersonalTableView({ personal, onView, onEdit, onDelete }) {
                   </div>
                 </div>
               </TableCell>
-              <TableCell>{person.departamento}</TableCell>
-              <TableCell>{person.puesto}</TableCell>
+
               <TableCell>
                 <Badge className="bg-green-100 text-green-800 border border-green-200 hover:bg-green-200">
                   Activo

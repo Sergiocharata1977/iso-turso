@@ -1,208 +1,153 @@
 import { Router } from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
-import crypto from 'crypto';
+import multer from 'multer';
+
+// Configurar Multer para manejar la subida de archivos en memoria
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 const router = Router();
 
-// GET - Obtener todos los documentos
-router.get('/', async (req, res, next) => {
+// --- RUTAS CRUD PARA DOCUMENTOS ---
+
+// 1. OBTENER TODOS LOS DOCUMENTOS (METADATA SOLAMENTE)
+router.get('/', async (req, res) => {
   try {
-    console.log('[GET /api/documentos] Obteniendo lista de documentos');
-    
-    const result = await tursoClient.execute({
-      sql: `SELECT * FROM documentos ORDER BY titulo`
-    });
-    
-    console.log(`[GET /api/documentos] ${result.rows.length} registros encontrados`);
+    // Seleccionamos todos los campos excepto el contenido del archivo para no sobrecargar la respuesta
+    const result = await tursoClient.execute('SELECT id, titulo, version, descripcion, fecha_creacion, archivo_nombre, archivo_mime_type FROM documentos ORDER BY fecha_creacion DESC');
     res.json(result.rows);
   } catch (error) {
-    next(error);
+    console.error('Error al obtener documentos:', error);
+    res.status(500).json({ message: 'Error interno del servidor al obtener documentos' });
   }
 });
 
-// GET - Obtener documento por ID
-router.get('/:id', async (req, res, next) => {
+// 2. OBTENER UN DOCUMENTO POR ID (METADATA SOLAMENTE)
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
-  
   try {
-    console.log(`[GET /api/documentos/${id}] Obteniendo documento`);
-    
     const result = await tursoClient.execute({
-      sql: `SELECT * FROM documentos WHERE id = ?`,
+      sql: 'SELECT id, titulo, version, descripcion, fecha_creacion, archivo_nombre, archivo_mime_type FROM documentos WHERE id = ?',
       args: [id]
     });
-    
+
     if (result.rows.length === 0) {
-      const err = new Error('Documento no encontrado');
-      err.statusCode = 404;
-      return next(err);
+      return res.status(404).json({ message: 'Documento no encontrado.' });
     }
-    
+
     res.json(result.rows[0]);
   } catch (error) {
-    next(error);
+    console.error(`Error al obtener el documento ${id}:`, error);
+    res.status(500).json({ message: 'Error interno del servidor al obtener el documento' });
   }
 });
 
-// POST - Crear nuevo documento
-router.post('/', async (req, res, next) => {
-  const { 
-    titulo, 
-    descripcion, 
-    version = '1.0',
-    categoria,
-    autor,
-    estado = 'borrador',
-    archivo_url,
-    fecha_revision,
-    codigo
-  } = req.body;
-
-  console.log('[POST /api/documentos] Datos recibidos:', req.body);
-
-  if (!titulo) {
-    const err = new Error('El título es obligatorio.');
-    err.statusCode = 400;
-    return next(err);
-  }
-
-  try {
-    const titleCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM documentos WHERE titulo = ?',
-      args: [titulo]
-    });
-
-    if (titleCheck.rows.length > 0) {
-      const err = new Error('Ya existe un documento con este título.');
-      err.statusCode = 409;
-      return next(err);
-    }
-
-    const fechaCreacion = new Date().toISOString();
-    const id = crypto.randomUUID();
-
-    await tursoClient.execute({
-      sql: `INSERT INTO documentos (
-              id, codigo, titulo, descripcion, version, categoria, autor, estado, 
-              url_documento, fecha_creacion, fecha_revision
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-      args: [
-        id, codigo || '', titulo, descripcion || null, version, 
-        categoria || null, autor || null, estado,
-        archivo_url || null, fechaCreacion, fecha_revision || null
-      ]
-    });
-
-    const newDocResult = await tursoClient.execute({
-      sql: `SELECT * FROM documentos WHERE id = ?`,
-      args: [id]
-    });
-
-    console.log('[POST /api/documentos] Documento creado exitosamente:', newDocResult.rows[0]);
-    res.status(201).json(newDocResult.rows[0]);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// PUT - Actualizar documento
-router.put('/:id', async (req, res, next) => {
+// 3. DESCARGAR UN ARCHIVO DE DOCUMENTO ESPECÍFICO
+router.get('/:id/download', async (req, res) => {
   const { id } = req.params;
-  const { 
-    titulo, 
-    descripcion, 
-    version,
-    categoria,
-    autor,
-    estado,
-    archivo_url,
-    fecha_revision,
-    codigo
-  } = req.body;
-
-  console.log(`[PUT /api/documentos/${id}] Datos recibidos:`, req.body);
-
-  if (!titulo) {
-    const err = new Error('El título es obligatorio.');
-    err.statusCode = 400;
-    return next(err);
-  }
-
   try {
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM documentos WHERE id = ?',
+    const result = await tursoClient.execute({
+      sql: 'SELECT archivo_nombre, archivo_mime_type, archivo_contenido FROM documentos WHERE id = ?',
       args: [id]
     });
 
-    if (existsCheck.rows.length === 0) {
-      const err = new Error('Documento no encontrado.');
-      err.statusCode = 404;
-      return next(err);
+    if (result.rows.length === 0 || !result.rows[0].archivo_contenido) {
+      return res.status(404).json({ message: 'Archivo no encontrado o el documento no tiene contenido.' });
     }
 
-    const titleCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM documentos WHERE titulo = ? AND id != ?',
-      args: [titulo, id]
-    });
+    const doc = result.rows[0];
+    const nombreArchivo = doc.archivo_nombre || 'documento.bin';
+    const mimeType = doc.archivo_mime_type || 'application/octet-stream';
 
-    if (titleCheck.rows.length > 0) {
-      const err = new Error('Ya existe otro documento con este título.');
-      err.statusCode = 409;
-      return next(err);
-    }
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
+    res.send(doc.archivo_contenido);
 
-    await tursoClient.execute({
-      sql: `UPDATE documentos SET 
-            codigo = ?, titulo = ?, descripcion = ?, version = ?, 
-            categoria = ?, autor = ?, estado = ?, url_documento = ?, 
-            fecha_revision = ?
-            WHERE id = ?`, 
-      args: [
-        codigo || '', titulo, descripcion || null, version || '1.0', 
-        categoria || null, autor || null, estado || 'borrador',
-        archivo_url || null, fecha_revision || null, id
-      ]
-    });
-
-    const updatedDocResult = await tursoClient.execute({
-      sql: `SELECT * FROM documentos WHERE id = ?`,
-      args: [id]
-    });
-
-    console.log(`[PUT /api/documentos/${id}] Documento actualizado exitosamente`);
-    res.json(updatedDocResult.rows[0]);
   } catch (error) {
-    next(error);
+    console.error(`Error al descargar el archivo del documento ${id}:`, error);
+    res.status(500).json({ message: 'Error interno del servidor al descargar el archivo' });
   }
 });
 
-// DELETE - Eliminar documento
-router.delete('/:id', async (req, res, next) => {
-  const { id } = req.params;
+// 4. CREAR UN NUEVO DOCUMENTO (CON ARCHIVO)
+router.post('/', upload.single('archivo'), async (req, res) => {
+  const { titulo, version, descripcion } = req.body;
+  const archivo = req.file;
+
+  if (!titulo || !version) {
+    return res.status(400).json({ message: 'Los campos título y versión son obligatorios.' });
+  }
+
+  if (!archivo) {
+    return res.status(400).json({ message: 'Se requiere un archivo para crear el documento.' });
+  }
 
   try {
-    console.log(`[DELETE /api/documentos/${id}] Eliminando documento`);
-
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id, titulo FROM documentos WHERE id = ?',
-      args: [id]
+    await tursoClient.execute({
+      sql: `
+        INSERT INTO documentos (titulo, version, descripcion, archivo_nombre, archivo_mime_type, archivo_contenido)
+        VALUES (?, ?, ?, ?, ?, ?);
+      `,
+      args: [titulo, version, descripcion || null, archivo.originalname, archivo.mimetype, archivo.buffer]
     });
+    res.status(201).json({ message: 'Documento creado exitosamente.' });
+  } catch (error) {
+    console.error('Error al crear el documento:', error);
+    res.status(500).json({ message: 'Error interno del servidor al crear el documento' });
+  }
+});
 
-    if (existsCheck.rows.length === 0) {
-      const err = new Error('Documento no encontrado.');
-      err.statusCode = 404;
-      return next(err);
+// 5. ACTUALIZAR UN DOCUMENTO
+router.put('/:id', upload.single('archivo'), async (req, res) => {
+  const { id } = req.params;
+  const { titulo, version, descripcion } = req.body;
+  const archivo = req.file;
+
+  if (!titulo || !version) {
+    return res.status(400).json({ message: 'Los campos título y versión son obligatorios.' });
+  }
+
+  try {
+    if (archivo) {
+      // Si se sube un nuevo archivo, actualizar todo
+      await tursoClient.execute({
+        sql: `
+          UPDATE documentos
+          SET titulo = ?, version = ?, descripcion = ?, archivo_nombre = ?, archivo_mime_type = ?, archivo_contenido = ?
+          WHERE id = ?;
+        `,
+        args: [titulo, version, descripcion || null, archivo.originalname, archivo.mimetype, archivo.buffer, id]
+      });
+    } else {
+      // Si no se sube archivo, actualizar solo los metadatos
+      await tursoClient.execute({
+        sql: `
+          UPDATE documentos
+          SET titulo = ?, version = ?, descripcion = ?
+          WHERE id = ?;
+        `,
+        args: [titulo, version, descripcion || null, id]
+      });
     }
+    res.json({ message: 'Documento actualizado exitosamente.' });
+  } catch (error) {
+    console.error(`Error al actualizar el documento ${id}:`, error);
+    res.status(500).json({ message: 'Error interno del servidor al actualizar el documento' });
+  }
+});
 
+// 6. ELIMINAR UN DOCUMENTO
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
     await tursoClient.execute({
       sql: 'DELETE FROM documentos WHERE id = ?',
       args: [id]
     });
-
-    console.log(`[DELETE /api/documentos/${id}] Documento eliminado exitosamente`);
-    res.json({ message: 'Documento eliminado exitosamente' }); // Considerar res.status(204).send() para DELETE exitoso sin contenido
+    res.status(204).send(); // 204 No Content
   } catch (error) {
-    next(error);
+    console.error(`Error al eliminar el documento ${id}:`, error);
+    res.status(500).json({ message: 'Error interno del servidor al eliminar el documento' });
   }
 });
 

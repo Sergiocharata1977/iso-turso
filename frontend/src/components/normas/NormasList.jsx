@@ -1,18 +1,38 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Grid, List, Edit, Trash2, Plus, Search, FileText, AlertCircle, Check, X } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Grid, List, Edit, Trash2, Plus, Search, FileText, AlertCircle, Check, X, Eye, Download, Filter } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Modal from '../common/Modal';
 import normasService from '../../services/normasService';
-import { toast } from 'react-toastify';
 import ApiErrorHandler from '../common/ApiErrorHandler';
 
 const NormasList = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   
   const [normas, setNormas] = useState([]);
-  const [viewMode, setViewMode] = useState('list'); // 'list' o 'card'
+  const [viewMode, setViewMode] = useState('grid'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [localError, setLocalError] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [normaToDelete, setNormaToDelete] = useState(null);
   
   // Cargar datos usando useCallback para evitar recreaciones innecesarias
   const fetchData = useCallback(async () => {
@@ -21,33 +41,94 @@ const NormasList = () => {
     
     try {
       console.log('Cargando datos de normas...');
-      // Obtener normas usando el servicio
       const data = await normasService.getAllNormas();
       console.log('Datos de normas cargados:', data);
       setNormas(data || []);
     } catch (err) {
       console.error('Error al cargar datos:', err);
       setLocalError('Error al cargar los datos. Por favor, intenta de nuevo más tarde.');
-      toast.error('Error al cargar las normas');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al cargar los datos. Por favor, intenta de nuevo más tarde."
+      });
     } finally {
       setLoadingData(false);
     }
   }, []);
-  
-  // Cargar datos al montar el componente y cuando cambie la conexión a la base de datos
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  
+
+  // Memoizar las normas filtradas para evitar recálculos innecesarios
+  const filteredNormas = useMemo(() => {
+    if (!searchTerm.trim()) return normas;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return normas.filter(norma => 
+      norma.codigo?.toLowerCase().includes(searchLower) ||
+      norma.titulo?.toLowerCase().includes(searchLower) ||
+      norma.descripcion?.toLowerCase().includes(searchLower) ||
+      norma.observaciones?.toLowerCase().includes(searchLower)
+    );
+  }, [normas, searchTerm]);
+
+  // Memoizar handlers para evitar recreaciones
+  const handleViewSingle = useCallback((id) => {
+    navigate(`/normas/${id}`);
+  }, [navigate]);
+
+  const handleEdit = useCallback((norma) => {
+    console.log('Editando norma:', norma);
+    setModalOpen(true);
+  }, []);
+
+  const handleDelete = useCallback((norma) => {
+    setNormaToDelete(norma);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!normaToDelete) return;
+    
+    try {
+      await normasService.deleteNorma(normaToDelete.id);
+      setNormas(prev => prev.filter(n => n.id !== normaToDelete.id));
+      toast({
+        title: "Éxito",
+        description: "Norma eliminada correctamente"
+      });
+    } catch (err) {
+      console.error('Error al eliminar norma:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al eliminar la norma"
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setNormaToDelete(null);
+    }
+  }, [normaToDelete, toast]);
+
+  const handleExport = useCallback(() => {
+    console.log('Exportando normas...');
+    toast({
+      title: "Exportación",
+      description: "Funcionalidad de exportación en desarrollo"
+    });
+  }, [toast]);
+
+  const handleNewNorma = useCallback(() => {
+    setModalOpen(true);
+  }, []);
+
   // Estado para el formulario
   const [formData, setFormData] = useState({
     codigo: '',
     titulo: '',
     descripcion: '',
-    version: '',
-    fecha_vigencia: '',
-    estado: 'Vigente',
-    responsable: '',
     observaciones: ''
   });
   
@@ -57,16 +138,16 @@ const NormasList = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Manejar cambios en el formulario
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value
     });
-  };
-  
+  }, [formData]);
+
   // Manejar envío del formulario
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
@@ -74,448 +155,393 @@ const NormasList = () => {
         codigo: formData.codigo,
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        version: formData.version,
-        fecha_vigencia: formData.fecha_vigencia,
-        estado: formData.estado,
-        responsable: formData.responsable,
         observaciones: formData.observaciones
       };
       
       if (editMode) {
-        // Actualizar registro existente
         await normasService.updateNorma(currentId, normaData);
-        toast.success('Norma actualizada correctamente');
+        toast({
+          title: "Éxito",
+          description: "Norma actualizada correctamente"
+        });
       } else {
-        // Crear nuevo registro
         await normasService.createNorma(normaData);
-        toast.success('Norma creada correctamente');
+        toast({
+          title: "Éxito",
+          description: "Norma creada correctamente"
+        });
       }
       
-      // Recargar datos
       await fetchData();
-      
-      // Resetear formulario y cerrar modal
-      resetForm();
+      setFormData({
+        codigo: '',
+        titulo: '',
+        descripcion: '',
+        observaciones: ''
+      });
+      setEditMode(false);
+      setCurrentId(null);
+      setIsSubmitting(false);
       setModalOpen(false);
     } catch (err) {
       console.error('Error al guardar datos:', err);
-      setLocalError('Error al guardar los datos. Por favor, intenta de nuevo.');
-      toast.error('Error al guardar la norma');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al guardar la norma"
+      });
     } finally {
       setIsSubmitting(false);
     }
-  };
-  
-  // Función para editar un registro
-  const handleEdit = (norma) => {
-    setFormData({
-      codigo: norma.codigo || '',
-      titulo: norma.titulo || '',
-      descripcion: norma.descripcion || '',
-      version: norma.version || '',
-      fecha_vigencia: norma.fecha_vigencia || '',
-      estado: norma.estado || 'Vigente',
-      responsable: norma.responsable || '',
-      observaciones: norma.observaciones || ''
-    });
-    setEditMode(true);
-    setCurrentId(norma.id);
-    setModalOpen(true);
-  };
-  
-  // Función para eliminar un registro
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este punto de norma? Esta acción no se puede deshacer.')) {
-      try {
-        await normasService.deleteNorma(id);
-        toast.success('Norma eliminada correctamente');
-        await fetchData();
-      } catch (err) {
-        console.error('Error al eliminar registro:', err);
-        setLocalError('Error al eliminar el registro. Por favor, intenta de nuevo.');
-        toast.error('Error al eliminar la norma');
-      }
+  }, [formData, editMode, currentId, toast]);
+
+  // Renderizar contenido según el modo de vista
+  const renderContent = useMemo(() => {
+    if (loadingData) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-3 w-full mb-2" />
+                <Skeleton className="h-3 w-2/3" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
     }
-  };
-  
-  // Resetear formulario
-  const resetForm = () => {
-    setFormData({
-      codigo: '',
-      titulo: '',
-      descripcion: '',
-      version: '',
-      fecha_vigencia: '',
-      estado: 'Vigente',
-      responsable: '',
-      observaciones: ''
-    });
-    setEditMode(false);
-    setCurrentId(null);
-  };
 
-  // Abrir modal para nuevo registro
-  const handleOpenNewModal = () => {
-    resetForm();
-    setEditMode(false);
-    setModalOpen(true);
-  };
-
-  // Filtrar normas por término de búsqueda
-  const filteredNormas = normas.filter(norma => {
-    const searchString = `${norma.codigo || ''} ${norma.titulo || ''} ${norma.descripcion || ''} ${norma.responsable || ''}`.toLowerCase();
-    return searchString.includes(searchTerm.toLowerCase());
-  });
-
-  // Obtener color según estado de la norma
-  const getStatusColor = (estado) => {
-    if (!estado) return 'bg-gray-100 text-gray-800';
-    
-    switch (estado.toLowerCase()) {
-      case 'vigente':
-        return 'bg-green-100 text-green-800';
-      case 'obsoleta':
-        return 'bg-red-100 text-red-800';
-      case 'en revisión':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+    if (filteredNormas.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay normas</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchTerm ? 'No se encontraron normas que coincidan con tu búsqueda.' : 'Comienza creando una nueva norma.'}
+          </p>
+          {!searchTerm && (
+            <div className="mt-6">
+              <Button onClick={handleNewNorma} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Norma
+              </Button>
+            </div>
+          )}
+        </div>
+      );
     }
-  };
 
-  // Este bloque ya no es necesario porque estamos usando API en lugar de conexión directa a la base de datos
-  
+    if (viewMode === 'grid') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredNormas.map(norma => (
+            <Card 
+              key={norma.id} 
+              className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
+              onClick={() => handleViewSingle(norma.id)}
+            >
+              <CardHeader className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <Badge variant="secondary" className="bg-white text-teal-600 mr-2">
+                        {norma.codigo}
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold text-lg">{norma.titulo}</h3>
+                    <p className="text-sm opacity-90 mt-1">ISO 9001:2015</p>
+                  </div>
+                  <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEdit(norma)}
+                      className="h-8 w-8 p-0 hover:bg-teal-700"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(norma)}
+                      className="h-8 w-8 p-0 hover:bg-teal-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleViewSingle(norma.id)}
+                      className="h-8 w-8 p-0 hover:bg-teal-700"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="p-4">
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{norma.descripcion}</p>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Observaciones</p>
+                    <p className="text-sm text-gray-700 line-clamp-2">{norma.observaciones}</p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex items-center text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Eye className="h-4 w-4 mr-2" />
+                  <span className="text-sm">Click para ver detalles</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    // Vista de tabla (lista)
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredNormas.map(norma => (
+                  <tr 
+                    key={norma.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleViewSingle(norma.id)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant="outline">{norma.codigo}</Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{norma.titulo}</div>
+                        <div className="text-sm text-gray-500 line-clamp-1">{norma.descripcion}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <p className="text-sm text-gray-700 line-clamp-2">{norma.observaciones}</p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleViewSingle(norma.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEdit(norma)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(norma)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }, [filteredNormas, handleViewSingle]);
+
   return (
-    <div className="container mx-auto p-4">
-      {/* Mostrar el manejador de errores si hay un error */}
-      {localError && (
-        <ApiErrorHandler
-          title="Error al cargar puntos de norma"
-          message={localError}
-          onRetry={fetchData}
-          isLoading={loadingData}
-        />
-      )}
-      
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Puntos de Norma</h1>
-        <div className="flex items-center space-x-4">
-          {/* Botones de vista */}
-          <div className="bg-gray-100 rounded-lg p-1 flex">
-            <button 
-              onClick={() => setViewMode('list')} 
-              className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-white shadow' : ''}`}
-            >
-              <List size={20} />
-            </button>
-            <button 
-              onClick={() => setViewMode('card')} 
-              className={`p-2 rounded-lg ${viewMode === 'card' ? 'bg-white shadow' : ''}`}
-            >
-              <Grid size={20} />
-            </button>
+    <div className="flex h-screen bg-gray-50">
+      <div className="flex-1 flex flex-col">
+        {/* Header Principal */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Gestión de Puntos de Norma</h1>
+              <p className="text-gray-600">Administra los puntos de norma del sistema de gestión de calidad</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </Button>
+              <Button onClick={handleNewNorma} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Punto de Norma
+              </Button>
+            </div>
           </div>
-          
-          {/* Buscador */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar puntos de norma..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-lg"
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+        </div>
+
+        {/* Barra de Búsqueda y Filtros */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Buscar puntos de norma..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros
+              </Button>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant={viewMode === "grid" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                Tarjetas
+              </Button>
+              <Button 
+                variant={viewMode === "list" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                Tabla
+              </Button>
+            </div>
           </div>
-          
-          {/* Botón para agregar */}
-          <button
-            onClick={handleOpenNewModal}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center"
-            disabled={loadingData}
-          >
-            <Plus size={18} className="mr-2" />
-            Nuevo Punto de Norma
-          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-6 overflow-auto">
+          {renderContent}
         </div>
       </div>
-      
-      {localError && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
-          <AlertCircle className="mr-2" />
-          <span>{localError || error}</span>
-        </div>
-      )}
-      
-      {/* Modal para crear/editar punto de norma */}
-      <Modal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
+
+      {/* Modal para crear/editar */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
         title={editMode ? 'Editar Punto de Norma' : 'Nuevo Punto de Norma'}
         size="lg"
       >
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-700 mb-2">Código</label>
+              <label className="block text-slate-400 mb-2">Punto *</label>
               <input
                 type="text"
                 name="codigo"
                 value={formData.codigo}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none"
                 required
-                placeholder="Ej: 4.1.1"
+                placeholder="Ej: ISO 14001"
               />
             </div>
             
             <div>
-              <label className="block text-gray-700 mb-2">Título</label>
+              <label className="block text-slate-400 mb-2">Título *</label>
               <input
                 type="text"
                 name="titulo"
                 value={formData.titulo}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none"
                 required
+                placeholder="Título de la norma"
               />
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-gray-700 mb-2">Descripción</label>
+              <label className="block text-slate-400 mb-2">Descripción *</label>
               <textarea
                 name="descripcion"
                 value={formData.descripcion}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none"
                 rows="3"
                 required
               ></textarea>
             </div>
             
-            <div>
-              <label className="block text-gray-700 mb-2">Versión</label>
-              <input
-                type="text"
-                name="version"
-                value={formData.version}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-                required
-                placeholder="Ej: 2023"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2">Fecha de Vigencia</label>
-              <input
-                type="date"
-                name="fecha_vigencia"
-                value={formData.fecha_vigencia}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2">Estado</label>
-              <select
-                name="estado"
-                value={formData.estado}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-                required
-              >
-                <option value="Vigente">Vigente</option>
-                <option value="Obsoleta">Obsoleta</option>
-                <option value="En Revisión">En Revisión</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2">Responsable</label>
-              <input
-                type="text"
-                name="responsable"
-                value={formData.responsable}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-                required
-              />
-            </div>
-            
             <div className="md:col-span-2">
-              <label className="block text-gray-700 mb-2">Observaciones</label>
+              <label className="block text-slate-400 mb-2">Punto de Control</label>
               <textarea
                 name="observaciones"
                 value={formData.observaciones}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none"
                 rows="2"
               ></textarea>
             </div>
           </div>
           
           <div className="flex justify-end mt-6 space-x-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
             >
               Cancelar
-            </button>
+            </Button>
             
-            <button
+            <Button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none"
               disabled={isSubmitting}
+              className="bg-teal-600 hover:bg-teal-700"
             >
               {isSubmitting ? 'Guardando...' : (editMode ? 'Actualizar' : 'Guardar')}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
-      
-      {/* Vista de lista */}
-      {viewMode === 'list' && (
-        <div className="bg-white shadow-md rounded overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-2 text-left">Código</th>
-                <th className="px-4 py-2 text-left">Título</th>
-                <th className="px-4 py-2 text-left">Versión</th>
-                <th className="px-4 py-2 text-left">Responsable</th>
-                <th className="px-4 py-2 text-left">Fecha Vigencia</th>
-                <th className="px-4 py-2 text-left">Estado</th>
-                <th className="px-4 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading || loadingData ? (
-                <tr>
-                  <td colSpan="7" className="px-4 py-2 text-center">
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredNormas.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-4 py-2 text-center py-8">
-                    No hay puntos de norma disponibles
-                  </td>
-                </tr>
-              ) : (
-                filteredNormas.map(norma => (
-                  <tr key={norma.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium">{norma.codigo}</td>
-                    <td className="px-4 py-2">{norma.titulo}</td>
-                    <td className="px-4 py-2">{norma.version}</td>
-                    <td className="px-4 py-2">{norma.responsable}</td>
-                    <td className="px-4 py-2">{norma.fecha_vigencia}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(norma.estado)}`}>
-                        {norma.estado}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => handleEdit(norma)}
-                        className="text-blue-500 hover:text-blue-700 mr-2"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(norma.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-      
-      {/* Vista de tarjetas */}
-      {viewMode === 'card' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loadingData ? (
-            <div className="col-span-full flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-            </div>
-          ) : filteredNormas.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-gray-500">
-              No hay puntos de norma disponibles
-            </div>
-          ) : (
-            filteredNormas.map(norma => (
-              <div key={norma.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="bg-green-600 text-white p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center">
-                        <span className="bg-white text-green-600 px-2 py-1 rounded text-xs font-bold mr-2">
-                          {norma.codigo}
-                        </span>
-                        <h3 className="text-lg font-semibold">{norma.titulo}</h3>
-                      </div>
-                      <p className="text-sm opacity-90 mt-1">Versión: {norma.version}</p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => handleEdit(norma)}
-                        className="p-1 hover:bg-green-700 rounded"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(norma.id)}
-                        className="p-1 hover:bg-green-700 rounded"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-4">
-                  <p className="text-sm mb-4">{norma.descripcion}</p>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Responsable</p>
-                      <p className="font-medium">{norma.responsable}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Estado</p>
-                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(norma.estado)}`}>
-                        {norma.estado}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Fecha Vigencia</p>
-                      <p className="font-medium">{norma.fecha_vigencia}</p>
-                    </div>
-                  </div>
-                  
-                  {norma.observaciones && (
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500">Observaciones</p>
-                      <p className="text-sm">{norma.observaciones}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+
+      {/* Dialog de confirmación para eliminar */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la norma{' '}
+              <span className="font-semibold">{normaToDelete?.codigo} - {normaToDelete?.titulo}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sí, eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

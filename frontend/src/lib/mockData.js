@@ -58,25 +58,6 @@ export const mockUsuarios = [
   { id: 2, nombre: 'Usuario', email: 'usuario@example.com', rol: 'usuario', created_at: '2025-01-02T00:00:00Z' }
 ];
 
-export const mockNoticias = [
-  { 
-    id: 1, 
-    titulo: 'Certificación ISO 9001', 
-    contenido: 'Estamos trabajando para obtener la certificación ISO 9001', 
-    autor: 'Admin', 
-    fecha: '2025-04-01T00:00:00Z',
-    imagen: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40'
-  },
-  { 
-    id: 2, 
-    titulo: 'Nueva política de calidad', 
-    contenido: 'Se ha actualizado la política de calidad de la empresa', 
-    autor: 'Admin', 
-    fecha: '2025-04-10T00:00:00Z',
-    imagen: 'https://images.unsplash.com/photo-1552664730-d307ca884978'
-  }
-];
-
 export const mockMejoras = [
   { 
     id: 1, 
@@ -141,7 +122,6 @@ export const mockIndicadores = [
 // Exportar servicios simulados
 export const mockServices = {
   usuarios: createMockService(mockUsuarios),
-  noticias: createMockService(mockNoticias),
   mejoras: createMockService(mockMejoras),
   procesos: createMockService(mockProcesos),
   indicadores: createMockService(mockIndicadores),

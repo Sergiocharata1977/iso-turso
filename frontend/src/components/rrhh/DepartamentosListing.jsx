@@ -12,13 +12,15 @@ import {
   ChevronRight,
   ChevronDown,
   LayoutGrid,
-  List
+  List,
+  Filter
 } from "lucide-react";
 import DepartamentoModal from "./DepartamentoModal";
 import DepartamentoSingle from "./DepartamentoSingle";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { departamentosService } from "@/services/departamentos";
 import { useDepartamentos } from "@/hooks/useDepartamentos";
+import { Input } from "@/components/ui/input"; // Import the Input component
 
 function DepartamentosListing() {
   const { toast } = useToast();
@@ -265,7 +267,7 @@ function DepartamentosListing() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors"
+        className="bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:border-teal-500 hover:shadow-lg transition-all duration-300 group"
         onClick={() => handleViewDepartamento(departamento)}
       >
         <div className="p-6">
@@ -274,7 +276,7 @@ function DepartamentosListing() {
               <Building className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">{departamento.nombre}</h3>
+              <h3 className="font-semibold group-hover:text-teal-600 transition-colors">{departamento.nombre}</h3>
               <p className="text-xs text-muted-foreground">
                 {departamento.responsable}
               </p>
@@ -366,126 +368,130 @@ function DepartamentosListing() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Reestructurado */}
-      <div className="space-y-4"> {/* Contenedor principal para la cabecera, con espaciado vertical */}
-        {/* Fila 1: Título y Acciones Principales */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <h1 className="text-2xl font-bold">Departamentos</h1>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" onClick={() => { /* Lógica de Exportar - la original era onClick={() => {}} */ }}>
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button onClick={() => {
+    <div className="flex h-screen bg-gray-50">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header Principal */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Gestión de Departamentos</h1>
+              <p className="text-gray-600">Administra los departamentos organizacionales según ISO 9001</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </Button>
+              <Button onClick={() => {
                 setSelectedDepartamento(null);
                 setIsModalOpen(true);
-              }}>
-              <Plus className="mr-2 h-4 w-4" /> 
-              Nuevo Departamento
-            </Button>
-          </div>
-        </div>
-
-        {/* Fila 2: Herramientas de Visualización y Búsqueda */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center space-x-2"> {/* Contenedor para Selector de Vista */}
-            <div className="bg-background border border-input rounded-md p-1 flex items-center">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="h-8 w-8 p-0 rounded-sm"
-                aria-label="Vista de cuadrícula"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className="h-8 w-8 p-0 rounded-sm"
-                aria-label="Vista de lista"
-              >
-                <List className="h-4 w-4" />
+              }} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Departamento
               </Button>
             </div>
           </div>
-          <div className="relative flex-1 w-full sm:w-auto"> {/* Búsqueda, ocupa espacio flexible */}
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar departamentos..."
-              className="pl-8 pr-3 py-2 h-10 w-full rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        </div>
+
+        {/* Barra de Búsqueda y Filtros */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Buscar departamentos, responsables, códigos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros
+              </Button>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant={viewMode === "grid" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                Tarjetas
+              </Button>
+              <Button 
+                variant={viewMode === "list" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                Tabla
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-6 overflow-auto">
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {rootDepartamentos.map(departamento => renderDepartamentoGrid(departamento))}
+              {rootDepartamentos.length === 0 && (
+                <div className="col-span-3 text-center py-12">
+                  <Building className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <p className="mt-4 text-muted-foreground">
+                    No hay departamentos registrados. Haz clic en "Nuevo Departamento" para comenzar.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              {rootDepartamentos.map(departamento => renderDepartamento(departamento))}
+              {rootDepartamentos.length === 0 && (
+                <div className="text-center py-12">
+                  <Building className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <p className="mt-4 text-muted-foreground">
+                    No hay departamentos registrados. Haz clic en "Nuevo Departamento" para comenzar.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DepartamentoModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedDepartamento(null);
+          }}
+          onSave={handleSave}
+          departamento={selectedDepartamento}
+        />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Se eliminará permanentemente el departamento {departamentoToDelete?.nombre}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      {/* Lista de departamentos */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rootDepartamentos.map(departamento => renderDepartamentoGrid(departamento))}
-            {rootDepartamentos.length === 0 && (
-              <div className="col-span-3 text-center py-12">
-                <Building className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  No hay departamentos registrados. Haz clic en "Nuevo Departamento" para comenzar.
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            {rootDepartamentos.map(departamento => renderDepartamento(departamento))}
-            {rootDepartamentos.length === 0 && (
-              <div className="text-center py-12">
-                <Building className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  No hay departamentos registrados. Haz clic en "Nuevo Departamento" para comenzar.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </motion.div>
-
-      <DepartamentoModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedDepartamento(null);
-        }}
-        onSave={handleSave}
-        departamento={selectedDepartamento}
-      />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el departamento {departamentoToDelete?.nombre}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

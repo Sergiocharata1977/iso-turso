@@ -1,317 +1,321 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 import { 
   ArrowLeft, 
-  Pencil, 
+  Edit, 
   Trash2, 
-  GraduationCap, 
-  Users, 
+  BookOpen,
   Calendar,
+  AlertCircle,
+  CheckCircle2,
   Clock,
-  MapPin,
-  FileText,
-  Target,
-  CheckCircle,
-  UserCheck
+  FileText
 } from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+import { capacitacionesService } from "@/services/capacitacionesService";
+import CapacitacionModal from "./CapacitacionModal";
 
-function CapacitacionSingle({ capacitacion, onBack, onEdit, onDelete }) {
-  if (!capacitacion) {
+const CapacitacionSingle = ({ capacitacionId, onBack }) => {
+  const { id: paramId } = useParams();
+  const navigate = useNavigate();
+  const [capacitacion, setCapacitacion] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Usar el ID desde props o desde params
+  const id = capacitacionId || paramId;
+
+  useEffect(() => {
+    if (id) {
+      fetchCapacitacion();
+    }
+  }, [id]);
+
+  const fetchCapacitacion = async () => {
+    try {
+      setLoading(true);
+      console.log(`🔍 Cargando capacitación ID: ${id}`);
+      const data = await capacitacionesService.getById(id);
+      setCapacitacion(data);
+      console.log('✅ Capacitación cargada:', data);
+    } catch (error) {
+      console.error("❌ Error al obtener capacitación:", error);
+      toast.error("Error al cargar la capacitación");
+      handleBack();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = () => {
+    setModalOpen(true);
+  };
+
+  const handleSave = async (formData) => {
+    try {
+      await capacitacionesService.update(id, formData);
+      toast.success("Capacitación actualizada exitosamente");
+      setModalOpen(false);
+      fetchCapacitacion(); // Recargar datos
+    } catch (error) {
+      console.error('Error al actualizar capacitación:', error);
+      toast.error("Error al actualizar la capacitación");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("¿Está seguro de que desea eliminar esta capacitación?")) {
+      try {
+        await capacitacionesService.delete(id);
+        toast.success("Capacitación eliminada exitosamente");
+        handleBack();
+      } catch (error) {
+        console.error("Error al eliminar capacitación:", error);
+        toast.error("Error al eliminar la capacitación");
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate("/capacitaciones");
+    }
+  };
+
+  const getEstadoBadgeColor = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'programada':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'en curso':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'completada':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelada':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getEstadoIcon = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'programada':
+        return <Clock className="h-5 w-5 text-blue-600" />;
+      case 'en curso':
+        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+      case 'completada':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'cancelada':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      default:
+        return <Clock className="h-5 w-5 text-gray-600" />;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Fecha no válida';
+    }
+  };
+
+  const formatDateShort = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Fecha no válida';
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p>No se encontró información de la capacitación.</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-6 py-8 max-w-5xl">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const getEstadoBadgeVariant = (estado) => {
-    switch (estado) {
-      case 'programada':
-        return 'secondary';
-      case 'en curso':
-        return 'default';
-      case 'completada':
-        return 'success';
-      case 'cancelada':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  };
-
-  const renderObjetivos = () => {
-    if (!capacitacion.objetivos) return null;
-    
-    const objetivos = capacitacion.objetivos.split('\n').filter(o => o.trim());
-    
+  if (!capacitacion) {
     return (
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <div className="flex items-center space-x-2">
-            <Target className="h-5 w-5 text-primary" />
-            <CardTitle>Objetivos</CardTitle>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-6 py-8 max-w-5xl">
+          <div className="text-center py-12">
+            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Capacitación no encontrada</h2>
+            <p className="text-gray-600 mb-6">La capacitación que buscas no existe o ha sido eliminada.</p>
+            <Button onClick={handleBack} className="bg-slate-800 hover:bg-slate-900">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Capacitaciones
+            </Button>
           </div>
-          <CardDescription>
-            Objetivos de aprendizaje de la capacitación
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {objetivos.map((objetivo, index) => (
-              <li key={index} className="flex items-start">
-                <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-2 mt-0.5">
-                  {index + 1}
-                </span>
-                <span>{objetivo}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderContenido = () => {
-    if (!capacitacion.contenido) return null;
-    
-    const contenidos = capacitacion.contenido.split('\n').filter(c => c.trim());
-    
-    return (
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <div className="flex items-center space-x-2">
-            <FileText className="h-5 w-5 text-primary" />
-            <CardTitle>Contenido</CardTitle>
-          </div>
-          <CardDescription>
-            Temario y contenidos de la capacitación
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {contenidos.map((contenido, index) => (
-              <li key={index} className="flex items-start">
-                <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-2 mt-0.5">
-                  {index + 1}
-                </span>
-                <span>{contenido}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderParticipantes = () => {
-    if (!capacitacion.participantes || capacitacion.participantes.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-          <p className="mt-4 text-muted-foreground">
-            No hay participantes registrados en esta capacitación.
-          </p>
         </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Lista de Participantes</h3>
-          <Badge variant="outline">{capacitacion.participantes.length} / {capacitacion.cupoMaximo}</Badge>
-        </div>
-        {capacitacion.participantes.map((participante, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-4">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <UserCheck className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">{participante.nombre}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {participante.departamento}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
     );
-  };
-
-  const renderEvaluacion = () => {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="h-5 w-5 text-primary" />
-            <CardTitle>Método de Evaluación</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p>{capacitacion.evaluacion || "No se ha definido un método de evaluación"}</p>
-        </CardContent>
-      </Card>
-    );
-  };
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="space-y-6"
-    >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">{capacitacion.titulo}</h1>
-          <Badge variant={getEstadoBadgeVariant(capacitacion.estado)}>
-            {capacitacion.estado}
-          </Badge>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-6 py-8 max-w-5xl">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={handleBack}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Detalle de Capacitación</h1>
+              <p className="text-gray-600 text-sm">CAP-{capacitacion.id}</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleEdit}
+              className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              <Edit className="h-4 w-4" />
+              Editar
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleDelete}
+              className="gap-2 border-red-300 text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar
+            </Button>
+          </div>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => onEdit(capacitacion)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={() => onDelete(capacitacion.id)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Eliminar
-          </Button>
+
+        {/* Contenido Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Columna Principal */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Información General */}
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-start gap-4">
+                  <div className="bg-emerald-100 p-3 rounded-lg flex-shrink-0">
+                    <BookOpen className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-xl font-semibold text-gray-900 mb-2">
+                      {capacitacion.titulo}
+                    </CardTitle>
+                    <div className="flex items-center gap-3">
+                      <Badge className={getEstadoBadgeColor(capacitacion.estado)}>
+                        <span className="mr-1">{getEstadoIcon(capacitacion.estado)}</span>
+                        {capacitacion.estado}
+                      </Badge>
+                      <span className="text-sm text-gray-500">
+                        Creado el {formatDateShort(capacitacion.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Descripción</h3>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">
+                        {capacitacion.descripcion || "No se ha proporcionado una descripción para esta capacitación."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Información de Fechas */}
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Calendar className="h-5 w-5 text-gray-600" />
+                  Programación
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">Fecha de Inicio</p>
+                  <p className="text-gray-900 font-medium">{formatDate(capacitacion.fecha_inicio)}</p>
+                </div>
+                
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Última Actualización</p>
+                  <p className="text-gray-600 text-sm">
+                    {capacitacion.updated_at ? formatDateShort(capacitacion.updated_at) : 'Sin actualizaciones'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Información del Sistema */}
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5 text-gray-600" />
+                  Información del Sistema
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-sm text-gray-600">ID</span>
+                  <span className="text-sm font-mono text-gray-900">{capacitacion.id}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-sm text-gray-600">Estado</span>
+                  <Badge className={getEstadoBadgeColor(capacitacion.estado)} variant="outline">
+                    {capacitacion.estado}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600">Fecha Creación</span>
+                  <span className="text-sm text-gray-900">{formatDateShort(capacitacion.created_at)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
+
+        {/* Modal de Edición */}
+        <CapacitacionModal 
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSave}
+          capacitacion={capacitacion}
+        />
       </div>
-
-      {/* Información básica */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <Calendar className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Fecha</h3>
-                <p className="text-muted-foreground">
-                  {capacitacion.fechaInicio === capacitacion.fechaFin 
-                    ? capacitacion.fechaInicio 
-                    : `${capacitacion.fechaInicio} al ${capacitacion.fechaFin}`}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Duración</h3>
-                <p className="text-muted-foreground">{capacitacion.duracion} ({capacitacion.horario})</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <MapPin className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Ubicación</h3>
-                <p className="text-muted-foreground">{capacitacion.lugar} ({capacitacion.modalidad})</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Descripción */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center space-x-3">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Información General</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Código: {capacitacion.codigo}
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-medium mb-1">Descripción</h3>
-            <p>{capacitacion.descripcion}</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-12">
-            <div>
-              <h3 className="font-medium mb-1">Instructor</h3>
-              <p className="flex items-center">
-                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                {capacitacion.instructor}
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-1">Departamento</h3>
-              <p>{capacitacion.departamento}</p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-1">Cupo Máximo</h3>
-              <p>{capacitacion.cupoMaximo} participantes</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabs con información detallada */}
-      <Tabs defaultValue="objetivos" className="w-full">
-        <TabsList className="grid grid-cols-3 mb-6">
-          <TabsTrigger value="objetivos">Objetivos y Contenido</TabsTrigger>
-          <TabsTrigger value="participantes">Participantes</TabsTrigger>
-          <TabsTrigger value="evaluacion">Evaluación</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="objetivos" className="mt-0">
-          {renderObjetivos()}
-          {renderContenido()}
-        </TabsContent>
-        
-        <TabsContent value="participantes" className="mt-0">
-          {renderParticipantes()}
-        </TabsContent>
-        
-        <TabsContent value="evaluacion" className="mt-0">
-          {renderEvaluacion()}
-        </TabsContent>
-      </Tabs>
-    </motion.div>
+    </div>
   );
-}
+};
 
 export default CapacitacionSingle;

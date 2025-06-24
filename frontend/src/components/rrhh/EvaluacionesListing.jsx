@@ -1,440 +1,501 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { 
   Plus, 
   Search, 
   Download, 
-  Pencil, 
+  Edit, 
   Trash2, 
-  Users,
   LayoutGrid,
   List,
   ClipboardCheck,
-  Star
+  Star,
+  Calendar,
+  Eye,
+  User,
+  Filter
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { evaluacionesService } from "@/services/evaluacionesService";
-import personalService from "@/services/personalService";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import EvaluacionModal from "./EvaluacionModal";
+import EvaluacionSingle from "./EvaluacionSingle";
+import ConfirmDialog from '../ui/confirm-dialog';
 
-// Componente para mostrar el listado de evaluaciones
-function EvaluacionesListing() {
-  const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEvaluacion, setSelectedEvaluacion] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+const EvaluacionesListing = () => {
+  const [evaluaciones, setEvaluaciones] = useState([]);
+  const [filteredEvaluaciones, setFilteredEvaluaciones] = useState([]);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [evaluacionToDelete, setEvaluacionToDelete] = useState(null);
-  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("grid");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedEvaluacion, setSelectedEvaluacion] = useState(null);
+  const [showSingle, setShowSingle] = useState(false);
+  const [singleEvaluacionId, setSingleEvaluacionId] = useState(null);
 
-  // Query para obtener todas las evaluaciones
-  const { 
-    data: evaluaciones = [], 
-    isLoading, 
-    error 
-  } = useQuery({
-    queryKey: ['evaluaciones'],
-    queryFn: evaluacionesService.getAll,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-  });
+  useEffect(() => {
+    fetchEvaluaciones();
+  }, []);
 
-  // Query para obtener datos del personal (para mostrar nombres)
-  const { 
-    data: personal = [] 
-  } = useQuery({
-    queryKey: ['personal'],
-    queryFn: personalService.getAllPersonal,
-    staleTime: 10 * 60 * 1000, // 10 minutos
-  });
+  useEffect(() => {
+    filterEvaluaciones();
+  }, [evaluaciones, searchTerm, estadoFilter]);
 
-  // Mutación para crear evaluación
-  const createMutation = useMutation({
-    mutationFn: evaluacionesService.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evaluaciones'] });
-      toast({
-        title: "Evaluación creada",
-        description: "Se ha agregado una nueva evaluación exitosamente"
-      });
-      setIsModalOpen(false);
-      setSelectedEvaluacion(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Ocurrió un error al crear la evaluación",
-        variant: "destructive"
-      });
+  const fetchEvaluaciones = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Cargando evaluaciones...');
+      const data = await evaluacionesService.getAll();
+      setEvaluaciones(data);
+      console.log('✅ Evaluaciones cargadas:', data);
+    } catch (error) {
+      console.error('❌ Error al cargar evaluaciones:', error);
+      toast.error("Error al cargar evaluaciones");
+    } finally {
+      setLoading(false);
     }
-  });
-
-  // Mutación para actualizar evaluación
-  const updateMutation = useMutation({
-    mutationFn: ({ id, evaluacion }) => evaluacionesService.update(id, evaluacion),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evaluaciones'] });
-      toast({
-        title: "Evaluación actualizada",
-        description: "Los datos de la evaluación han sido actualizados exitosamente"
-      });
-      setIsModalOpen(false);
-      setSelectedEvaluacion(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Ocurrió un error al actualizar la evaluación",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Mutación para eliminar evaluación
-  const deleteMutation = useMutation({
-    mutationFn: (id) => evaluacionesService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evaluaciones'] });
-      toast({
-        title: "Evaluación eliminada",
-        description: "La evaluación ha sido eliminada exitosamente"
-      });
-      setDeleteDialogOpen(false);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Ocurrió un error al eliminar la evaluación",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Filtrar evaluaciones según término de búsqueda
-  const filteredEvaluaciones = evaluaciones.filter((evaluacion) => {
-    const personalInfo = personal.find(p => p.id === evaluacion.personal_id);
-    const nombreCompleto = personalInfo ? `${personalInfo.nombre} ${personalInfo.apellido}` : '';
-    
-    return (
-      nombreCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      evaluacion.tipo_evaluacion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      evaluacion.fecha?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  // Manejadores de eventos
-  const handleOpenModal = (evaluacion = null) => {
-    setSelectedEvaluacion(evaluacion);
-    setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const filterEvaluaciones = () => {
+    let filtered = evaluaciones;
+
+    if (searchTerm) {
+      filtered = filtered.filter(evaluacion => 
+        evaluacion.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        evaluacion.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${evaluacion.personal_nombre} ${evaluacion.personal_apellido}`.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (estadoFilter && estadoFilter !== 'all') {
+      filtered = filtered.filter(evaluacion => evaluacion.estado === estadoFilter);
+    }
+
+    setFilteredEvaluaciones(filtered);
+  };
+
+  const handleCreate = () => {
     setSelectedEvaluacion(null);
+    setModalOpen(true);
   };
 
-  const handleSaveEvaluacion = (evaluacionData) => {
-    if (selectedEvaluacion) {
-      updateMutation.mutate({ id: selectedEvaluacion.id, evaluacion: evaluacionData });
-    } else {
-      createMutation.mutate(evaluacionData);
+  const handleEdit = (evaluacion) => {
+    setSelectedEvaluacion(evaluacion);
+    setModalOpen(true);
+  };
+
+  const handleViewSingle = (evaluacion) => {
+    setSingleEvaluacionId(evaluacion.id);
+    setShowSingle(true);
+  };
+
+  const handleSave = async (formData) => {
+    try {
+      if (selectedEvaluacion) {
+        await evaluacionesService.update(selectedEvaluacion.id, formData);
+        toast.success("Evaluación actualizada exitosamente");
+      } else {
+        await evaluacionesService.create(formData);
+        toast.success("Evaluación creada exitosamente");
+      }
+      setModalOpen(false);
+      fetchEvaluaciones();
+    } catch (error) {
+      console.error('Error al guardar evaluación:', error);
+      toast.error("Error al guardar la evaluación");
     }
   };
 
-  const handleDeleteClick = (evaluacion) => {
-    setEvaluacionToDelete(evaluacion);
-    setDeleteDialogOpen(true);
+  const handleDeleteClick = (id) => {
+    setEvaluacionToDelete(id);
+    setIsConfirmDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    if (evaluacionToDelete) {
-      deleteMutation.mutate(evaluacionToDelete.id);
+  const handleDelete = async () => {
+    if (!evaluacionToDelete) return;
+    
+    try {
+      await evaluacionesService.delete(evaluacionToDelete);
+      toast.success('Evaluación eliminada exitosamente');
+      fetchEvaluaciones();
+    } catch (error) {
+      toast.error('Error al eliminar la evaluación');
+      console.error('Error:', error);
+    } finally {
+      setEvaluacionToDelete(null);
     }
   };
 
-  const handleExportToExcel = () => {
-    // Implementación futura para exportar a Excel
-    toast({
-      title: "Exportación iniciada",
-      description: "Se está generando el archivo Excel con las evaluaciones"
-    });
+  const handleExport = () => {
+    toast.info("Función de exportación en desarrollo");
   };
 
-  // Función para obtener el nombre del empleado según su ID
-  const getEmployeeName = (personalId) => {
-    const empleado = personal.find(p => p.id === personalId);
-    return empleado ? `${empleado.nombre} ${empleado.apellido}` : 'Empleado no encontrado';
+  const handleBackFromSingle = () => {
+    setShowSingle(false);
+    setSingleEvaluacionId(null);
+    fetchEvaluaciones(); // Refrescar en caso de cambios
   };
 
-  // Función para renderizar las estrellas según la puntuación
-  const renderStars = (puntuacion) => {
+  const getEstadoBadgeColor = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'pendiente':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'en_proceso':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'completada':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelada':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Fecha inválida';
+    }
+  };
+
+  const renderStars = (puntaje) => {
+    if (!puntaje) return <span className="text-gray-400">Sin puntaje</span>;
+    
     const stars = [];
-    const score = parseInt(puntuacion) || 0;
+    const fullStars = Math.floor(puntaje / 20); // Convertir de 0-100 a 0-5 estrellas
     
     for (let i = 0; i < 5; i++) {
       stars.push(
         <Star 
           key={i} 
-          className={`w-4 h-4 ${i < score ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} 
+          className={`h-4 w-4 ${i < fullStars ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
         />
       );
     }
     
-    return <div className="flex">{stars}</div>;
+    return (
+      <div className="flex items-center gap-1">
+        {stars}
+        <span className="text-sm text-gray-600 ml-1">({puntaje})</span>
+      </div>
+    );
   };
 
-  // Renderizar mensaje de carga o error
-  if (isLoading) {
+  if (showSingle) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4">Cargando evaluaciones...</p>
+      <EvaluacionSingle 
+        evaluacionId={singleEvaluacionId}
+        onBack={handleBackFromSingle}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <h3 className="text-lg font-medium text-red-800">Error al cargar las evaluaciones</h3>
-        <p className="text-red-700">{error.message || "Ha ocurrido un error inesperado"}</p>
-      </div>
-    );
-  }
-
-  // Renderizar la interfaz principal
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex flex-col space-y-4">
-        {/* Cabecera con título y botones de acción */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center">
-              <ClipboardCheck className="mr-2" /> Evaluaciones de Personal
-            </h1>
-            <p className="text-muted-foreground">
-              Gestione las evaluaciones de desempeño del personal
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => handleOpenModal()} variant="default">
-              <Plus className="mr-2 h-4 w-4" /> Nueva Evaluación
-            </Button>
-            <Button onClick={handleExportToExcel} variant="outline">
-              <Download className="mr-2 h-4 w-4" /> Exportar
-            </Button>
-          </div>
-        </div>
-
-        {/* Barra de búsqueda y cambio de vista */}
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar por empleado, tipo o fecha..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Vista:</span>
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Mensaje cuando no hay evaluaciones */}
-        {filteredEvaluaciones.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <ClipboardCheck className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">No hay evaluaciones disponibles</h3>
-            <p className="text-muted-foreground mt-1">
-              {searchTerm ? "No se encontraron evaluaciones con ese criterio de búsqueda" : "Comience creando una nueva evaluación"}
-            </p>
-            {searchTerm && (
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setSearchTerm("")}
-              >
-                Limpiar búsqueda
+    <div className="flex h-screen bg-gray-50">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header Principal */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Gestión de Evaluaciones</h1>
+              <p className="text-gray-600">Administra las evaluaciones de desempeño según ISO 9001</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
               </Button>
-            )}
+              <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Evaluación
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
 
-        {/* Vista de cuadrícula */}
-        {viewMode === "grid" && filteredEvaluaciones.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredEvaluaciones.map((evaluacion) => (
-              <motion.div
-                key={evaluacion.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+        {/* Barra de Búsqueda y Filtros */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Buscar evaluaciones, empleados, títulos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+                <SelectTrigger className="w-48 border-gray-300">
+                  <SelectValue placeholder="Filtrar por estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="en_proceso">En Proceso</SelectItem>
+                  <SelectItem value="completada">Completada</SelectItem>
+                  <SelectItem value="cancelada">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant={viewMode === "grid" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("grid")}
               >
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="flex items-center">
-                          <Users className="mr-2 h-4 w-4" />
-                          {getEmployeeName(evaluacion.personal_id)}
-                        </CardTitle>
-                        <CardDescription>
-                          {evaluacion.tipo_evaluacion || "Evaluación estándar"}
-                        </CardDescription>
+                Tarjetas
+              </Button>
+              <Button 
+                variant={viewMode === "list" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                Tabla
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-6 overflow-auto">
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <ClipboardCheck className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total</p>
+                    <p className="text-xl font-semibold text-gray-900">{evaluaciones.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <ClipboardCheck className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Completadas</p>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {evaluaciones.filter(e => e.estado === 'completada').length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-yellow-100 p-2 rounded-lg">
+                    <ClipboardCheck className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Pendientes</p>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {evaluaciones.filter(e => e.estado === 'pendiente').length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    <Star className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Promedio</p>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {evaluaciones.filter(e => e.puntaje).length > 0 
+                        ? Math.round(evaluaciones.filter(e => e.puntaje).reduce((acc, e) => acc + e.puntaje, 0) / evaluaciones.filter(e => e.puntaje).length)
+                        : 0
+                      }
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Lista de Evaluaciones */}
+          {filteredEvaluaciones.length === 0 ? (
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardContent className="p-12 text-center">
+                <ClipboardCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay evaluaciones</h3>
+                <p className="text-gray-600 mb-6">
+                  {searchTerm || estadoFilter 
+                    ? "No se encontraron evaluaciones con los filtros aplicados." 
+                    : "Comience creando su primera evaluación de personal."
+                  }
+                </p>
+                {!searchTerm && !estadoFilter && (
+                  <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crear Primera Evaluación
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className={viewMode === "grid" 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+              : "space-y-4"
+            }>
+              {filteredEvaluaciones.map((evaluacion) => (
+                <Card 
+                  key={evaluacion.id} 
+                  className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleViewSingle(evaluacion)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-purple-100 p-2 rounded-lg flex-shrink-0">
+                          <ClipboardCheck className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg font-semibold text-gray-900 mb-1 line-clamp-1">
+                            {evaluacion.titulo}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600">
+                            EVAL-{evaluacion.id}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant={evaluacion.estado === "completada" ? "success" : "secondary"}>
-                        {evaluacion.estado || "Pendiente"}
+                      <Badge className={getEstadoBadgeColor(evaluacion.estado)}>
+                        {evaluacion.estado}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Fecha:</span>
-                        <span className="text-sm font-medium">{evaluacion.fecha || "No especificada"}</span>
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-900">
+                          {evaluacion.personal_nombre} {evaluacion.personal_apellido}
+                        </span>
+                        {evaluacion.puesto && (
+                          <span className="text-sm text-gray-500">• {evaluacion.puesto}</span>
+                        )}
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Puntuación:</span>
-                        <span>{renderStars(evaluacion.puntuacion)}</span>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">
+                          {formatDate(evaluacion.fecha_evaluacion)}
+                        </span>
                       </div>
-                      {evaluacion.comentarios && (
-                        <div className="mt-4">
-                          <p className="text-sm text-muted-foreground">Comentarios:</p>
-                          <p className="text-sm mt-1 line-clamp-3">{evaluacion.comentarios}</p>
+                      {evaluacion.puntaje && (
+                        <div className="flex items-center gap-2">
+                          <Star className="h-4 w-4 text-gray-500" />
+                          {renderStars(evaluacion.puntaje)}
                         </div>
                       )}
+                      {evaluacion.descripcion && (
+                        <p className="text-sm text-gray-600 line-clamp-2">
+                          {evaluacion.descripcion}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 pt-4 border-t border-gray-100 mt-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewSingle(evaluacion);
+                        }}
+                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(evaluacion);
+                        }}
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(evaluacion.id);
+                        }}
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteClick(evaluacion)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenModal(evaluacion)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </CardFooter>
                 </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {/* Vista de lista */}
-        {viewMode === "list" && filteredEvaluaciones.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="p-3 text-left">Empleado</th>
-                  <th className="p-3 text-left">Tipo</th>
-                  <th className="p-3 text-left">Fecha</th>
-                  <th className="p-3 text-left">Puntuación</th>
-                  <th className="p-3 text-left">Estado</th>
-                  <th className="p-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEvaluaciones.map((evaluacion) => (
-                  <tr key={evaluacion.id} className="border-b hover:bg-muted/50">
-                    <td className="p-3">{getEmployeeName(evaluacion.personal_id)}</td>
-                    <td className="p-3">{evaluacion.tipo_evaluacion || "Estándar"}</td>
-                    <td className="p-3">{evaluacion.fecha || "No especificada"}</td>
-                    <td className="p-3">{renderStars(evaluacion.puntuacion)}</td>
-                    <td className="p-3">
-                      <Badge variant={evaluacion.estado === "completada" ? "success" : "secondary"}>
-                        {evaluacion.estado || "Pendiente"}
-                      </Badge>
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenModal(evaluacion)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(evaluacion)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+          {/* Modal */}
+          <EvaluacionModal 
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSave={handleSave}
+            evaluacion={selectedEvaluacion}
+          />
+          
+          {/* Diálogo de confirmación para eliminar */}
+          <ConfirmDialog
+            isOpen={isConfirmDialogOpen}
+            onClose={() => setIsConfirmDialogOpen(false)}
+            onConfirm={handleDelete}
+            title="Eliminar evaluación"
+            message="¿Estás seguro de que deseas eliminar esta evaluación? Esta acción no se puede deshacer."
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            isDestructive={true}
+          />
+        </div>
       </div>
-
-      {/* Modal para crear/editar evaluación */}
-      {isModalOpen && (
-        <EvaluacionModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onSave={handleSaveEvaluacion}
-          evaluacion={selectedEvaluacion}
-          personal={personal}
-        />
-      )}
-
-      {/* Diálogo de confirmación para eliminar */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente la evaluación de
-              {evaluacionToDelete && ` ${getEmployeeName(evaluacionToDelete.personal_id)}`}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
-}
+};
 
 export default EvaluacionesListing;

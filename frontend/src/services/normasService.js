@@ -8,7 +8,6 @@ export async function getAllNormas() {
   try {
     return await apiClient.get('');
   } catch (error) {
-    // console.error('Error al obtener normas:', error);
     throw new Error(error.message || 'Error al obtener las normas');
   }
 }
@@ -18,7 +17,6 @@ export async function getNormaById(id) {
   try {
     return await apiClient.get(`/${id}`);
   } catch (error) {
-    // console.error(`Error al obtener norma con ID ${id}:`, error);
     throw new Error(error.message || `Error al obtener la norma ${id}`);
   }
 }
@@ -28,7 +26,6 @@ export async function createNorma(data) {
   try {
     return await apiClient.post('', data);
   } catch (error) {
-    // console.error('Error al crear norma:', error);
     throw new Error(error.message || 'Error al crear la norma');
   }
 }
@@ -38,7 +35,6 @@ export async function updateNorma(id, data) {
   try {
     return await apiClient.put(`/${id}`, data);
   } catch (error) {
-    // console.error(`Error al actualizar norma con ID ${id}:`, error);
     throw new Error(error.message || `Error al actualizar la norma ${id}`);
   }
 }
@@ -48,32 +44,7 @@ export async function deleteNorma(id) {
   try {
     return await apiClient.delete(`/${id}`);
   } catch (error) {
-    // console.error(`Error al eliminar norma con ID ${id}:`, error);
     throw new Error(error.message || `Error al eliminar la norma ${id}`);
-  }
-}
-
-// Buscar normas por estado
-export async function getNormasByEstado(estado) {
-  try {
-    const normas = await getAllNormas();
-    return normas.filter(norma => norma.estado === estado);
-  } catch (error) {
-    console.error('Error al obtener normas por estado:', error);
-    throw new Error(error.message || 'Error al obtener normas por estado');
-  }
-}
-
-// Buscar normas por responsable
-export async function getNormasByResponsable(responsable) {
-  try {
-    const normas = await getAllNormas();
-    return normas.filter(norma => 
-      norma.responsable && norma.responsable.toLowerCase().includes(responsable.toLowerCase())
-    );
-  } catch (error) {
-    console.error('Error al obtener normas por responsable:', error);
-    throw new Error(error.message || 'Error al obtener normas por responsable');
   }
 }
 
@@ -83,7 +54,6 @@ export async function getNormaByCodigo(codigo) {
     const normas = await getAllNormas();
     return normas.find(norma => norma.codigo === codigo);
   } catch (error) {
-    console.error('Error al obtener norma por código:', error);
     throw new Error(error.message || 'Error al obtener norma por código');
   }
 }
@@ -96,21 +66,10 @@ export async function searchNormas(term) {
       norma.titulo.toLowerCase().includes(term.toLowerCase()) || 
       (norma.descripcion && norma.descripcion.toLowerCase().includes(term.toLowerCase())) ||
       (norma.codigo && norma.codigo.toLowerCase().includes(term.toLowerCase())) ||
-      (norma.responsable && norma.responsable.toLowerCase().includes(term.toLowerCase()))
+      (norma.observaciones && norma.observaciones.toLowerCase().includes(term.toLowerCase()))
     );
   } catch (error) {
-    console.error('Error al buscar normas:', error);
     throw new Error(error.message || 'Error al buscar normas');
-  }
-}
-
-// Obtener normas activas
-export async function getNormasActivas() {
-  try {
-    return await getNormasByEstado('activo');
-  } catch (error) {
-    console.error('Error al obtener normas activas:', error);
-    throw new Error(error.message || 'Error al obtener normas activas');
   }
 }
 
@@ -120,9 +79,6 @@ export default {
   createNorma,
   updateNorma,
   deleteNorma,
-  getNormasByEstado,
-  getNormasByResponsable,
   getNormaByCodigo,
-  searchNormas,
-  getNormasActivas
+  searchNormas
 };

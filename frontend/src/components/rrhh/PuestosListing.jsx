@@ -87,6 +87,7 @@ function PuestosListing() {
   };
 
   const handleSave = async (puestoData) => {
+
     setIsSaving(true);
     try {
       let savedPuesto;
@@ -277,106 +278,105 @@ function PuestosListing() {
                 <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
                 <p className="mt-4 text-muted-foreground">Cargando puestos...</p>
               </div>
-            ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredPuestos.length > 0 ? (
-                  filteredPuestos.map((puesto) => (
-                    <PuestoCard 
-                      key={puesto.id}
-                      puesto={puesto}
-                      onViewDetails={handleViewDetails}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))
+            ) : (
+              <motion.div 
+                key={viewMode}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="transition-all duration-300"
+              >
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredPuestos.map((puesto) => (
+                      <PuestoCard 
+                        key={puesto.id} 
+                        puesto={puesto} 
+                        onEdit={handleEdit} 
+                        onDelete={handleDelete}
+                        onViewDetails={handleViewDetails}
+                      />
+                    ))}
+                  </div>
                 ) : (
-                  <div className="text-center py-12 col-span-full">
-                    <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground">
-                      No hay puestos que coincidan con la búsqueda.
-                    </p>
+                  <div className="overflow-x-auto bg-card border rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr className="text-left">
+                          <th className="p-4 font-medium">Puesto</th>
+                          <th className="p-4 font-medium">Estado</th>
+                          <th className="p-4 font-medium text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPuestos.map((puesto) => (
+                          <motion.tr
+                            key={puesto.id}
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="border-b border-border hover:bg-muted/50 cursor-pointer"
+                            onClick={() => handleViewDetails(puesto)}
+                          >
+                            <td className="p-4">
+                              <div className="flex items-center space-x-3">
+                                <Briefcase className="h-5 w-5 text-primary" />
+                                <div>
+                                  <p className="font-medium">{puesto.titulo_puesto}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {puesto.codigo_puesto}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                puesto.estado === "activo"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}>
+                                {puesto.estado}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(puesto);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(puesto.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {filteredPuestos.length === 0 && (
+                      <div className="text-center py-12">
+                        <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <p className="mt-4 text-muted-foreground">
+                          No hay puestos registrados. Haz clic en "Nuevo Puesto" para comenzar.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            ) : (
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border bg-muted">
-                        <th className="text-left p-4">Puesto</th>
-                        <th className="text-left p-4">Departamento</th>
-                        <th className="text-left p-4">Supervisor</th>
-                        <th className="text-left p-4">Estado</th>
-                        <th className="text-right p-4">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPuestos.map((puesto) => (
-                        <motion.tr 
-                          key={puesto.id}
-                          className="border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-800"
-                          whileHover={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}
-                          onClick={() => handleViewDetails(puesto)}
-                        >
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <Briefcase className="h-5 w-5 text-primary" />
-                              <div>
-                                <p className="font-medium">{puesto.titulo_puesto}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {puesto.codigo_puesto}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4">{puesto.departamento_nombre}</td>
-                          <td className="p-4">{puesto.supervisor || 'N/A'}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              puesto.estado === "activo"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}>
-                              {puesto.estado}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(puesto);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(puesto.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {filteredPuestos.length === 0 && (
-                    <div className="text-center py-12">
-                      <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
-                      <p className="mt-4 text-muted-foreground">
-                        No hay puestos registrados. Haz clic en "Nuevo Puesto" para comenzar.
-                      </p>
-                    </div>
-                  )}
-                </div>
+              </motion.div>
             )}
-        </motion.div>
+          </motion.div>
         </>
       )}
 

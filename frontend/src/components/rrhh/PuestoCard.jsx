@@ -17,6 +17,15 @@ const PuestoCard = ({ puesto, onEdit, onDelete, onViewDetails }) => {
     action();
   };
 
+  const formatUpdateDate = (dateString) => {
+    if (!dateString) return 'No disponible';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    return `Actualizado: ${date.toLocaleDateString()}`;
+  };
+
   return (
     <motion.div
       variants={cardVariants}
@@ -30,10 +39,9 @@ const PuestoCard = ({ puesto, onEdit, onDelete, onViewDetails }) => {
         <CardHeader className="flex flex-row items-start justify-between pb-2">
           <div className="space-y-1">
             <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-600 dark:group-hover:text-teal-500 transition-colors">{puesto.titulo_puesto}</CardTitle>
-            <CardDescription className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-xs">{puesto.codigo_puesto}</Badge>
-              <span className="text-sm text-slate-500 dark:text-slate-400">{puesto.departamento_nombre}</span>
-            </CardDescription>
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              {puesto.codigo_puesto && <Badge variant="outline" className="font-mono text-xs">{puesto.codigo_puesto}</Badge>}
+            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -67,11 +75,11 @@ const PuestoCard = ({ puesto, onEdit, onDelete, onViewDetails }) => {
           </p>
         </CardContent>
         <CardFooter className="flex justify-between items-center text-xs text-slate-400 dark:text-slate-500 pt-4 mt-auto">
-          <Badge variant={puesto.estado === 'activo' ? 'success' : 'secondary'}>
-            {puesto.estado}
+          <Badge variant={puesto.estado_puesto === 'Activo' ? 'success' : 'secondary'}>
+            {puesto.estado_puesto}
           </Badge>
           <span>
-            Actualizado: {new Date(puesto.updated_at).toLocaleDateString()}
+            {formatUpdateDate(puesto.fecha_actualizacion)}
           </span>
         </CardFooter>
       </Card>

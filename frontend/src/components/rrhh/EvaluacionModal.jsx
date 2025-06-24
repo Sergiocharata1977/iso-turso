@@ -1,509 +1,308 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
-import { 
-  ClipboardCheck, 
-  Users, 
-  Calendar,
-  Star,
-  Target,
-  FileText,
-  Briefcase,
-  Building,
-  User,
-  Plus,
-  Trash
-} from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
-import { departamentosService } from "@/services/departamentos";
-import { puestosService } from "@/services/puestos";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
+import { ClipboardCheck, User, Calendar, Star, FileText, Activity, Award, X } from "lucide-react";
+import { evaluacionesService } from "@/services/evaluacionesService";
 
-function EvaluacionModal({ isOpen, onClose, onSave, evaluacion, personal }) {
-  const { toast } = useToast();
-  
+const EvaluacionModal = ({ isOpen, onClose, onSave, evaluacion }) => {
   const [formData, setFormData] = useState({
     personal_id: "",
-    tipo_evaluacion: "Desempeño",
-    fecha: new Date().toISOString().split('T')[0],
-    estado: "pendiente",
-    puntuacion: 0,
-    fortalezas: "",
-    areas_oportunidad: "",
-    comentarios: "",
-    planes_accion: "",
-    competencias: [
-      { nombre: "Liderazgo", puntuacion: 0, comentario: "" },
-      { nombre: "Conocimiento técnico", puntuacion: 0, comentario: "" },
-      { nombre: "Comunicación", puntuacion: 0, comentario: "" },
-      { nombre: "Trabajo en equipo", puntuacion: 0, comentario: "" },
-      { nombre: "Resolución de problemas", puntuacion: 0, comentario: "" }
-    ],
-    objetivos: [
-      { descripcion: "", cumplimiento: 0, comentario: "" },
-      { descripcion: "", cumplimiento: 0, comentario: "" }
-    ]
+    titulo: "",
+    descripcion: "",
+    fecha_evaluacion: new Date().toISOString().split('T')[0],
+    puntaje: "",
+    estado: "pendiente"
   });
+  const [personal, setPersonal] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Consulta para obtener departamentos desde la API
-  const { 
-    data: departamentos = [], 
-    isLoading: isLoadingDepartamentos
-  } = useQuery({
-    queryKey: ['departamentos'],
-    queryFn: departamentosService.getAll,
-    staleTime: 10 * 60 * 1000, // 10 minutos
-  });
-
-  // Consulta para obtener puestos desde la API
-  const { 
-    data: puestos = [], 
-    isLoading: isLoadingPuestos
-  } = useQuery({
-    queryKey: ['puestos'],
-    queryFn: puestosService.getAll,
-    staleTime: 10 * 60 * 1000, // 10 minutos
-  });
-
-  // Efecto para inicializar el formulario cuando se abre el modal
   useEffect(() => {
-    if (evaluacion) {
-      // Si estamos editando una evaluación existente
-      setFormData({
-        ...evaluacion,
-        competencias: evaluacion.competencias || formData.competencias,
-        objetivos: evaluacion.objetivos || formData.objetivos
-      });
-    } else {
-      // Si estamos creando una nueva evaluación
-      setFormData({
-        personal_id: "",
-        tipo_evaluacion: "Desempeño",
-        fecha: new Date().toISOString().split('T')[0],
-        estado: "pendiente",
-        puntuacion: 0,
-        fortalezas: "",
-        areas_oportunidad: "",
-        comentarios: "",
-        planes_accion: "",
-        competencias: [
-          { nombre: "Liderazgo", puntuacion: 0, comentario: "" },
-          { nombre: "Conocimiento técnico", puntuacion: 0, comentario: "" },
-          { nombre: "Comunicación", puntuacion: 0, comentario: "" },
-          { nombre: "Trabajo en equipo", puntuacion: 0, comentario: "" },
-          { nombre: "Resolución de problemas", puntuacion: 0, comentario: "" }
-        ],
-        objetivos: [
-          { descripcion: "", cumplimiento: 0, comentario: "" },
-          { descripcion: "", cumplimiento: 0, comentario: "" }
-        ]
-      });
+    if (isOpen) {
+      fetchPersonal();
+      if (evaluacion) {
+        setFormData({
+          personal_id: evaluacion.personal_id || "",
+          titulo: evaluacion.titulo || "",
+          descripcion: evaluacion.descripcion || "",
+          fecha_evaluacion: evaluacion.fecha_evaluacion ? 
+            new Date(evaluacion.fecha_evaluacion).toISOString().split('T')[0] : 
+            new Date().toISOString().split('T')[0],
+          puntaje: evaluacion.puntaje || "",
+          estado: evaluacion.estado || "pendiente"
+        });
+      } else {
+        setFormData({
+          personal_id: "",
+          titulo: "",
+          descripcion: "",
+          fecha_evaluacion: new Date().toISOString().split('T')[0],
+          puntaje: "",
+          estado: "pendiente"
+        });
+      }
     }
-  }, [evaluacion]);
+  }, [isOpen, evaluacion]);
 
-  const handleSubmit = (e) => {
+  const fetchPersonal = async () => {
+    try {
+      const data = await evaluacionesService.getPersonal();
+      setPersonal(data);
+    } catch (error) {
+      console.error('Error al cargar personal:', error);
+      toast.error("Error al cargar lista de personal");
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validar campos obligatorios
     if (!formData.personal_id) {
-      toast({
-        title: "Error",
-        description: "Debe seleccionar un empleado",
-        variant: "destructive"
-      });
+      toast.error("Debe seleccionar un empleado");
       return;
     }
     
-    // Calcular la puntuación general como el promedio de las puntuaciones de competencias
-    const competenciasPuntuaciones = formData.competencias.map(c => c.puntuacion);
-    const puntuacionPromedio = competenciasPuntuaciones.length > 0 ?
-      competenciasPuntuaciones.reduce((a, b) => a + b, 0) / competenciasPuntuaciones.length : 0;
-    
-    const evaluacionFinal = {
-      ...formData,
-      puntuacion: Math.round(puntuacionPromedio)
-    };
-    
-    onSave(evaluacionFinal);
+    if (!formData.titulo) {
+      toast.error("El título es obligatorio");
+      return;
+    }
+
+    if (!formData.fecha_evaluacion) {
+      toast.error("La fecha de evaluación es obligatoria");
+      return;
+    }
+
+    if (formData.puntaje && (formData.puntaje < 0 || formData.puntaje > 100)) {
+      toast.error("El puntaje debe estar entre 0 y 100");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const dataToSave = {
+        personal_id: parseInt(formData.personal_id),
+        titulo: formData.titulo.trim(),
+        descripcion: formData.descripcion?.trim() || null,
+        fecha_evaluacion: formData.fecha_evaluacion,
+        puntaje: formData.puntaje ? parseInt(formData.puntaje) : null,
+        estado: formData.estado
+      };
+
+      await onSave(dataToSave);
+    } catch (error) {
+      console.error('Error al guardar evaluación:', error);
+      toast.error("Error al guardar la evaluación");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCompetenciaChange = (index, field, value) => {
-    const updatedCompetencias = [...formData.competencias];
-    updatedCompetencias[index] = {
-      ...updatedCompetencias[index],
-      [field]: field === 'puntuacion' ? parseInt(value) : value
-    };
-    setFormData({ ...formData, competencias: updatedCompetencias });
+  const handleChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleObjetivoChange = (index, field, value) => {
-    const updatedObjetivos = [...formData.objetivos];
-    updatedObjetivos[index] = {
-      ...updatedObjetivos[index],
-      [field]: field === 'cumplimiento' ? parseInt(value) : value
-    };
-    setFormData({ ...formData, objetivos: updatedObjetivos });
-  };
-
-  const addCompetencia = () => {
-    setFormData({
-      ...formData,
-      competencias: [
-        ...formData.competencias,
-        { nombre: "", puntuacion: 0, comentario: "" }
-      ]
-    });
-  };
-
-  const removeCompetencia = (index) => {
-    const updatedCompetencias = [...formData.competencias];
-    updatedCompetencias.splice(index, 1);
-    setFormData({ ...formData, competencias: updatedCompetencias });
-  };
-
-  const addObjetivo = () => {
-    setFormData({
-      ...formData,
-      objetivos: [
-        ...formData.objetivos,
-        { descripcion: "", cumplimiento: 0, comentario: "" }
-      ]
-    });
-  };
-
-  const removeObjetivo = (index) => {
-    const updatedObjetivos = [...formData.objetivos];
-    updatedObjetivos.splice(index, 1);
-    setFormData({ ...formData, objetivos: updatedObjetivos });
-  };
-
-  // Función para obtener el nombre del empleado según su ID
-  const getEmployeeName = (personalId) => {
-    const empleado = personal.find(p => p.id === personalId);
-    return empleado ? `${empleado.nombre} ${empleado.apellido}` : '';
-  };
-
-  // Renderizar estrellas para puntuación
   const renderStars = (value, onChange) => {
+    const stars = [];
+    const currentValue = parseInt(value) || 0;
+    const starValue = Math.floor(currentValue / 20);
+    
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <button
+          key={i}
+          type="button"
+          onClick={() => onChange(i * 20)}
+          className={`p-1 ${i <= starValue ? 'text-yellow-400' : 'text-slate-400'} hover:text-yellow-400 transition-colors`}
+        >
+          <Star className={`h-6 w-6 ${i <= starValue ? 'fill-current' : ''}`} />
+        </button>
+      );
+    }
+    
     return (
-      <div className="flex items-center">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-5 w-5 cursor-pointer ${
-              star <= value ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-            }`}
-            onClick={() => onChange(star)}
-          />
-        ))}
-        <span className="ml-2 text-sm">{value}/5</span>
+      <div className="flex items-center gap-1">
+        {stars}
+        <span className="ml-2 text-sm text-slate-300">
+          {currentValue}/100 ({starValue}/5 estrellas)
+        </span>
       </div>
     );
   };
 
-  if (isLoadingDepartamentos || isLoadingPuestos) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
-          <div className="flex items-center justify-center p-6">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-            <p className="ml-2">Cargando datos...</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
+      <DialogContent className="max-w-4xl bg-slate-800 border-slate-700 text-white max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogTitle className="text-xl font-semibold text-white">
             {evaluacion ? "Editar Evaluación" : "Nueva Evaluación"}
           </DialogTitle>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose} 
+            className="text-white hover:bg-slate-700"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid grid-cols-4 mb-4">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="competencias">Competencias</TabsTrigger>
-              <TabsTrigger value="objetivos">Objetivos</TabsTrigger>
-              <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
-            </TabsList>
-            
-            {/* Pestaña de información general */}
-            <TabsContent value="general" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="personal_id">Empleado</Label>
-                  <Select 
-                    value={formData.personal_id} 
-                    onValueChange={(value) => setFormData({...formData, personal_id: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione un empleado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {personal.map((empleado) => (
-                        <SelectItem key={empleado.id} value={empleado.id}>
-                          {empleado.nombre} {empleado.apellido}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="tipo_evaluacion">Tipo de Evaluación</Label>
-                  <Select 
-                    value={formData.tipo_evaluacion} 
-                    onValueChange={(value) => setFormData({...formData, tipo_evaluacion: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione un tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Desempeño">Desempeño</SelectItem>
-                      <SelectItem value="Competencias">Competencias</SelectItem>
-                      <SelectItem value="Objetivos">Objetivos</SelectItem>
-                      <SelectItem value="360 grados">360 grados</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fecha">Fecha de Evaluación</Label>
-                  <Input
-                    type="date"
-                    id="fecha"
-                    value={formData.fecha}
-                    onChange={(e) => setFormData({...formData, fecha: e.target.value})}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <Select 
-                    value={formData.estado} 
-                    onValueChange={(value) => setFormData({...formData, estado: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione un estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="en_proceso">En Proceso</SelectItem>
-                      <SelectItem value="completada">Completada</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TabsContent>
-            
-            {/* Pestaña de competencias */}
-            <TabsContent value="competencias" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Competencias</h3>
-                <Button type="button" variant="outline" size="sm" onClick={addCompetencia}>
-                  <Plus className="h-4 w-4 mr-1" /> Agregar Competencia
-                </Button>
-              </div>
-              
-              <div className="space-y-4">
-                {formData.competencias.map((competencia, index) => (
-                  <div key={index} className="border rounded-md p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-medium">Competencia {index + 1}</h4>
-                      {formData.competencias.length > 1 && (
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => removeCompetencia(index)}
-                        >
-                          <Trash className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Nombre</Label>
-                        <Input
-                          value={competencia.nombre}
-                          onChange={(e) => handleCompetenciaChange(index, 'nombre', e.target.value)}
-                          placeholder="Nombre de la competencia"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Puntuación</Label>
-                        {renderStars(competencia.puntuacion, (value) => 
-                          handleCompetenciaChange(index, 'puntuacion', value)
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Comentario</Label>
-                      <Textarea
-                        value={competencia.comentario}
-                        onChange={(e) => handleCompetenciaChange(index, 'comentario', e.target.value)}
-                        placeholder="Comentarios sobre esta competencia"
-                        rows={2}
-                      />
-                    </div>
+        <form id="evaluacion-form" onSubmit={handleSubmit} className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="personal_id" className="text-white flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Empleado <span className="text-red-400">*</span>
+              </Label>
+              <Select 
+                value={formData.personal_id} 
+                onValueChange={(value) => handleChange('personal_id', value)}
+              >
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white focus:border-teal-500">
+                  <SelectValue placeholder="Seleccionar empleado" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  {personal.map((empleado) => (
+                    <SelectItem 
+                      key={empleado.id} 
+                      value={empleado.id.toString()}
+                      className="text-white hover:bg-slate-600"
+                    >
+                      {empleado.nombre} {empleado.apellido}
+                      {empleado.puesto && ` - ${empleado.puesto}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estado" className="text-white flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Estado
+              </Label>
+              <Select 
+                value={formData.estado} 
+                onValueChange={(value) => handleChange('estado', value)}
+              >
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white focus:border-teal-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="pendiente" className="text-white hover:bg-slate-600">Pendiente</SelectItem>
+                  <SelectItem value="en_proceso" className="text-white hover:bg-slate-600">En Proceso</SelectItem>
+                  <SelectItem value="completada" className="text-white hover:bg-slate-600">Completada</SelectItem>
+                  <SelectItem value="cancelada" className="text-white hover:bg-slate-600">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="titulo" className="text-white flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              Título de la Evaluación <span className="text-red-400">*</span>
+            </Label>
+            <Input
+              id="titulo"
+              type="text"
+              value={formData.titulo}
+              onChange={(e) => handleChange('titulo', e.target.value)}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
+              placeholder="Ej: Evaluación de Desempeño - Q1 2024"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="fecha_evaluacion" className="text-white flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Fecha de Evaluación <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="fecha_evaluacion"
+                type="date"
+                value={formData.fecha_evaluacion}
+                onChange={(e) => handleChange('fecha_evaluacion', e.target.value)}
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Puntaje (0-100)
+              </Label>
+              <div className="space-y-3">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.puntaje}
+                  onChange={(e) => handleChange('puntaje', e.target.value)}
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
+                  placeholder="Opcional"
+                />
+                {formData.puntaje && (
+                  <div className="mt-2">
+                    {renderStars(formData.puntaje, (value) => handleChange('puntaje', value.toString()))}
                   </div>
-                ))}
+                )}
               </div>
-            </TabsContent>
-            
-            {/* Pestaña de objetivos */}
-            <TabsContent value="objetivos" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Objetivos</h3>
-                <Button type="button" variant="outline" size="sm" onClick={addObjetivo}>
-                  <Plus className="h-4 w-4 mr-1" /> Agregar Objetivo
-                </Button>
-              </div>
-              
-              <div className="space-y-4">
-                {formData.objetivos.map((objetivo, index) => (
-                  <div key={index} className="border rounded-md p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-medium">Objetivo {index + 1}</h4>
-                      {formData.objetivos.length > 1 && (
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => removeObjetivo(index)}
-                        >
-                          <Trash className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Descripción</Label>
-                      <Textarea
-                        value={objetivo.descripcion}
-                        onChange={(e) => handleObjetivoChange(index, 'descripcion', e.target.value)}
-                        placeholder="Descripción del objetivo"
-                        rows={2}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Cumplimiento (%)</Label>
-                        <div className="flex items-center">
-                          <Input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="5"
-                            value={objetivo.cumplimiento}
-                            onChange={(e) => handleObjetivoChange(index, 'cumplimiento', e.target.value)}
-                            className="flex-1"
-                          />
-                          <span className="ml-2 w-12 text-center">{objetivo.cumplimiento}%</span>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Comentario</Label>
-                        <Input
-                          value={objetivo.comentario}
-                          onChange={(e) => handleObjetivoChange(index, 'comentario', e.target.value)}
-                          placeholder="Comentario breve"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-            
-            {/* Pestaña de comentarios */}
-            <TabsContent value="comentarios" className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fortalezas">Fortalezas</Label>
-                  <Textarea
-                    id="fortalezas"
-                    value={formData.fortalezas}
-                    onChange={(e) => setFormData({...formData, fortalezas: e.target.value})}
-                    placeholder="Fortalezas identificadas"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="areas_oportunidad">Áreas de Oportunidad</Label>
-                  <Textarea
-                    id="areas_oportunidad"
-                    value={formData.areas_oportunidad}
-                    onChange={(e) => setFormData({...formData, areas_oportunidad: e.target.value})}
-                    placeholder="Áreas de mejora identificadas"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="comentarios">Comentarios Generales</Label>
-                  <Textarea
-                    id="comentarios"
-                    value={formData.comentarios}
-                    onChange={(e) => setFormData({...formData, comentarios: e.target.value})}
-                    placeholder="Comentarios generales sobre la evaluación"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="planes_accion">Planes de Acción</Label>
-                  <Textarea
-                    id="planes_accion"
-                    value={formData.planes_accion}
-                    onChange={(e) => setFormData({...formData, planes_accion: e.target.value})}
-                    placeholder="Planes de acción propuestos"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {evaluacion ? "Actualizar" : "Crear"} Evaluación
-            </Button>
-          </DialogFooter>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="descripcion" className="text-white flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Descripción
+            </Label>
+            <Textarea
+              id="descripcion"
+              value={formData.descripcion}
+              onChange={(e) => handleChange('descripcion', e.target.value)}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500 resize-none"
+              placeholder="Descripción detallada de la evaluación, criterios, observaciones, etc."
+              rows={4}
+            />
+          </div>
         </form>
+        
+        <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onClose}
+            disabled={loading}
+            className="bg-transparent border-slate-600 text-white hover:bg-slate-700"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            form="evaluacion-form"
+            disabled={loading}
+            className="bg-teal-600 hover:bg-teal-700 text-white"
+          >
+            {loading ? "Guardando..." : evaluacion ? "Actualizar" : "Crear"} Evaluación
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
-}
+};
 
 export default EvaluacionModal;

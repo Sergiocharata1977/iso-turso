@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     console.log('[GET /api/normas] Obteniendo lista de normas');
     
     const result = await tursoClient.execute({
-      sql: `SELECT * FROM normas ORDER BY codigo, nombre`
+      sql: `SELECT * FROM normas ORDER BY codigo`
     });
     
     console.log(`[GET /api/normas] ${result.rows.length} registros encontrados`);
@@ -48,13 +48,9 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const { 
     codigo, 
-    nombre, 
+    titulo, 
     descripcion, 
-    version = '1.0',
-    fecha_publicacion,
-    organismo_emisor,
-    estado = 'vigente',
-    url_documento
+    observaciones
   } = req.body;
 
   console.log('[POST /api/normas] Datos recibidos:', req.body);
@@ -64,8 +60,8 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'El código es obligatorio.' });
   }
 
-  if (!nombre) {
-    return res.status(400).json({ error: 'El nombre es obligatorio.' });
+  if (!titulo) {
+    return res.status(400).json({ error: 'El título es obligatorio.' });
   }
 
   try {
@@ -79,17 +75,14 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Ya existe una norma con este código.' });
     }
 
-    const fechaCreacion = new Date().toISOString();
     const id = crypto.randomUUID();
 
     const result = await tursoClient.execute({
       sql: `INSERT INTO normas (
-              id, codigo, nombre, descripcion, version, fecha_publicacion, 
-              organismo_emisor, estado, url_documento, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              id, codigo, titulo, descripcion, observaciones
+            ) VALUES (?, ?, ?, ?, ?)`,
       args: [
-        id, codigo, nombre, descripcion, version, fecha_publicacion,
-        organismo_emisor, estado, url_documento, fechaCreacion
+        id, codigo, titulo, descripcion, observaciones
       ]
     });
 
@@ -112,13 +105,9 @@ router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { 
     codigo, 
-    nombre, 
+    titulo, 
     descripcion, 
-    version,
-    fecha_publicacion,
-    organismo_emisor,
-    estado,
-    url_documento
+    observaciones
   } = req.body;
 
   console.log(`[PUT /api/normas/${id}] Datos recibidos:`, req.body);
@@ -127,8 +116,8 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ error: 'El código es obligatorio.' });
   }
 
-  if (!nombre) {
-    return res.status(400).json({ error: 'El nombre es obligatorio.' });
+  if (!titulo) {
+    return res.status(400).json({ error: 'El título es obligatorio.' });
   }
 
   try {
@@ -154,12 +143,10 @@ router.put('/:id', async (req, res) => {
 
     await tursoClient.execute({
       sql: `UPDATE normas SET 
-            codigo = ?, nombre = ?, descripcion = ?, version = ?, 
-            fecha_publicacion = ?, organismo_emisor = ?, estado = ?, url_documento = ?
+            codigo = ?, titulo = ?, descripcion = ?, observaciones = ?
             WHERE id = ?`,
       args: [
-        codigo, nombre, descripcion, version, fecha_publicacion,
-        organismo_emisor, estado, url_documento, id
+        codigo, titulo, descripcion, observaciones, id
       ]
     });
 
@@ -185,7 +172,7 @@ router.delete('/:id', async (req, res) => {
     console.log(`[DELETE /api/normas/${id}] Eliminando norma`);
 
     const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id, codigo, nombre FROM normas WHERE id = ?',
+      sql: 'SELECT id, codigo, titulo FROM normas WHERE id = ?',
       args: [id]
     });
 

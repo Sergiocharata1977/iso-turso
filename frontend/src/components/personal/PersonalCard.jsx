@@ -76,18 +76,7 @@ function PersonalCard({ person, onView, onEdit, onDelete }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3 flex-grow">
-        <div className="flex items-center text-sm">
-          <Building2 className="h-4 w-4 mr-3 text-violet-500 flex-shrink-0" />
-          <span className="text-muted-foreground truncate">
-            {person.departamento || "No especificado"}
-          </span>
-        </div>
-        <div className="flex items-center text-sm">
-          <Briefcase className="h-4 w-4 mr-3 text-orange-500 flex-shrink-0" />
-          <span className="text-muted-foreground truncate">
-            {person.puesto || "No especificado"}
-          </span>
-        </div>
+
       </CardContent>
       <CardFooter className="flex justify-between items-center pt-4">
         <Badge className="bg-green-100 text-green-800 border border-green-200 hover:bg-green-200">

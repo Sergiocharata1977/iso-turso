@@ -21,11 +21,13 @@ export function ThemeProvider({ children }) {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   };
 
-  const [theme, setTheme] = useState('light'); // Valor por defecto hasta que se cargue
+  // Inicializar directamente con el tema correcto para evitar parpadeo
+  const [theme, setTheme] = useState(() => getInitialTheme());
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Inicializar el tema cuando se monta el componente
+  // Marcar como cargado después del primer render
   useEffect(() => {
-    setTheme(getInitialTheme());
+    setIsLoaded(true);
   }, []);
 
   // Actualizar la clase en el elemento html cuando cambia el tema
@@ -50,8 +52,10 @@ export function ThemeProvider({ children }) {
   // Valores compartidos con el contexto
   const value = {
     theme,
+    isDark: theme === 'dark',
+    isLight: theme === 'light',
     toggleTheme,
-    isDark: theme === 'dark'
+    isLoaded
   };
 
   return (

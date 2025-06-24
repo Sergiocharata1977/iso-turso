@@ -1,85 +1,71 @@
-import { createApiClient } from './apiService.js';
+import { createApiClient } from './apiService';
 
+// Crear cliente API específico para capacitaciones
 const apiClient = createApiClient('/capacitaciones');
 
-/**
- * Servicio para gestionar capacitaciones a través de la API backend
- */
 export const capacitacionesService = {
-  /**
-   * Obtiene todas las capacitaciones
-   * @returns {Promise<Array>} Lista de capacitaciones
-   */
+  // Obtener todas las capacitaciones
   async getAll() {
+    console.log('📋 Obteniendo todas las capacitaciones...');
     try {
-      const response = await apiClient.get('');
+      const response = await apiClient.get('/');
+      console.log(`✅ ${response.length} capacitaciones obtenidas`);
       return response;
     } catch (error) {
-      console.error('Error al obtener capacitaciones:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar las capacitaciones');
+      console.error('❌ Error al obtener capacitaciones:', error);
+      throw new Error('Error al cargar las capacitaciones');
     }
   },
 
-  /**
-   * Obtiene una capacitación por su ID
-   * @param {string|number} id - ID de la capacitación
-   * @returns {Promise<Object>} Datos de la capacitación
-   */
+  // Obtener capacitación por ID
   async getById(id) {
+    console.log(`🔍 Obteniendo capacitación ID: ${id}`);
     try {
       const response = await apiClient.get(`/${id}`);
+      console.log(`✅ Capacitación obtenida: ${response.titulo}`);
       return response;
     } catch (error) {
-      console.error(`Error al obtener capacitación con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar la capacitación');
+      console.error(`❌ Error al obtener capacitación ID ${id}:`, error);
+      throw new Error('Error al cargar la capacitación');
     }
   },
 
-  /**
-   * Crea una nueva capacitación
-   * @param {Object} capacitacion - Datos de la capacitación a crear
-   * @returns {Promise<Object>} Capacitación creada
-   */
+  // Crear nueva capacitación
   async create(capacitacion) {
+    console.log('➕ Creando capacitación:', capacitacion);
     try {
-      const response = await apiClient.post('', capacitacion);
+      const response = await apiClient.post('/', capacitacion);
+      console.log(`✅ Capacitación creada: ${response.titulo}`);
       return response;
     } catch (error) {
-      console.error('Error al crear capacitación:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear la capacitación');
+      console.error('❌ Error al crear capacitación:', error);
+      throw new Error('Error al crear la capacitación');
     }
   },
 
-  /**
-   * Actualiza una capacitación existente
-   * @param {string|number} id - ID de la capacitación a actualizar
-   * @param {Object} capacitacion - Datos actualizados de la capacitación
-   * @returns {Promise<Object>} Capacitación actualizada
-   */
+  // Actualizar capacitación
   async update(id, capacitacion) {
+    console.log(`✏️ Actualizando capacitación ID: ${id}`, capacitacion);
     try {
       const response = await apiClient.put(`/${id}`, capacitacion);
+      console.log(`✅ Capacitación actualizada: ${response.titulo}`);
       return response;
     } catch (error) {
-      console.error(`Error al actualizar capacitación con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar la capacitación');
+      console.error(`❌ Error al actualizar capacitación ID ${id}:`, error);
+      throw new Error('Error al actualizar la capacitación');
     }
   },
 
-  /**
-   * Elimina una capacitación
-   * @param {string|number} id - ID de la capacitación a eliminar
-   * @returns {Promise<Object>} Resultado de la eliminación
-   */
+  // Eliminar capacitación
   async delete(id) {
+    console.log(`🗑️ Eliminando capacitación ID: ${id}`);
     try {
       const response = await apiClient.delete(`/${id}`);
+      console.log(`✅ Capacitación eliminada`);
       return response;
     } catch (error) {
-      console.error(`Error al eliminar capacitación con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar la capacitación');
+      console.error(`❌ Error al eliminar capacitación ID ${id}:`, error);
+      throw new Error('Error al eliminar la capacitación');
     }
   }
 };
-
-export default capacitacionesService;

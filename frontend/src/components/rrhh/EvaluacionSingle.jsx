@@ -1,365 +1,350 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   ArrowLeft,
-  Pencil,
+  Edit,
   Trash2,
   ClipboardCheck,
   User,
-  Briefcase,
-  Building,
   Calendar,
   Star,
-  Target,
-  CheckCircle,
-  AlertTriangle,
-  FileText
+  FileText,
+  Building
 } from "lucide-react";
+import { evaluacionesService } from "@/services/evaluacionesService";
+import EvaluacionModal from "./EvaluacionModal";
 
-function EvaluacionSingle({ evaluacion, onBack, onEdit, onDelete }) {
-  if (!evaluacion) return null;
+const EvaluacionSingle = ({ evaluacionId, onBack }) => {
+  const [evaluacion, setEvaluacion] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const getEstadoBadgeColor = (estado) => {
-    switch (estado) {
-      case 'pendiente':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'en proceso':
-        return 'bg-blue-100 text-blue-800';
-      case 'completada':
-        return 'bg-green-100 text-green-800';
-      case 'cancelada':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  useEffect(() => {
+    if (evaluacionId) {
+      fetchEvaluacion();
+    }
+  }, [evaluacionId]);
+
+  const fetchEvaluacion = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Cargando evaluación:', evaluacionId);
+      const data = await evaluacionesService.getById(evaluacionId);
+      setEvaluacion(data);
+      console.log('✅ Evaluación cargada:', data);
+    } catch (error) {
+      console.error('❌ Error al cargar evaluación:', error);
+      toast.error("Error al cargar la evaluación");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderCalificacion = (calificacion) => {
-    if (!calificacion || calificacion === 0) return "N/A";
-    
-    const estrellas = [];
-    const calificacionRedondeada = Math.round(calificacion * 2) / 2; // Redondear a 0.5
-    
-    for (let i = 1; i <= 5; i++) {
-      if (i <= calificacionRedondeada) {
-        estrellas.push(<Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />);
-      } else if (i - 0.5 === calificacionRedondeada) {
-        estrellas.push(<Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />);
-      } else {
-        estrellas.push(<Star key={i} className="h-4 w-4 text-muted-foreground" />);
+  const handleEdit = () => {
+    setModalOpen(true);
+  };
+
+  const handleSave = async (formData) => {
+    try {
+      await evaluacionesService.update(evaluacion.id, formData);
+      toast.success("Evaluación actualizada exitosamente");
+      setModalOpen(false);
+      fetchEvaluacion(); // Recargar datos
+    } catch (error) {
+      console.error('Error al actualizar evaluación:', error);
+      toast.error("Error al actualizar la evaluación");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("¿Está seguro de que desea eliminar esta evaluación?")) {
+      try {
+        await evaluacionesService.delete(evaluacion.id);
+        toast.success("Evaluación eliminada exitosamente");
+        onBack(); // Volver al listado
+      } catch (error) {
+        console.error("Error al eliminar evaluación:", error);
+        toast.error("Error al eliminar la evaluación");
       }
     }
+  };
+
+  const getEstadoBadgeColor = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'pendiente':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'en_proceso':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'completada':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelada':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Fecha inválida';
+    }
+  };
+
+  const renderStars = (puntaje) => {
+    if (!puntaje) return <span className="text-gray-400">Sin puntaje</span>;
+    
+    const stars = [];
+    const fullStars = Math.floor(puntaje / 20); // Convertir de 0-100 a 0-5 estrellas
+    
+    for (let i = 0; i < 5; i++) {
+      stars.push(
+        <Star 
+          key={i} 
+          className={`h-5 w-5 ${i < fullStars ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+        />
+      );
+    }
     
     return (
-      <div className="flex items-center">
-        <div className="flex mr-1">{estrellas}</div>
-        <span className="text-sm">({calificacion})</span>
+      <div className="flex items-center gap-1">
+        {stars}
+        <span className="text-lg font-semibold ml-2">({puntaje}/100)</span>
       </div>
     );
   };
 
-  const renderProgressBar = (percentage) => {
-    const getProgressColor = (value) => {
-      if (value < 50) return "bg-red-500";
-      if (value < 75) return "bg-yellow-500";
-      return "bg-green-500";
-    };
-
+  if (loading) {
     return (
-      <div className="w-full bg-muted rounded-full h-2.5">
-        <div
-          className={`h-2.5 rounded-full ${getProgressColor(percentage)}`}
-          style={{ width: `${percentage}%` }}
-        ></div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
+          </div>
+        </div>
       </div>
     );
-  };
+  }
+
+  if (!evaluacion) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex items-center gap-4 mb-8">
+            <Button 
+              onClick={onBack}
+              variant="ghost" 
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+          </div>
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-12 text-center">
+              <ClipboardCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Evaluación no encontrada</h3>
+              <p className="text-gray-600">La evaluación solicitada no existe o ha sido eliminada.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="space-y-6"
-    >
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">Evaluación de Desempeño</h1>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={() => onEdit(evaluacion)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => onDelete(evaluacion.id)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Eliminar
-          </Button>
-        </div>
-      </div>
-
-      {/* Información General */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-xl">
-              <div className="flex items-center space-x-2">
-                <ClipboardCheck className="h-5 w-5 text-primary" />
-                <span>{evaluacion.codigo}</span>
-              </div>
-            </CardTitle>
-            <Badge className={getEstadoBadgeColor(evaluacion.estado)}>
-              {evaluacion.estado}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <User className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Empleado</p>
-                  <p className="font-medium">{evaluacion.empleado}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Briefcase className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Puesto</p>
-                  <p className="font-medium">{evaluacion.puesto}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Building className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Departamento</p>
-                  <p className="font-medium">{evaluacion.departamento}</p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <User className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Evaluador</p>
-                  <p className="font-medium">{evaluacion.evaluador}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Periodo</p>
-                  <p className="font-medium">{evaluacion.periodo}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha de Evaluación</p>
-                  <p className="font-medium">{evaluacion.fechaEvaluacion}</p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={onBack}
+              variant="ghost" 
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{evaluacion.titulo}</h1>
+              <p className="text-gray-600">EVAL-{evaluacion.id}</p>
             </div>
           </div>
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleEdit}
+              variant="outline" 
+              className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              <Edit className="h-4 w-4" />
+              Editar
+            </Button>
+            <Button 
+              onClick={handleDelete}
+              variant="outline" 
+              className="gap-2 border-red-300 text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar
+            </Button>
+          </div>
+        </div>
 
-          {evaluacion.estado === 'completada' && (
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-lg">Calificación General</h3>
-                <div className="flex items-center space-x-2">
-                  {renderCalificacion(evaluacion.calificacionGeneral)}
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Contenido detallado */}
-      <Tabs defaultValue="competencias" className="w-full">
-        <TabsList className="grid grid-cols-3 mb-6">
-          <TabsTrigger value="competencias">Competencias</TabsTrigger>
-          <TabsTrigger value="objetivos">Objetivos</TabsTrigger>
-          <TabsTrigger value="resultados">Resultados</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="competencias" className="space-y-6">
-          {evaluacion.competencias && evaluacion.competencias.length > 0 ? (
-            evaluacion.competencias.map((competencia, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{competencia.nombre}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Calificación:</span>
-                    {renderCalificacion(competencia.calificacion)}
+        {/* Información Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Info General */}
+          <Card className="lg:col-span-2 bg-white border border-gray-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-purple-600" />
+                Información General
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Empleado</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <User className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-900">
+                      {evaluacion.personal_nombre} {evaluacion.personal_apellido}
+                    </span>
                   </div>
-                  {competencia.comentario && (
-                    <div>
-                      <span className="text-sm text-muted-foreground">Comentarios:</span>
-                      <p className="mt-1">{competencia.comentario}</p>
+                  {evaluacion.puesto && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Building className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">{evaluacion.puesto}</span>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <Star className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground">
-                No hay competencias evaluadas.
-              </p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="objetivos" className="space-y-6">
-          {evaluacion.objetivos && evaluacion.objetivos.length > 0 ? (
-            evaluacion.objetivos.map((objetivo, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{objetivo.descripcion || "Objetivo sin descripción"}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Estado</label>
+                  <div className="mt-1">
+                    <Badge className={getEstadoBadgeColor(evaluacion.estado)}>
+                      {evaluacion.estado}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Fecha de Evaluación</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-900">
+                      {formatDate(evaluacion.fecha_evaluacion)}
+                    </span>
+                  </div>
+                </div>
+                {evaluacion.puntaje && (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">Cumplimiento:</span>
-                      <span className="font-medium">{objetivo.cumplimiento}%</span>
+                    <label className="text-sm font-medium text-gray-600">Puntaje</label>
+                    <div className="mt-1">
+                      {renderStars(evaluacion.puntaje)}
                     </div>
-                    {renderProgressBar(objetivo.cumplimiento)}
                   </div>
-                  {objetivo.comentario && (
-                    <div>
-                      <span className="text-sm text-muted-foreground">Comentarios:</span>
-                      <p className="mt-1">{objetivo.comentario}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <Target className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground">
-                No hay objetivos evaluados.
-              </p>
-            </div>
-          )}
-        </TabsContent>
+                )}
+              </div>
+              
+              {evaluacion.descripcion && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Descripción</label>
+                  <div className="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-gray-900 whitespace-pre-wrap">
+                      {evaluacion.descripcion}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <TabsContent value="resultados" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center space-x-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>Fortalezas</span>
-                </CardTitle>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Stats Card */}
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Resumen</CardTitle>
               </CardHeader>
-              <CardContent>
-                {evaluacion.fortalezas ? (
-                  <ul className="space-y-2">
-                    {evaluacion.fortalezas.split('\n').map((fortaleza, index) => (
-                      fortaleza.trim() && (
-                        <li key={index} className="flex items-start">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          <span>{fortaleza}</span>
-                        </li>
-                      )
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted-foreground">No se han registrado fortalezas.</p>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">ID</span>
+                  <span className="font-semibold">EVAL-{evaluacion.id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Estado</span>
+                  <Badge className={getEstadoBadgeColor(evaluacion.estado)}>
+                    {evaluacion.estado}
+                  </Badge>
+                </div>
+                {evaluacion.puntaje && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Puntaje</span>
+                    <span className="font-semibold">{evaluacion.puntaje}/100</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Creado</span>
+                  <span className="text-sm">
+                    {formatDate(evaluacion.created_at)}
+                  </span>
+                </div>
+                {evaluacion.updated_at !== evaluacion.created_at && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Actualizado</span>
+                    <span className="text-sm">
+                      {formatDate(evaluacion.updated_at)}
+                    </span>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                  <span>Áreas de Oportunidad</span>
-                </CardTitle>
+            {/* Quick Actions */}
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Acciones</CardTitle>
               </CardHeader>
-              <CardContent>
-                {evaluacion.areasOportunidad ? (
-                  <ul className="space-y-2">
-                    {evaluacion.areasOportunidad.split('\n').map((area, index) => (
-                      area.trim() && (
-                        <li key={index} className="flex items-start">
-                          <AlertTriangle className="h-4 w-4 text-yellow-500 mr-2 mt-0.5" />
-                          <span>{area}</span>
-                        </li>
-                      )
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted-foreground">No se han registrado áreas de oportunidad.</p>
-                )}
+              <CardContent className="space-y-3">
+                <Button 
+                  onClick={handleEdit}
+                  variant="outline" 
+                  className="w-full justify-start gap-2 border-gray-300"
+                >
+                  <Edit className="h-4 w-4" />
+                  Editar Evaluación
+                </Button>
+                <Button 
+                  onClick={handleDelete}
+                  variant="outline" 
+                  className="w-full justify-start gap-2 border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar Evaluación
+                </Button>
               </CardContent>
             </Card>
           </div>
+        </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5 text-primary" />
-                <span>Comentarios Generales</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {evaluacion.comentarios ? (
-                <p className="whitespace-pre-line">{evaluacion.comentarios}</p>
-              ) : (
-                <p className="text-muted-foreground">No se han registrado comentarios generales.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center space-x-2">
-                <Target className="h-5 w-5 text-primary" />
-                <span>Planes de Acción</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {evaluacion.planesAccion ? (
-                <ul className="space-y-2">
-                  {evaluacion.planesAccion.split('\n').map((plan, index) => (
-                    plan.trim() && (
-                      <li key={index} className="flex items-start">
-                        <CheckCircle className="h-4 w-4 text-primary mr-2 mt-0.5" />
-                        <span>{plan}</span>
-                      </li>
-                    )
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground">No se han registrado planes de acción.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </motion.div>
+        {/* Modal */}
+        <EvaluacionModal 
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSave}
+          evaluacion={evaluacion}
+        />
+      </div>
+    </div>
   );
-}
+};
 
 export default EvaluacionSingle;

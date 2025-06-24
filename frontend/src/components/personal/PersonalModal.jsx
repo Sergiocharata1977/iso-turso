@@ -18,51 +18,35 @@ import {
 
 function PersonalModal({ isOpen, onClose, onSave, person }) {
   const initialFormData = {
-    numero: "",
-    nombre: "",
-    puesto: "",
-    departamento: "",
+    nombres: "",
+    apellidos: "",
     email: "",
     telefono: "",
-    fechaIngreso: "",
-    documentoIdentidad: "",
+    documento_identidad: "",
+    fecha_nacimiento: "",
+    nacionalidad: "",
     direccion: "",
-    formacionAcademica: [],
-    experienciaLaboral: [],
-    competencias: "",
-    capacitacionesRecibidas: "",
-    observaciones: "",
-    imagen: null
+    telefono_emergencia: "",
+    fecha_contratacion: "",
+    numero_legajo: "",
+    estado: "Activo",
+    formacion_academica: [],
+    experiencia_laboral: [],
+    habilidades_idiomas: []
   };
 
   const [formData, setFormData] = useState(initialFormData);
-
-  const departamentos = ["Calidad", "Producción", "Administración", "Recursos Humanos", "Marketing", "Finanzas", "Ventas", "Logística", "Tecnología", "Seguridad", "Medio Ambiente", "Auditoría"];
-  const puestos = {
-    "Calidad": ["Gerente de Calidad", "Analista de Calidad", "Inspector de Calidad", "Auditor de Calidad"],
-    "Producción": ["Gerente de Producción", "Supervisor de Producción", "Operario", "Técnico de Mantenimiento"],
-    "Administración": ["Gerente Administrativo", "Asistente Administrativo", "Recepcionista"],
-    "Recursos Humanos": ["Gerente de RRHH", "Analista de RRHH", "Especialista en Capacitación"],
-    "Marketing": ["Gerente de Marketing", "Analista de Marketing", "Diseñador Gráfico"],
-    "Finanzas": ["Director Financiero", "Contador", "Analista Financiero"],
-    "Ventas": ["Gerente de Ventas", "Representante de Ventas", "Ejecutivo de Cuentas"],
-    "Logística": ["Gerente de Logística", "Coordinador de Distribución", "Encargado de Almacén"],
-    "Tecnología": ["Gerente de TI", "Desarrollador", "Analista de Sistemas", "Soporte Técnico"],
-    "Seguridad": ["Jefe de Seguridad", "Especialista en HSE", "Técnico en Seguridad"],
-    "Medio Ambiente": ["Responsable de Medio Ambiente", "Analista Ambiental"],
-    "Auditoría": ["Auditor Interno", "Auditor Senior"]
-  };
 
   useEffect(() => {
     if (person) {
       setFormData({
         ...initialFormData,
         ...person,
-        formacionAcademica: person.formacion_academica ? JSON.parse(person.formacion_academica) : [],
-        experienciaLaboral: person.experiencia_laboral ? JSON.parse(person.experiencia_laboral) : [],
-        fechaIngreso: person.fecha_ingreso?.split('T')[0] || "",
-        documentoIdentidad: person.documento_identidad || "",
-        capacitacionesRecibidas: person.capacitaciones_recibidas || ""
+        formacion_academica: person.formacion_academica ? JSON.parse(person.formacion_academica) : [],
+        experiencia_laboral: person.experiencia_laboral ? JSON.parse(person.experiencia_laboral) : [],
+        habilidades_idiomas: person.habilidades_idiomas ? JSON.parse(person.habilidades_idiomas) : [],
+        fecha_contratacion: person.fecha_contratacion?.split('T')[0] || "",
+        documento_identidad: person.documento_identidad || "",
       });
     } else {
       const date = new Date();
@@ -71,8 +55,8 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       setFormData({
         ...initialFormData,
-        numero: `P${year}${month}-${random}`,
-        fechaIngreso: new Date().toISOString().split('T')[0],
+        numero_legajo: `P${year}${month}-${random}`,
+        fecha_contratacion: new Date().toISOString().split('T')[0],
       });
     }
   }, [person, isOpen]);
@@ -86,20 +70,28 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const addFormacionAcademica = () => setFormData(prev => ({ ...prev, formacionAcademica: [...prev.formacionAcademica, { titulo: "", institucion: "", fecha: "" }] }));
-  const removeFormacionAcademica = (index) => setFormData(prev => ({ ...prev, formacionAcademica: prev.formacionAcademica.filter((_, i) => i !== index) }));
+  const addFormacionAcademica = () => setFormData(prev => ({ ...prev, formacion_academica: [...prev.formacion_academica, { titulo: "", institucion: "", fecha: "" }] }));
+  const removeFormacionAcademica = (index) => setFormData(prev => ({ ...prev, formacion_academica: prev.formacion_academica.filter((_, i) => i !== index) }));
   const updateFormacionAcademica = (index, field, value) => {
-    const newFormacion = [...formData.formacionAcademica];
+    const newFormacion = [...formData.formacion_academica];
     newFormacion[index][field] = value;
-    setFormData(prev => ({ ...prev, formacionAcademica: newFormacion }));
+    setFormData(prev => ({ ...prev, formacion_academica: newFormacion }));
   };
 
-  const addExperienciaLaboral = () => setFormData(prev => ({ ...prev, experienciaLaboral: [...prev.experienciaLaboral, { empresa: "", puesto: "", fechaInicio: "", fechaFin: "", descripcion: "" }] }));
-  const removeExperienciaLaboral = (index) => setFormData(prev => ({ ...prev, experienciaLaboral: prev.experienciaLaboral.filter((_, i) => i !== index) }));
+  const addExperienciaLaboral = () => setFormData(prev => ({ ...prev, experiencia_laboral: [...prev.experiencia_laboral, { empresa: "", puesto: "", fecha_inicio: "", fecha_fin: "", descripcion: "" }] }));
+  const removeExperienciaLaboral = (index) => setFormData(prev => ({ ...prev, experiencia_laboral: prev.experiencia_laboral.filter((_, i) => i !== index) }));
   const updateExperienciaLaboral = (index, field, value) => {
-    const newExperiencia = [...formData.experienciaLaboral];
+    const newExperiencia = [...formData.experiencia_laboral];
     newExperiencia[index][field] = value;
-    setFormData(prev => ({ ...prev, experienciaLaboral: newExperiencia }));
+    setFormData(prev => ({ ...prev, experiencia_laboral: newExperiencia }));
+  };
+
+  const addHabilidadIdioma = () => setFormData(prev => ({ ...prev, habilidades_idiomas: [...prev.habilidades_idiomas, { habilidad: "", nivel: "" }] }));
+  const removeHabilidadIdioma = (index) => setFormData(prev => ({ ...prev, habilidades_idiomas: prev.habilidades_idiomas.filter((_, i) => i !== index) }));
+  const updateHabilidadIdioma = (index, field, value) => {
+    const newHabilidad = [...formData.habilidades_idiomas];
+    newHabilidad[index][field] = value;
+    setFormData(prev => ({ ...prev, habilidades_idiomas: newHabilidad }));
   };
 
   const handleImageChange = (e) => {
@@ -115,11 +107,13 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
     e.preventDefault();
     const dataToSave = {
       ...formData,
-      formacion_academica: JSON.stringify(formData.formacionAcademica),
-      experiencia_laboral: JSON.stringify(formData.experienciaLaboral),
+      formacion_academica: JSON.stringify(formData.formacion_academica),
+      experiencia_laboral: JSON.stringify(formData.experiencia_laboral),
+      habilidades_idiomas: JSON.stringify(formData.habilidades_idiomas),
     };
-    delete dataToSave.formacionAcademica;
-    delete dataToSave.experienciaLaboral;
+    delete dataToSave.formacion_academica;
+    delete dataToSave.experiencia_laboral;
+    delete dataToSave.habilidades_idiomas;
     onSave(dataToSave);
     onClose();
   };
@@ -143,6 +137,7 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
               <TabsTrigger value="competencias" className="data-[state=active]:bg-slate-600 text-white">Competencias</TabsTrigger>
               <TabsTrigger value="formacion" className="data-[state=active]:bg-slate-600 text-white">Formación</TabsTrigger>
               <TabsTrigger value="experiencia" className="data-[state=active]:bg-slate-600 text-white">Experiencia</TabsTrigger>
+              <TabsTrigger value="habilidades" className="data-[state=active]:bg-slate-600 text-white">Habilidades e Idiomas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="datos-principales" className="mt-6">
@@ -161,34 +156,20 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                 {/* Columna de Datos */}
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="numero" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Número</Label>
-                    <Input id="numero" name="numero" value={formData.numero} readOnly disabled className={inputStyles} />
+                    <Label htmlFor="numero_legajo" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Número de Legajo</Label>
+                    <Input id="numero_legajo" name="numero_legajo" value={formData.numero_legajo} readOnly disabled className={inputStyles} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fechaIngreso" className="text-white flex items-center gap-2"><Calendar className="h-4 w-4" /> Fecha de Ingreso</Label>
-                    <Input id="fechaIngreso" name="fechaIngreso" type="date" value={formData.fechaIngreso} onChange={handleChange} required className={inputStyles} />
+                    <Label htmlFor="fecha_contratacion" className="text-white flex items-center gap-2"><Calendar className="h-4 w-4" /> Fecha de Contratación</Label>
+                    <Input id="fecha_contratacion" name="fecha_contratacion" type="date" value={formData.fecha_contratacion} onChange={handleChange} required className={inputStyles} />
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <Label htmlFor="nombre" className="text-white flex items-center gap-2"><User className="h-4 w-4" /> Nombre Completo</Label>
-                    <Input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} required className={inputStyles} placeholder="Nombre completo del empleado"/>
+                    <Label htmlFor="nombres" className="text-white flex items-center gap-2"><User className="h-4 w-4" /> Nombres</Label>
+                    <Input id="nombres" name="nombres" value={formData.nombres} onChange={handleChange} required className={inputStyles} placeholder="Nombres del empleado"/>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="departamento" className="text-white flex items-center gap-2"><Building2 className="h-4 w-4" /> Departamento</Label>
-                    <Select name="departamento" onValueChange={(value) => handleSelectChange('departamento', value)} value={formData.departamento}>
-                      <SelectTrigger className={inputStyles}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                      <SelectContent className="bg-slate-700 border-slate-600 text-white">
-                        {departamentos.map(dep => <SelectItem key={dep} value={dep} className="hover:bg-slate-600">{dep}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="puesto" className="text-white flex items-center gap-2"><Briefcase className="h-4 w-4" /> Puesto</Label>
-                    <Select name="puesto" onValueChange={(value) => handleSelectChange('puesto', value)} value={formData.puesto} disabled={!formData.departamento}>
-                      <SelectTrigger className={inputStyles}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                      <SelectContent className="bg-slate-700 border-slate-600 text-white">
-                        {formData.departamento && puestos[formData.departamento]?.map(p => <SelectItem key={p} value={p} className="hover:bg-slate-600">{p}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="apellidos" className="text-white flex items-center gap-2"><User className="h-4 w-4" /> Apellidos</Label>
+                    <Input id="apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} required className={inputStyles} placeholder="Apellidos del empleado"/>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-white flex items-center gap-2"><Mail className="h-4 w-4" /> Email</Label>
@@ -199,12 +180,36 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                     <Input id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className={inputStyles} placeholder="Número de teléfono"/>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="documentoIdentidad" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Documento de Identidad</Label>
-                    <Input id="documentoIdentidad" name="documentoIdentidad" value={formData.documentoIdentidad} onChange={handleChange} className={inputStyles} placeholder="Número de documento"/>
+                    <Label htmlFor="documento_identidad" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Documento de Identidad</Label>
+                    <Input id="documento_identidad" name="documento_identidad" value={formData.documento_identidad} onChange={handleChange} className={inputStyles} placeholder="Número de documento"/>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="direccion" className="text-white flex items-center gap-2"><MapPin className="h-4 w-4" /> Dirección</Label>
                     <Input id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className={inputStyles} placeholder="Dirección completa"/>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="telefono_emergencia" className="text-white flex items-center gap-2"><Phone className="h-4 w-4" /> Teléfono de Emergencia</Label>
+                    <Input id="telefono_emergencia" name="telefono_emergencia" value={formData.telefono_emergencia} onChange={handleChange} className={inputStyles} placeholder="Número de teléfono de emergencia"/>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fecha_nacimiento" className="text-white flex items-center gap-2"><Calendar className="h-4 w-4" /> Fecha de Nacimiento</Label>
+                    <Input id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={formData.fecha_nacimiento} onChange={handleChange} className={inputStyles} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nacionalidad" className="text-white flex items-center gap-2"><MapPin className="h-4 w-4" /> Nacionalidad</Label>
+                    <Input id="nacionalidad" name="nacionalidad" value={formData.nacionalidad} onChange={handleChange} className={inputStyles} placeholder="Nacionalidad del empleado"/>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="estado" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Estado</Label>
+                    <Select id="estado" name="estado" value={formData.estado} onChange={handleSelectChange} required className={inputStyles}>
+                      <SelectTrigger className="flex items-center justify-between w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Activo">Activo</SelectItem>
+                        <SelectItem value="Inactivo">Inactivo</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -216,8 +221,8 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                     <Textarea id="competencias" name="competencias" value={formData.competencias} onChange={handleChange} className={inputStyles} placeholder="Listar competencias clave..."/>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="capacitacionesRecibidas" className="text-white flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Capacitaciones Recibidas</Label>
-                    <Textarea id="capacitacionesRecibidas" name="capacitacionesRecibidas" value={formData.capacitacionesRecibidas} onChange={handleChange} className={inputStyles} placeholder="Listar capacitaciones..."/>
+                    <Label htmlFor="capacitaciones_recibidas" className="text-white flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Capacitaciones Recibidas</Label>
+                    <Textarea id="capacitaciones_recibidas" name="capacitaciones_recibidas" value={formData.capacitaciones_recibidas} onChange={handleChange} className={inputStyles} placeholder="Listar capacitaciones..."/>
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="observaciones" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Observaciones</Label>
@@ -232,7 +237,7 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                   <Plus className="h-4 w-4 mr-2" /> Agregar Formación
                 </Button>
               </div>
-              {formData.formacionAcademica.map((formacion, index) => (
+              {formData.formacion_academica.map((formacion, index) => (
                 <div key={index} className="border border-slate-700 rounded-lg p-4 space-y-4 bg-slate-900/20 relative">
                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFormacionAcademica(index)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 hover:bg-slate-700">
                       <Trash2 className="h-4 w-4" />
@@ -262,7 +267,7 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                   <Plus className="h-4 w-4 mr-2" /> Agregar Experiencia
                 </Button>
               </div>
-              {formData.experienciaLaboral.map((experiencia, index) => (
+              {formData.experiencia_laboral.map((experiencia, index) => (
                 <div key={index} className="border border-slate-700 rounded-lg p-4 space-y-6 bg-slate-900/20 relative">
                    <Button type="button" variant="ghost" size="icon" onClick={() => removeExperienciaLaboral(index)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 hover:bg-slate-700">
                       <Trash2 className="h-4 w-4" />
@@ -278,16 +283,51 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2"><Calendar className="h-4 w-4"/> Fecha de Inicio</Label>
-                      <Input type="date" value={experiencia.fechaInicio} onChange={(e) => updateExperienciaLaboral(index, 'fechaInicio', e.target.value)} required className={inputStyles}/>
+                      <Input type="date" value={experiencia.fecha_inicio} onChange={(e) => updateExperienciaLaboral(index, 'fecha_inicio', e.target.value)} required className={inputStyles}/>
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2"><Calendar className="h-4 w-4"/> Fecha de Fin</Label>
-                      <Input type="date" value={experiencia.fechaFin} onChange={(e) => updateExperienciaLaboral(index, 'fechaFin', e.target.value)} className={inputStyles}/>
+                      <Input type="date" value={experiencia.fecha_fin} onChange={(e) => updateExperienciaLaboral(index, 'fecha_fin', e.target.value)} className={inputStyles}/>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2"><FileText className="h-4 w-4"/> Descripción</Label>
                     <Textarea value={experiencia.descripcion} onChange={(e) => updateExperienciaLaboral(index, 'descripcion', e.target.value)} placeholder="Descripción de responsabilidades..." className={inputStyles}/>
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="habilidades" className="mt-6 space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-white">Habilidades e Idiomas</h3>
+                <Button type="button" onClick={addHabilidadIdioma} className="bg-slate-700 border border-slate-600 text-white hover:bg-slate-600">
+                  <Plus className="h-4 w-4 mr-2" /> Agregar Habilidad o Idioma
+                </Button>
+              </div>
+              {formData.habilidades_idiomas.map((habilidad, index) => (
+                <div key={index} className="border border-slate-700 rounded-lg p-4 space-y-4 bg-slate-900/20 relative">
+                   <Button type="button" variant="ghost" size="icon" onClick={() => removeHabilidadIdioma(index)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 hover:bg-slate-700">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Award className="h-4 w-4"/> Habilidad o Idioma</Label>
+                      <Input value={habilidad.habilidad} onChange={(e) => updateHabilidadIdioma(index, 'habilidad', e.target.value)} required className={inputStyles} placeholder="Nombre de la habilidad o idioma"/>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><GraduationCap className="h-4 w-4"/> Nivel</Label>
+                      <Select id="nivel" name="nivel" value={habilidad.nivel} onChange={(e) => updateHabilidadIdioma(index, 'nivel', e.target.value)} required className={inputStyles}>
+                        <SelectTrigger className="flex items-center justify-between w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Básico">Básico</SelectItem>
+                          <SelectItem value="Intermedio">Intermedio</SelectItem>
+                          <SelectItem value="Avanzado">Avanzado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               ))}

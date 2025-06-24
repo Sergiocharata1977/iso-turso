@@ -1,163 +1,125 @@
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { X, Loader2, Paperclip, FileText, Tag } from 'lucide-react';
+import documentosService from '../../services/documentosService';
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
-
-function DocumentoModal({ isOpen, onClose, onSave, documento }) {
+const DocumentoModal = ({ isOpen, onClose, onSave, documento }) => {
   const [formData, setFormData] = useState({
-    numero: "",
-    titulo: "",
-    version: "1.0",
-    documento: "",
-    procesos: "",
-    archivo: null,
-    archivoNombre: ""
+    titulo: '',
+    version: '',
+    descripcion: '',
   });
+  const [file, setFile] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [procesos, setProcesos] = useState(() => {
-    const saved = localStorage.getItem("procesos");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const isEditMode = Boolean(documento);
 
   useEffect(() => {
-    if (documento) {
-      setFormData(documento);
+    if (isEditMode) {
+      setFormData({
+        titulo: documento.titulo || '',
+        version: documento.version || '',
+        descripcion: documento.descripcion || '',
+      });
     } else {
-      // Generar número automático
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      setFormData({
-        ...formData,
-        numero: `D${year}${month}-${random}`,
-        version: "1.0"
-      });
+      setFormData({ titulo: '', version: '', descripcion: '' });
     }
-  }, [documento]);
+    setFile(null);
+  }, [documento, isOpen]);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        archivo: file,
-        archivoNombre: file.name
-      });
-    }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    setIsSaving(true);
+
+    if (!formData.titulo || !formData.version) {
+        toast.error('Los campos Título y Versión son obligatorios.');
+        setIsSaving(false);
+        return;
+    }
+
+    if (!isEditMode && !file) {
+        toast.error('Debe seleccionar un archivo para crear un nuevo documento.');
+        setIsSaving(false);
+        return;
+    }
+
+    const data = new FormData();
+    data.append('titulo', formData.titulo);
+    data.append('version', formData.version);
+    data.append('descripcion', formData.descripcion);
+    if (file) {
+      data.append('archivo', file);
+    }
+
+    const promise = isEditMode
+      ? documentosService.updateDocumento(documento.id, data)
+      : documentosService.createDocumento(data);
+
+    toast.promise(promise, {
+      loading: 'Guardando documento...',
+      success: () => {
+        onSave();
+        return `Documento ${isEditMode ? 'actualizado' : 'creado'} con éxito.`;
+      },
+      error: `Error al ${isEditMode ? 'actualizar' : 'crear'} el documento.`,
+      finally: () => setIsSaving(false),
+    });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>
-            {documento ? "Editar Documento" : "Nuevo Documento"}
+          <DialogTitle className="text-2xl">
+            {isEditMode ? 'Editar Documento' : 'Nuevo Documento'}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="numero">Número de Documento</Label>
-              <Input
-                id="numero"
-                value={formData.numero}
-                disabled
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="version">Versión</Label>
-              <Input
-                id="version"
-                value={formData.version}
-                onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                required
-                placeholder="Ej: 1.0"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div>
+            <Label htmlFor="titulo" className="flex items-center mb-2"><FileText className="mr-2 h-4 w-4"/>Título *</Label>
+            <Input id="titulo" name="titulo" value={formData.titulo} onChange={handleChange} className="bg-slate-800 border-slate-600" />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="titulo">Título del Documento</Label>
-            <Input
-              id="titulo"
-              value={formData.titulo}
-              onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              required
-            />
+          <div>
+            <Label htmlFor="version" className="flex items-center mb-2"><Tag className="mr-2 h-4 w-4"/>Versión *</Label>
+            <Input id="version" name="version" value={formData.version} onChange={handleChange} className="bg-slate-800 border-slate-600" />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="procesos">Proceso Relacionado</Label>
-            <select
-              id="procesos"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              value={formData.procesos}
-              onChange={(e) => setFormData({ ...formData, procesos: e.target.value })}
-              required
-            >
-              <option value="">Seleccione un proceso</option>
-              {procesos.map((proceso) => (
-                <option key={proceso.id} value={proceso.titulo}>
-                  {proceso.titulo}
-                </option>
-              ))}
-            </select>
+          <div>
+            <Label htmlFor="descripcion" className="flex items-center mb-2">Descripción</Label>
+            <Textarea id="descripcion" name="descripcion" value={formData.descripcion} onChange={handleChange} className="bg-slate-800 border-slate-600" />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="documento">Contenido del Documento</Label>
-            <Textarea
-              id="documento"
-              value={formData.documento}
-              onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
-              required
-              className="min-h-[200px]"
-            />
+          <div>
+            <Label htmlFor="archivo" className="flex items-center mb-2"><Paperclip className="mr-2 h-4 w-4"/>Archivo {isEditMode ? '(Opcional: reemplazar existente)' : '*'}</Label>
+            <Input id="archivo" type="file" onChange={handleFileChange} className="bg-slate-800 border-slate-600 file:text-white" />
+            {file && <p className="text-sm text-slate-400 mt-2">Archivo seleccionado: {file.name}</p>}
+            {isEditMode && !file && <p className="text-sm text-slate-400 mt-2">Archivo actual: {documento.archivo_nombre}</p>}
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="archivo">Archivo Adjunto</Label>
-            <Input
-              id="archivo"
-              type="file"
-              onChange={handleFileChange}
-              className="cursor-pointer"
-            />
-            {formData.archivoNombre && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Archivo seleccionado: {formData.archivoNombre}
-              </p>
-            )}
-          </div>
-
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} className="bg-transparent border-slate-600 hover:bg-slate-700">
               Cancelar
             </Button>
-            <Button type="submit">
-              {documento ? "Guardar Cambios" : "Crear Documento"}
+            <Button type="submit" disabled={isSaving} className="bg-teal-600 hover:bg-teal-700">
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Guardar
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-}
+};
 
 export default DocumentoModal;

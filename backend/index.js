@@ -5,7 +5,7 @@ import { testConnection } from './lib/tursoClient.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
-const PORT = process.env.PORT || 3002; 
+const PORT = process.env.PORT || 5000; 
 
 // Middleware
 app.use(cors()); 
@@ -28,7 +28,7 @@ import personalRouter from './routes/personal.routes.js';
 import objetivosCalidadRouter from './routes/objetivos_calidad.routes.js';
 import normasRouter from './routes/normas.routes.js';
 import capacitacionesRouter from './routes/capacitaciones.routes.js';
-import evaluacionesRouter from './routes/evaluaciones.routes.js';
+import evaluacionesGrupalesRouter from './routes/evaluaciones-grupales.routes.js';
 import indicadoresRouter from './routes/indicadores.routes.js';
 import medicionesRouter from './routes/mediciones.routes.js';
 import ticketsRouter from './routes/tickets.routes.js';
@@ -45,7 +45,7 @@ app.use('/api/personal', personalRouter);
 app.use('/api/objetivos-calidad', objetivosCalidadRouter);
 app.use('/api/normas', normasRouter);
 app.use('/api/capacitaciones', capacitacionesRouter);
-app.use('/api/evaluaciones', evaluacionesRouter);
+app.use('/api/evaluaciones-grupales', evaluacionesGrupalesRouter);
 app.use('/api/indicadores', indicadoresRouter);
 app.use('/api/mediciones', medicionesRouter);
 app.use('/api/tickets', ticketsRouter);

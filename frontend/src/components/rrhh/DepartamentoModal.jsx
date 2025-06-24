@@ -5,40 +5,42 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { Label } from "../../components/ui/label";
+import { Building2, FileText, Target, X } from "lucide-react";
 
 const initialFormData = {
   nombre: "",
   descripcion: "",
-  objetivos: "", // Añadido para gestionar los objetivos
-  responsableId: "", // Campo para futuro uso, coincide con el schema
+  objetivos: "",
+  responsableId: "",
 };
 
 function DepartamentoModal({ isOpen, onClose, onSave, departamento }) {
   const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
-    // Este efecto se ejecuta cuando el modal se abre/cierra o cuando cambia el departamento a editar
     if (isOpen) {
       if (departamento) {
-        // Modo Edición: Cargar datos del departamento existente
         setFormData({
           nombre: departamento.nombre || "",
           descripcion: departamento.descripcion || "",
           objetivos: departamento.objetivos || "",
           responsableId: departamento.responsableId || "",
-          id: departamento.id, // Mantener el ID para la actualización
+          id: departamento.id,
         });
       } else {
-        // Modo Creación: Resetear el formulario al estado inicial
         setFormData(initialFormData);
       }
     } 
-  }, [departamento, isOpen]); // Depender de `isOpen` es crucial para el reseteo
+  }, [departamento, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -47,68 +49,88 @@ function DepartamentoModal({ isOpen, onClose, onSave, departamento }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="dark max-w-lg w-full rounded-xl shadow-2xl border-border bg-background text-foreground">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">
+      <DialogContent className="max-w-2xl bg-slate-800 border-slate-700 text-white">
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogTitle className="text-xl font-semibold text-white">
             {departamento ? "Editar Departamento" : "Nuevo Departamento"}
           </DialogTitle>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose} 
+            className="text-white hover:bg-slate-700"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 p-1">
+        
+        <form id="departamento-form" onSubmit={handleSubmit} className="space-y-6 mt-6">
           <div className="space-y-2">
-            <Label htmlFor="nombre">Nombre del Departamento</Label>
+            <Label htmlFor="nombre" className="text-white flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Nombre del Departamento
+            </Label>
             <Input
               id="nombre"
+              name="nombre"
               value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
               placeholder="Ej: Recursos Humanos"
               required
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="descripcion">Descripción</Label>
+            <Label htmlFor="descripcion" className="text-white flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Descripción
+            </Label>
             <Textarea
               id="descripcion"
+              name="descripcion"
               rows={4}
               value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500 resize-none"
               placeholder="Describe la función principal del departamento..."
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="objetivos">Objetivos</Label>
+            <Label htmlFor="objetivos" className="text-white flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Objetivos
+            </Label>
             <Textarea
               id="objetivos"
+              name="objetivos"
               rows={4}
               value={formData.objetivos}
-              onChange={(e) => setFormData({ ...formData, objetivos: e.target.value })}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500 resize-none"
               placeholder="Define los objetivos clave del departamento..."
             />
           </div>
-
-          {/* Campo para responsableId (opcional, se puede implementar con un Select en el futuro) */}
-          {/* 
-          <div className="space-y-2">
-            <Label htmlFor="responsableId">Responsable (ID)</Label>
-            <Input
-              id="responsableId"
-              value={formData.responsableId}
-              onChange={(e) => setFormData({ ...formData, responsableId: e.target.value })}
-              placeholder="ID del usuario responsable (opcional)"
-            />
-          </div>
-          */}
-
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {departamento ? "Guardar Cambios" : "Crear Departamento"}
-            </Button>
-          </DialogFooter>
         </form>
+
+        <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onClose}
+            className="bg-transparent border-slate-600 text-white hover:bg-slate-700"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            form="departamento-form"
+            className="bg-teal-600 hover:bg-teal-700 text-white"
+          >
+            {departamento ? "Guardar Cambios" : "Crear Departamento"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

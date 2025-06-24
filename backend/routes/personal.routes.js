@@ -8,11 +8,7 @@ const router = Router();
 router.get('/', async (req, res, next) => {
   try {
     const result = await tursoClient.execute({
-      sql: `SELECT p.*, d.nombre as departamento_nombre, pu.titulo_puesto as puesto_nombre
-            FROM personal p
-            LEFT JOIN departamentos d ON p.departamentoId = d.id
-            LEFT JOIN puestos pu ON p.puestoId = pu.id
-            ORDER BY p.nombre_completo`
+      sql: `SELECT *, (nombres || ' ' || apellidos) AS nombre_completo FROM personal ORDER BY apellidos, nombres`
     });
     res.json(result.rows);
   } catch (error) {
@@ -25,17 +21,18 @@ router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
     const result = await tursoClient.execute({
-      sql: `SELECT p.*, d.nombre as departamento_nombre, pu.titulo_puesto as puesto_nombre
-            FROM personal p
-            LEFT JOIN departamentos d ON p.departamentoId = d.id
-            LEFT JOIN puestos pu ON p.puestoId = pu.id
-            WHERE p.id = ?`,
+      sql: `SELECT *, (nombres || ' ' || apellidos) AS nombre_completo FROM personal WHERE id = ?`,
       args: [id]
     });
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Personal no encontrado' });
     }
-    res.json(result.rows[0]);
+    // Parse JSON fields
+    const personal = result.rows[0];
+    personal.formacion_academica = JSON.parse(personal.formacion_academica || '[]');
+    personal.experiencia_laboral = JSON.parse(personal.experiencia_laboral || '[]');
+    personal.habilidades_idiomas = JSON.parse(personal.habilidades_idiomas || '[]');
+    res.json(personal);
   } catch (error) {
     next(error);
   }
@@ -44,18 +41,25 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/personal - Crear nuevo personal
 router.post('/', async (req, res, next) => {
   const {
-    nombre_completo,
+    nombres,
+    apellidos,
     email,
     telefono,
-    departamentoId,
-    puestoId,
+    documento_identidad,
+    fecha_nacimiento,
+    nacionalidad,
+    direccion,
+    telefono_emergencia,
     fecha_contratacion,
     numero_legajo,
-    estado = 'activo'
+    estado = 'Activo',
+    formacion_academica = [],
+    experiencia_laboral = [],
+    habilidades_idiomas = []
   } = req.body;
 
-  if (!nombre_completo) {
-    return res.status(400).json({ error: 'El nombre completo es obligatorio.' });
+  if (!nombres || !apellidos) {
+    return res.status(400).json({ error: 'Nombres y apellidos son obligatorios.' });
   }
   if (!email) {
     return res.status(400).json({ error: 'El email es obligatorio.' });
@@ -70,67 +74,36 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: 'Ya existe personal con este email.' });
     }
 
-    if (departamentoId) {
-      const deptCheck = await tursoClient.execute({
-        sql: 'SELECT id FROM departamentos WHERE id = ?',
-        args: [departamentoId]
-      });
-      if (deptCheck.rows.length === 0) {
-        return res.status(404).json({ error: 'El departamento especificado no existe.' });
-      }
-    }
-
-    if (puestoId) {
-      const puestoCheck = await tursoClient.execute({
-        sql: 'SELECT id FROM puestos WHERE id = ?',
-        args: [puestoId]
-      });
-      if (puestoCheck.rows.length === 0) {
-        return res.status(404).json({ error: 'El puesto especificado no existe.' });
-      }
-    }
-
     const id = crypto.randomUUID();
-    await tursoClient.execute({
+    const result = await tursoClient.execute({
       sql: `INSERT INTO personal (
-              id, nombre_completo, email, telefono, departamentoId, puestoId, 
-              fecha_contratacion, numero_legajo, estado, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+              id, nombres, apellidos, email, telefono, documento_identidad, fecha_nacimiento, 
+              nacionalidad, direccion, telefono_emergencia, fecha_contratacion, 
+              numero_legajo, estado, formacion_academica, experiencia_laboral, habilidades_idiomas
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;`,
       args: [
-        id, nombre_completo, email, telefono, departamentoId, puestoId,
-        fecha_contratacion, numero_legajo, estado
+        id, nombres, apellidos, email, telefono, documento_identidad, fecha_nacimiento, 
+        nacionalidad, direccion, telefono_emergencia, fecha_contratacion, 
+        numero_legajo, estado,
+        JSON.stringify(formacion_academica),
+        JSON.stringify(experiencia_laboral),
+        JSON.stringify(habilidades_idiomas)
       ]
     });
 
-    const fullResult = await tursoClient.execute({
-      sql: `SELECT p.*, d.nombre as departamento_nombre, pu.titulo_puesto as puesto_nombre
-            FROM personal p
-            LEFT JOIN departamentos d ON p.departamentoId = d.id
-            LEFT JOIN puestos pu ON p.puestoId = pu.id
-            WHERE p.id = ?`,
-      args: [id]
-    });
-    res.status(201).json(fullResult.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     next(error);
   }
 });
 
+
 // PUT /api/personal/:id - Actualizar personal
 router.put('/:id', async (req, res, next) => {
   const { id } = req.params;
-  const { 
-    nombre_completo, 
-    email, 
-    telefono, 
-    departamentoId, 
-    puestoId, 
-    fecha_contratacion,
-    numero_legajo,
-    estado
-  } = req.body;
+  const updateData = req.body;
 
-  if (Object.keys(req.body).length === 0) {
+  if (Object.keys(updateData).length === 0) {
     return res.status(400).json({ error: 'No se proporcionaron datos para actualizar.' });
   }
 
@@ -140,54 +113,38 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Personal no encontrado.' });
     }
 
-    if (email) {
-      const emailCheck = await tursoClient.execute({ sql: 'SELECT id FROM personal WHERE email = ? AND id != ?', args: [email, id] });
+    if (updateData.email) {
+      const emailCheck = await tursoClient.execute({ sql: 'SELECT id FROM personal WHERE email = ? AND id != ?', args: [updateData.email, id] });
       if (emailCheck.rows.length > 0) {
         return res.status(409).json({ error: 'Ya existe otro personal con este email.' });
-      }
-    }
-    if (departamentoId) {
-      const deptCheck = await tursoClient.execute({ sql: 'SELECT id FROM departamentos WHERE id = ?', args: [departamentoId] });
-      if (deptCheck.rows.length === 0) {
-        return res.status(404).json({ error: 'El departamento especificado no existe.' });
-      }
-    }
-    if (puestoId) {
-      const puestoCheck = await tursoClient.execute({ sql: 'SELECT id FROM puestos WHERE id = ?', args: [puestoId] });
-      if (puestoCheck.rows.length === 0) {
-        return res.status(404).json({ error: 'El puesto especificado no existe.' });
       }
     }
 
     const fields = [];
     const values = [];
-    if (nombre_completo !== undefined) { fields.push('nombre_completo = ?'); values.push(nombre_completo); }
-    if (email !== undefined) { fields.push('email = ?'); values.push(email); }
-    if (telefono !== undefined) { fields.push('telefono = ?'); values.push(telefono); }
-    if (departamentoId !== undefined) { fields.push('departamentoId = ?'); values.push(departamentoId); }
-    if (puestoId !== undefined) { fields.push('puestoId = ?'); values.push(puestoId); }
-    if (fecha_contratacion !== undefined) { fields.push('fecha_contratacion = ?'); values.push(fecha_contratacion); }
-    if (numero_legajo !== undefined) { fields.push('numero_legajo = ?'); values.push(numero_legajo); }
-    if (estado !== undefined) { fields.push('estado = ?'); values.push(estado); }
+    
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        // Stringify JSON fields before saving
+        if (['formacion_academica', 'experiencia_laboral', 'habilidades_idiomas'].includes(key)) {
+          values.push(JSON.stringify(updateData[key]));
+        } else {
+          values.push(updateData[key]);
+        }
+      }
+    });
 
     if (fields.length === 0) {
       return res.status(400).json({ error: 'No hay campos válidos para actualizar.' });
     }
 
     fields.push('fecha_actualizacion = CURRENT_TIMESTAMP');
-    const sqlUpdate = `UPDATE personal SET ${fields.join(', ')} WHERE id = ?`;
+    const sqlUpdate = `UPDATE personal SET ${fields.join(', ')} WHERE id = ? RETURNING *;`;
     values.push(id);
 
-    await tursoClient.execute({ sql: sqlUpdate, args: values });
-
-    const result = await tursoClient.execute({
-      sql: `SELECT p.*, d.nombre as departamento_nombre, pu.titulo_puesto as puesto_nombre
-            FROM personal p
-            LEFT JOIN departamentos d ON p.departamentoId = d.id
-            LEFT JOIN puestos pu ON p.puestoId = pu.id
-            WHERE p.id = ?`,
-      args: [id]
-    });
+    const result = await tursoClient.execute({ sql: sqlUpdate, args: values });
+    
     res.json(result.rows[0]);
   } catch (error) {
     next(error);

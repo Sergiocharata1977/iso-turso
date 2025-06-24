@@ -7,19 +7,7 @@ const router = Router();
 router.get('/', async (req, res, next) => {
   try {
     const result = await tursoClient.execute({
-      sql: `
-        SELECT
-          p.*, 
-          d.nombre AS departamento_nombre,
-          j.titulo_puesto AS reporta_a_puesto_nombre
-        FROM
-          puestos p
-        LEFT JOIN
-          departamentos d ON p.departamentoId = d.id
-        LEFT JOIN
-          puestos j ON p.reporta_a_puesto_id = j.id
-        ORDER BY p.titulo_puesto ASC;
-      `,
+      sql: `SELECT * FROM puestos ORDER BY titulo_puesto ASC;`,
       args: []
     });
     res.json(result.rows);
@@ -33,8 +21,6 @@ router.post('/', async (req, res, next) => {
   const {
     titulo_puesto,
     codigo_puesto,
-    departamentoId,
-    reporta_a_puesto_id,
     proposito_general,
     principales_responsabilidades,
     requisitos,
@@ -50,58 +36,36 @@ router.post('/', async (req, res, next) => {
   if (!titulo_puesto || titulo_puesto.trim() === '') {
     return res.status(400).json({ error: 'El título del puesto es obligatorio.' });
   }
-  if (departamentoId === undefined || departamentoId === null) {
-    return res.status(400).json({ error: 'El ID del departamento es obligatorio.' });
-  }
 
   try {
-    const deptCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM departamentos WHERE id = ?',
-      args: [departamentoId]
-    });
-    if (deptCheck.rows.length === 0) {
-      return res.status(404).json({ error: `El departamento con ID ${departamentoId} no existe.` });
-    }
-
-    if (reporta_a_puesto_id) {
-      const jefeCheck = await tursoClient.execute({
-        sql: 'SELECT id FROM puestos WHERE id = ?',
-        args: [reporta_a_puesto_id]
-      });
-      if (jefeCheck.rows.length === 0) {
-        return res.status(404).json({ error: `El puesto al que reporta (ID: ${reporta_a_puesto_id}) no existe.` });
-      }
-    }
-
     const tituloExistente = await tursoClient.execute({
-        sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(titulo_puesto)) = LOWER(TRIM(?))',
-        args: [titulo_puesto]
+      sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(titulo_puesto)) = LOWER(TRIM(?))',
+      args: [titulo_puesto]
     });
     if (tituloExistente.rows.length > 0) {
-        return res.status(409).json({ error: `El puesto con título '${titulo_puesto.trim()}' ya existe.` });
+      return res.status(409).json({ error: `El puesto con título '${titulo_puesto.trim()}' ya existe.` });
     }
+
     if (codigo_puesto && codigo_puesto.trim() !== '') {
-        const codigoExistente = await tursoClient.execute({
-            sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(codigo_puesto)) = LOWER(TRIM(?))',
-            args: [codigo_puesto]
-        });
-        if (codigoExistente.rows.length > 0) {
-            return res.status(409).json({ error: `El puesto con código '${codigo_puesto.trim()}' ya existe.` });
-        }
+      const codigoExistente = await tursoClient.execute({
+        sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(codigo_puesto)) = LOWER(TRIM(?))',
+        args: [codigo_puesto]
+      });
+      if (codigoExistente.rows.length > 0) {
+        return res.status(409).json({ error: `El puesto con código '${codigo_puesto.trim()}' ya existe.` });
+      }
     }
 
     const result = await tursoClient.execute({
       sql: `INSERT INTO puestos (
-                titulo_puesto, codigo_puesto, departamentoId, reporta_a_puesto_id,
+                titulo_puesto, codigo_puesto, 
                 proposito_general, principales_responsabilidades, requisitos,
                 formacion_requerida, experiencia_requerida, conocimientos_especificos,
                 competencias_necesarias, nivel, documento_descripcion_puesto_url, estado_puesto
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id;`,
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;`,
       args: [
         titulo_puesto.trim(),
         codigo_puesto ? codigo_puesto.trim() : null,
-        departamentoId,
-        reporta_a_puesto_id || null,
         proposito_general || null,
         principales_responsabilidades || null,
         requisitos || null,
@@ -115,19 +79,10 @@ router.post('/', async (req, res, next) => {
       ]
     });
 
-    if (result.rows.length > 0 && result.rows[0].id) {
-      const nuevoPuestoId = result.rows[0].id;
-      const nuevoPuesto = await tursoClient.execute({
-        sql: `SELECT p.*, d.nombre AS departamento_nombre, j.titulo_puesto AS reporta_a_puesto_nombre
-              FROM puestos p
-              LEFT JOIN departamentos d ON p.departamentoId = d.id
-              LEFT JOIN puestos j ON p.reporta_a_puesto_id = j.id
-              WHERE p.id = ?`,
-        args: [nuevoPuestoId]
-      });
-      res.status(201).json(nuevoPuesto.rows[0]);
+    if (result.rows.length > 0) {
+      res.status(201).json(result.rows[0]);
     } else {
-      res.status(500).json({ error: 'Error al crear el puesto, no se pudo obtener el ID.' });
+      res.status(500).json({ error: 'Error al crear el puesto, no se pudo obtener el registro guardado.' });
     }
 
   } catch (error) {
@@ -140,20 +95,7 @@ router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
     const result = await tursoClient.execute({
-      sql: `
-        SELECT
-          p.*,
-          d.nombre AS departamento_nombre,
-          j.titulo_puesto AS reporta_a_puesto_nombre
-        FROM
-          puestos p
-        LEFT JOIN
-          departamentos d ON p.departamentoId = d.id
-        LEFT JOIN
-          puestos j ON p.reporta_a_puesto_id = j.id
-        WHERE
-          p.id = ?
-      `,
+      sql: `SELECT * FROM puestos WHERE id = ?;`,
       args: [id]
     });
 
@@ -172,8 +114,6 @@ router.put('/:id', async (req, res, next) => {
   const {
     titulo_puesto,
     codigo_puesto,
-    departamentoId,
-    reporta_a_puesto_id,
     proposito_general,
     principales_responsabilidades,
     requisitos,
@@ -200,41 +140,24 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: `Puesto con ID ${id} no encontrado.` });
     }
 
-    if (titulo_puesto) {
-        const tituloExistente = await tursoClient.execute({
-            sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(titulo_puesto)) = LOWER(TRIM(?)) AND id != ?',
-            args: [titulo_puesto, id]
-        });
-        if (tituloExistente.rows.length > 0) {
-            return res.status(409).json({ error: `El puesto con título '${titulo_puesto.trim()}' ya existe.` });
-        }
+    if (titulo_puesto && titulo_puesto.trim() !== puestoActualResult.rows[0].titulo_puesto) {
+      const tituloExistente = await tursoClient.execute({
+        sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(titulo_puesto)) = LOWER(TRIM(?)) AND id != ?',
+        args: [titulo_puesto, id]
+      });
+      if (tituloExistente.rows.length > 0) {
+        return res.status(409).json({ error: `El puesto con título '${titulo_puesto.trim()}' ya existe.` });
+      }
     }
-    if (codigo_puesto) {
-        const codigoExistente = await tursoClient.execute({
-            sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(codigo_puesto)) = LOWER(TRIM(?)) AND id != ?',
-            args: [codigo_puesto, id]
-        });
-        if (codigoExistente.rows.length > 0) {
-            return res.status(409).json({ error: `El puesto con código '${codigo_puesto.trim()}' ya existe.` });
-        }
-    }
-    if (departamentoId) {
-        const deptCheck = await tursoClient.execute({
-            sql: 'SELECT id FROM departamentos WHERE id = ?',
-            args: [departamentoId]
-        });
-        if (deptCheck.rows.length === 0) {
-            return res.status(404).json({ error: `El departamento con ID ${departamentoId} no existe.` });
-        }
-    }
-    if (reporta_a_puesto_id) {
-        const jefeCheck = await tursoClient.execute({
-            sql: 'SELECT id FROM puestos WHERE id = ?',
-            args: [reporta_a_puesto_id]
-        });
-        if (jefeCheck.rows.length === 0) {
-            return res.status(404).json({ error: `El puesto al que reporta (ID: ${reporta_a_puesto_id}) no existe.` });
-        }
+
+    if (codigo_puesto && codigo_puesto.trim() !== puestoActualResult.rows[0].codigo_puesto) {
+      const codigoExistente = await tursoClient.execute({
+        sql: 'SELECT id FROM puestos WHERE LOWER(TRIM(codigo_puesto)) = LOWER(TRIM(?)) AND id != ?',
+        args: [codigo_puesto, id]
+      });
+      if (codigoExistente.rows.length > 0) {
+        return res.status(409).json({ error: `El puesto con código '${codigo_puesto.trim()}' ya existe.` });
+      }
     }
 
     const fieldsToUpdate = [];
@@ -243,8 +166,6 @@ router.put('/:id', async (req, res, next) => {
 
     if (titulo_puesto !== undefined) { fieldsToUpdate.push(`titulo_puesto = ?${fieldIndex++}`); valuesToUpdate.push(titulo_puesto.trim()); }
     if (codigo_puesto !== undefined) { fieldsToUpdate.push(`codigo_puesto = ?${fieldIndex++}`); valuesToUpdate.push(codigo_puesto ? codigo_puesto.trim() : null); }
-    if (departamentoId !== undefined) { fieldsToUpdate.push(`departamentoId = ?${fieldIndex++}`); valuesToUpdate.push(departamentoId); }
-    if (reporta_a_puesto_id !== undefined) { fieldsToUpdate.push(`reporta_a_puesto_id = ?${fieldIndex++}`); valuesToUpdate.push(reporta_a_puesto_id || null); }
     if (proposito_general !== undefined) { fieldsToUpdate.push(`proposito_general = ?${fieldIndex++}`); valuesToUpdate.push(proposito_general || null); }
     if (principales_responsabilidades !== undefined) { fieldsToUpdate.push(`principales_responsabilidades = ?${fieldIndex++}`); valuesToUpdate.push(principales_responsabilidades || null); }
     if (requisitos !== undefined) { fieldsToUpdate.push(`requisitos = ?${fieldIndex++}`); valuesToUpdate.push(requisitos || null); }
@@ -262,7 +183,7 @@ router.put('/:id', async (req, res, next) => {
 
     fieldsToUpdate.push(`updated_at = CURRENT_TIMESTAMP`);
 
-    const sqlUpdate = `UPDATE puestos SET ${fieldsToUpdate.join(', ')} WHERE id = ?${fieldIndex} RETURNING id;`;
+    const sqlUpdate = `UPDATE puestos SET ${fieldsToUpdate.join(', ')} WHERE id = ?${fieldIndex} RETURNING *;`;
     valuesToUpdate.push(id);
 
     const result = await tursoClient.execute({
@@ -270,17 +191,8 @@ router.put('/:id', async (req, res, next) => {
       args: valuesToUpdate
     });
 
-    if (result.rows.length > 0 && result.rows[0].id) {
-      const updatedPuestoId = result.rows[0].id;
-      const updatedPuestoData = await tursoClient.execute({
-        sql: `SELECT p.*, d.nombre AS departamento_nombre, j.titulo_puesto AS reporta_a_puesto_nombre
-              FROM puestos p
-              LEFT JOIN departamentos d ON p.departamentoId = d.id
-              LEFT JOIN puestos j ON p.reporta_a_puesto_id = j.id
-              WHERE p.id = ?`,
-        args: [updatedPuestoId]
-      });
-      res.json(updatedPuestoData.rows[0]);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
     } else {
       res.status(404).json({ error: `Puesto con ID ${id} no encontrado después de intentar actualizar.` });
     }
@@ -303,7 +215,7 @@ router.delete('/:id', async (req, res, next) => {
     if (puestoExistente.rows.length === 0) {
       return res.status(404).json({ error: `Puesto con ID ${id} no encontrado.` });
     }
-    
+
     await tursoClient.execute({
       sql: 'DELETE FROM puestos WHERE id = ?',
       args: [id]
@@ -313,7 +225,7 @@ router.delete('/:id', async (req, res, next) => {
 
   } catch (error) {
     if (error.message && error.message.includes('FOREIGN KEY constraint failed')) {
-        return res.status(409).json({ error: 'No se puede eliminar el puesto porque es referenciado por otras entidades (ej. otros puestos que le reportan o personal asignado).' });
+      return res.status(409).json({ error: 'No se puede eliminar el puesto porque es referenciado por otras entidades (ej. personal asignado).' });
     }
     next(error);
   }

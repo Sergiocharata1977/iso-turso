@@ -202,13 +202,21 @@ async function initDatabase() {
     await tursoClient.execute({
       sql: `
         CREATE TABLE IF NOT EXISTS puestos (
-          id TEXT PRIMARY KEY,
-          titulo_puesto TEXT NOT NULL,
-          descripcion TEXT,
-          departamentoId TEXT,
-          reporta_a_puesto_id TEXT, 
-          fecha_creacion TEXT NOT NULL,
-          fecha_actualizacion TEXT
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          titulo_puesto TEXT NOT NULL UNIQUE,
+          codigo_puesto TEXT UNIQUE,
+          proposito_general TEXT,
+          principales_responsabilidades TEXT,
+          competencias_necesarias TEXT,
+          requisitos TEXT,
+          experiencia_requerida TEXT,
+          formacion_requerida TEXT,
+          estado_puesto TEXT DEFAULT 'Activo',
+          nivel TEXT,
+          conocimientos_especificos TEXT,
+          documento_descripcion_puesto_url TEXT,
+          fecha_creacion TEXT DEFAULT (datetime('now', 'localtime')),
+          fecha_actualizacion TEXT DEFAULT (datetime('now', 'localtime'))
         )
       `
     });
@@ -219,17 +227,23 @@ async function initDatabase() {
       sql: `
         CREATE TABLE IF NOT EXISTS personal (
           id TEXT PRIMARY KEY,
-          nombre_completo TEXT NOT NULL,
+          nombres TEXT NOT NULL,
+          apellidos TEXT NOT NULL,
           email TEXT UNIQUE NOT NULL,
           telefono TEXT,
-          foto_url TEXT,
-          departamentoId TEXT,
-          puestoId TEXT,
+          documento_identidad TEXT UNIQUE,
+          fecha_nacimiento TEXT,
+          nacionalidad TEXT,
+          direccion TEXT,
+          telefono_emergencia TEXT,
           fecha_contratacion TEXT,
           numero_legajo TEXT UNIQUE,
-          estado TEXT DEFAULT 'activo',
-          fecha_creacion TEXT NOT NULL,
-          fecha_actualizacion TEXT
+          estado TEXT DEFAULT 'Activo',
+          formacion_academica TEXT, -- JSON
+          experiencia_laboral TEXT, -- JSON
+          habilidades_idiomas TEXT, -- JSON
+          fecha_creacion TEXT DEFAULT (datetime('now', 'localtime')),
+          fecha_actualizacion TEXT DEFAULT (datetime('now', 'localtime'))
         )
       `
     });
