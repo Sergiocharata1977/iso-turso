@@ -11,6 +11,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getEstadoInfo, ESTADOS_POR_ETAPA, LABELS, DESCRIPTIONS } from '@/lib/hallazgoEstados';
+import { STAGES, getStageFromEstado, getInitialStateForStage, canMove } from '@/lib/hallazgoWorkflow';
+import hallazgosService from '@/services/hallazgosService';
+import { toast } from 'react-toastify';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import WorkflowStage from './WorkflowStage';
 import AccionItem from './AccionItem';
@@ -57,117 +67,84 @@ const stageConfig = {
   },
 };
 
-const HallazgoDetailModal = ({ isOpen, onClose, hallazgo }) => {
+const HallazgoDetailModal = ({ isOpen, onClose, hallazgo, onUpdate }) => {
   if (!hallazgo) return null;
 
   const estadoInfo = getEstadoInfo(hallazgo.estado);
 
+  const handleStateChange = async (newEstado) => {
+    try {
+      await hallazgosService.updateHallazgo(hallazgo.id, { estado: newEstado });
+      toast.success(`Estado actualizado a ${newEstado}`);
+      if(onUpdate) {
+        onUpdate();
+      }
+    } catch (error) {
+      console.error('Failed to update state', error);
+      toast.error('No se pudo actualizar el estado.');
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[90vw] max-w-6xl h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <div className="flex justify-between items-center">
-            <DialogTitle className="text-2xl font-bold text-gray-800">
-              {hallazgo.numeroHallazgo}: {hallazgo.titulo}
-            </DialogTitle>
-            <DialogDescription>
-                Visualiza y gestiona los detalles, flujo, acciones e historial del hallazgo.
-              </DialogDescription>
-            <Button>Cambiar Estado</Button>
-          </div>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">Detalle del Hallazgo: {hallazgo.codigo}</DialogTitle>
+          <DialogDescription>
+            Visualiza y gestiona los detalles del hallazgo.
+          </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-grow overflow-y-auto">
-          <Tabs defaultValue="workflow" className="mt-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="details">Detalles</TabsTrigger>
-              <TabsTrigger value="workflow">Flujo de Proceso</TabsTrigger>
-              <TabsTrigger value="actions">Acciones</TabsTrigger>
-              <TabsTrigger value="history">Historial</TabsTrigger>
-            </TabsList>
+        <div className="py-4 space-y-4">
+          <div className="grid grid-cols-3 items-start gap-4">
+            <p className="text-sm font-semibold text-gray-600 col-span-1 pt-1">Descripción</p>
+            <p className="text-sm text-gray-800 col-span-2">{hallazgo.descripcion || 'No especificada'}</p>
+          </div>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <p className="text-sm font-semibold text-gray-600">Responsable</p>
+            <p className="text-sm text-gray-800 col-span-2">{hallazgo.responsable || 'No especificado'}</p>
+          </div>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <p className="text-sm font-semibold text-gray-600">Fecha</p>
+            <p className="text-sm text-gray-800 col-span-2">{format(new Date(hallazgo.fecha), 'dd/MM/yyyy')}</p>
+          </div>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <p className="text-sm font-semibold text-gray-600">Prioridad</p>
+            <p className="text-sm text-gray-800 col-span-2">{hallazgo.prioridad || 'No especificada'}</p>
+          </div>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <p className="text-sm font-semibold text-gray-600">Estado</p>
+            <div className="col-span-2">
+              <Badge className={`${estadoInfo.bgColor} ${estadoInfo.textColor} border ${estadoInfo.borderColor}`}>{estadoInfo.label}</Badge>
+            </div>
+          </div>
+        </div>
 
-            <TabsContent value="details" className="p-6 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                <DetailItem label="Descripción" value={hallazgo.descripcion} />
-                <DetailItem label="Responsable" value={hallazgo.responsable} />
-                <DetailItem label="Fecha de Registro">
-                  {format(new Date(hallazgo.fechaRegistro), 'dd/MM/yyyy')}
-                </DetailItem>
-                <DetailItem label="Prioridad" value={hallazgo.prioridad} />
-                <DetailItem label="Origen" value={hallazgo.origen} />
-                <DetailItem label="Estado Actual">
-                  <Badge variant="outline">{estadoInfo.label}</Badge>
-                </DetailItem>
-              </div>
-              <div className="mt-6 pt-4 border-t">
-                {hallazgo.accionInmediata ? (
-                  <DetailItem label="Acción Inmediata Tomada" value={hallazgo.accionInmediata} />
-                ) : (
-                  <p className="text-muted-foreground text-sm">No hay una acción inmediata registrada.</p>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="workflow" className="p-1 mt-2">
-              <div className="space-y-4">
-                {Object.entries(ESTADOS_POR_ETAPA).map(([stageKey, stageStates]) => {
-                  const statesWithDetails = stageStates.map(stateId => ({
-                    id: stateId,
-                    label: LABELS[stateId],
-                    description: DESCRIPTIONS[stateId],
-                  }));
-
+        <DialogFooter className="sm:justify-between">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Cambiar Estado
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {Object.values(STAGES).map(stage => {
+                const targetState = getInitialStateForStage(stage);
+                if (canMove(hallazgo.estado, targetState)) {
                   return (
-                    <WorkflowStage
-                      key={stageKey}
-                      config={stageConfig[stageKey.toUpperCase()]}
-                      states={statesWithDetails}
-                      currentState={hallazgo.estado}
-                    />
+                    <DropdownMenuItem
+                      key={stage}
+                      onClick={() => handleStateChange(targetState)}
+                    >
+                      Mover a {stage}
+                    </DropdownMenuItem>
                   );
-                })}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="actions" className="p-1 mt-2 bg-gray-50/70 rounded-lg border">
-               <div className="p-4">
-                <h3 className="text-lg font-semibold mb-4">Acciones Correctivas</h3>
-                {hallazgo.acciones && hallazgo.acciones.length > 0 ? (
-                  <div>
-                    {hallazgo.acciones.map((accion) => (
-                      <AccionItem key={accion.id} accion={accion} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No hay acciones correctivas registradas.</p>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="history" className="p-1 mt-2 bg-gray-50/70 rounded-lg border">
-              <div className="p-4">
-                <h3 className="text-lg font-semibold mb-4">Historial de Cambios</h3>
-                {hallazgo.historial && hallazgo.historial.length > 0 ? (
-                  <div>
-                    {hallazgo.historial
-                      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-                      .map((item, index) => (
-                        <HistorialItem
-                          key={item.id}
-                          item={item}
-                          isLast={index === hallazgo.historial.length - 1}
-                        />
-                      ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No hay historial de cambios para este hallazgo.</p>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-      </div>
-
-        <DialogFooter>
+                }
+                return null;
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
         </DialogFooter>
       </DialogContent>

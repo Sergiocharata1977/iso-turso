@@ -1,63 +1,77 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { User, Calendar, ArrowRight } from 'lucide-react';
 import { getEstadoInfo } from '@/lib/hallazgoEstados';
 import { format } from 'date-fns';
-
-const getEtapaBadgeClass = (etapa) => {
-  switch (etapa) {
-    case 'Detección':
-      return 'bg-purple-100 text-purple-800 hover:bg-purple-100/80 border-purple-200';
-    case 'Tratamiento':
-      return 'bg-green-100 text-green-800 hover:bg-green-100/80 border-green-200';
-    case 'Verificación':
-      return 'bg-blue-100 text-blue-800 hover:bg-blue-100/80 border-blue-200';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
+import { es } from 'date-fns/locale';
 
 const getPriorityBadgeClass = (priority) => {
   switch (priority?.toLowerCase()) {
     case 'alta':
-      return 'bg-red-100 text-red-800 hover:bg-red-100/80 border-red-200';
+      return 'bg-red-500 border-transparent text-white';
     case 'media':
-      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 border-yellow-200';
+      return 'bg-yellow-500 border-transparent text-white';
     case 'baja':
-      return 'bg-gray-100 text-gray-800 hover:bg-gray-100/80 border-gray-200';
+      return 'bg-green-500 border-transparent text-white';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-400 border-transparent text-white';
   }
 };
 
+const getEstadoBadgeClass = (estado) => {
+    const estadoInfo = getEstadoInfo(estado);
+    switch (estadoInfo.etapa) {
+        case 'Detección':
+            return 'bg-purple-500 border-transparent text-white';
+        case 'Tratamiento':
+            return 'bg-blue-500 border-transparent text-white';
+        case 'Verificación':
+            return 'bg-teal-500 border-transparent text-white';
+        case 'Cerrado':
+            return 'bg-slate-600 border-transparent text-white';
+        default:
+            return 'bg-gray-400 border-transparent text-white';
+    }
+};
+
 const HallazgoCard = ({ hallazgo, onClick }) => {
-  const estadoInfo = getEstadoInfo(hallazgo.estado);
+  if (!hallazgo) {
+    return null;
+  }
 
   return (
-    <Card 
-      className="transition-all hover:shadow-md hover:border-primary/50 cursor-pointer"
-      onClick={() => onClick(hallazgo)}
-    >
+    <Card className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-lg dark:bg-slate-800">
       <CardContent className="p-4">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground">{hallazgo.numeroHallazgo}</span>
-            <Badge className={getEtapaBadgeClass(estadoInfo.etapa)}>{estadoInfo.etapa}</Badge>
+            <span className="font-bold text-lg text-gray-800 dark:text-gray-100">{hallazgo.codigo}</span>
             <Badge className={getPriorityBadgeClass(hallazgo.prioridad)}>{hallazgo.prioridad}</Badge>
           </div>
-          <span className="text-sm text-muted-foreground">{format(new Date(hallazgo.fechaRegistro), 'yyyy-MM-dd')}</span>
+          <Badge className={getEstadoBadgeClass(hallazgo.estado)}>{hallazgo.estado}</Badge>
         </div>
-        <div className="mt-3">
-          <h3 className="font-semibold text-lg">{hallazgo.titulo}</h3>
-          <p className="text-sm text-muted-foreground mt-1">{hallazgo.descripcion}</p>
-        </div>
-        <div className="flex justify-between items-end mt-4">
-          <p className="text-sm">
-            <span className="font-semibold">Responsable:</span> {hallazgo.responsable}
-          </p>
-          {hallazgo.accionInmediata && (
-              <Badge variant="outline">Con acción inmediata</Badge>
-          )}
+
+        <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm min-h-[40px]">
+          {hallazgo.descripcion}
+        </p>
+
+        <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span>{hallazgo.responsable || 'No asignado'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>{hallazgo.fecha ? format(new Date(hallazgo.fecha), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</span>
+            </div>
+          </div>
+         
+          <Button variant="ghost" size="sm" onClick={() => onClick(hallazgo)}>
+            Ver Detalles
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>

@@ -10,6 +10,23 @@ export const hallazgosService = {
   async getAllHallazgos() {
     try {
       const data = await apiClient.get('/');
+      console.log('🚀 DEBUG: Hallazgos obtenidos del API:', data);
+      console.log('🚀 DEBUG: Cantidad de hallazgos del API:', data?.length);
+      
+      // Inspeccionar estructura de los primeros 3 hallazgos
+      console.log('🔍 DEBUG: Estructura de los primeros 3 hallazgos:');
+      data?.slice(0, 3).forEach((h, i) => {
+        console.log(`   Hallazgo ${i+1}:`, {
+          id: h.id,
+          numeroHallazgo: h.numeroHallazgo,
+          titulo: h.titulo,
+          estado: h.estado,
+          hasId: !!h.id,
+          hasEstado: !!h.estado,
+          allKeys: Object.keys(h)
+        });
+      });
+      
       return data;
     } catch (error) {
       console.error('Error al obtener los hallazgos:', error);
@@ -74,6 +91,37 @@ export const hallazgosService = {
     } catch (error) {
       console.error(`Error al eliminar el hallazgo con ID ${id}:`, error);
       throw new Error(error.message || 'Error al eliminar el hallazgo');
+    }
+  },
+
+  /**
+   * Actualiza el estado de un hallazgo.
+   * @param {string} id - ID del hallazgo a actualizar.
+   * @param {string} estado - Nuevo estado del hallazgo.
+   * @returns {Promise<void>}
+   */
+  async updateHallazgoEstado(id, estado) {
+    try {
+      const response = await apiClient.put(`/mejoras/${id}/estado`, { estado });
+      return response.data;
+    } catch (error) {
+      console.error(`Error al actualizar el estado del hallazgo con ID ${id}:`, error);
+      throw new Error(error.message || 'Error al actualizar el estado del hallazgo');
+    }
+  },
+
+  /**
+   * Actualiza el orden de los hallazgos.
+   * @param {Array<string>} orderedIds - Lista de IDs ordenados.
+   * @returns {Promise<Object>} La respuesta del servidor.
+   */
+  async updateHallazgosOrder(orderedIds) {
+    try {
+      const response = await apiClient.put('/mejoras/orden', { orderedIds });
+      return response.data;
+    } catch (error) {
+      console.error('Error al actualizar el orden de los hallazgos:', error);
+      throw new Error(error.message || 'Error al actualizar el orden de los hallazgos');
     }
   },
 };

@@ -12,6 +12,7 @@ const DeteccionHallazgo = lazy(() => import('@/components/mejoras/DeteccionHalla
 const HallazgoDetail = lazy(() => import('@/components/mejoras/HallazgoDetail'));
 const TratamientoHallazgo = lazy(() => import('@/components/mejoras/TratamientoHallazgo'));
 const VerificacionEficacia = lazy(() => import('@/components/mejoras/VerificacionEficacia'));
+const MejorasPage = lazy(() => import('@/pages/MejorasPage'));
 const AuditoriasListing = lazy(() => import('@/components/auditorias/AuditoriasListing'));
 const DepartamentosListing = lazy(() => import('@/components/rrhh/DepartamentosListing'));
 const PuestosListing = lazy(() => import('@/components/rrhh/PuestosListing'));
@@ -51,7 +52,9 @@ export default function AppRoutes() {
           <Route path="mejoras/deteccion" element={<DeteccionHallazgo />} />
           <Route path="mejoras/hallazgos/:id" element={<HallazgoDetail />} />
           <Route path="mejoras/tratamiento" element={<TratamientoHallazgo />} />
-          <Route path="mejoras/verificacion" element={<VerificacionEficacia />} />
+                    <Route path="mejoras/verificacion" element={<VerificacionEficacia />} />
+          <Route path="mejoras/board" element={<MejorasPage />} />
+          <Route path="mejoras" element={<MejorasPage />} />
           <Route path="auditorias" element={<AuditoriasListing />} />
           
           {/* RRHH */}

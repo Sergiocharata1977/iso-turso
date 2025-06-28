@@ -25,22 +25,15 @@ const createProcesosTable = `
 
 const createHallazgosTable = `
   CREATE TABLE IF NOT EXISTS hallazgos (
-    id TEXT PRIMARY KEY,
-    numeroHallazgo TEXT NOT NULL UNIQUE,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT NOT NULL UNIQUE,
     titulo TEXT NOT NULL,
     descripcion TEXT,
-    origen TEXT NOT NULL,
-    categoria TEXT NOT NULL,
-    requisitoIncumplido TEXT,
-    fechaRegistro DATE NOT NULL,
-    fechaCierre DATE,
-    estado TEXT NOT NULL CHECK(estado IN (
-      'd1_iniciado', 'd2_con_accion_inmediata', 'd3_corregido_parcial', 'd4_corregido_completo',
-      't1_en_analisis', 't2_no_requiere_accion', 't3_pendiente_implementacion', 't4_en_implementacion',
-      't5_implementacion_finalizada', 'c1_pendiente_verificacion', 'c2_en_verificacion',
-      'c3_verificado_satisfactorio', 'c4_verificado_insatisfactorio', 'c5_cerrado'
-    )),
-    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+    responsable TEXT,
+    fecha TEXT,
+    estado TEXT NOT NULL,
+    prioridad TEXT,
+    orden INTEGER
   );
 `;
 

@@ -78,9 +78,9 @@ const MenuPrincipal = () => {
       title: 'Principal',
       items: [
         { id: 'tablero', label: 'Tablero Central', icon: BarChart2, to: '/tablero' },
-        { id: 'mejoras', label: 'Mejoras', icon: ArrowUpCircle, to: '/mejoras/deteccion' },
         { id: 'calendario', label: 'Calendario', icon: Calendar, to: '/calendario' },
         { id: 'auditorias', label: 'Auditorías', icon: ClipboardList, to: '/auditorias' },
+        { id: 'mejoras', label: 'Mejoras', icon: ArrowUpCircle, to: '/mejoras' },
       ]
     },
     {

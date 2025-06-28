@@ -1,5 +1,5 @@
-import React from "react";
-import { BrowserRouter } from "react-router-dom";
+import React, { lazy } from "react";
+import { BrowserRouter, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 
@@ -9,6 +9,7 @@ import AppRoutes from "@/routes/AppRoutes";
 import { AssistantProvider } from "@/components/assistant/AssistantProvider";
 import AssistantButton from "@/components/assistant/AssistantButton";
 import IsoAssistantPage from "@/pages/IsoAssistantPage";
+const MejorasPage = lazy(() => import('./pages/MejorasPage'));
 
 function App() {
   return (
