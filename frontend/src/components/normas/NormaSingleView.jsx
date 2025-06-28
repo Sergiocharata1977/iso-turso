@@ -140,3 +140,5 @@ const NormaSingleView = () => {
     </div>
   );
 };
+
+export default NormaSingleView;

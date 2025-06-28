@@ -1,69 +1,59 @@
-
-import React from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Hash, GitBranch, Users, Target, Maximize, Book, Workflow } from 'lucide-react';
+
+// Datos iniciales para el formulario
+const initialFormData = {
+  nombre: '',
+  codigo: '',
+  version: '1.0',
+  objetivo: '',
+  alcance: '',
+  funciones_involucradas: '',
+  definiciones_abreviaturas: '',
+  desarrollo: '',
+};
 
 function ProcesoModal({ isOpen, onClose, onSave, proceso }) {
-  const [formData, setFormData] = useState({
-    titulo: "",
-    codigo: "",
-    version: "1.0",
-    objetivo: "",
-    alcance: "",
-    descripcion: "",
-    imagen: null,
-    imagenPreview: "",
-    entradas: "",
-    salidas: "",
-    indicadores: "",
-    estado: "activo"
-  });
+  const [formData, setFormData] = useState(initialFormData);
 
+  // Cargar datos cuando se edita un proceso existente
   useEffect(() => {
     if (proceso) {
       setFormData({
-        ...proceso,
-        imagenPreview: proceso.imagen ? URL.createObjectURL(proceso.imagen) : ""
+        nombre: proceso.nombre || '',
+        codigo: proceso.codigo || '',
+        version: proceso.version || '1.0',
+        objetivo: proceso.objetivo || '',
+        alcance: proceso.alcance || '',
+        funciones_involucradas: proceso.funciones_involucradas || '',
+        definiciones_abreviaturas: proceso.definiciones_abreviaturas || '',
+        desarrollo: proceso.desarrollo || '',
       });
     } else {
-      setFormData({
-        titulo: "",
-        codigo: "",
-        version: "1.0",
-        objetivo: "",
-        alcance: "",
-        descripcion: "",
-        imagen: null,
-        imagenPreview: "",
-        entradas: "",
-        salidas: "",
-        indicadores: "",
-        estado: "activo"
-      });
+      setFormData(initialFormData);
     }
-  }, [proceso]);
+  }, [proceso, isOpen]);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        imagen: file,
-        imagenPreview: URL.createObjectURL(file)
-      });
-    }
+  // Manejar cambios en los campos del formulario
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Enviar el formulario
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData);
@@ -71,152 +61,81 @@ function ProcesoModal({ isOpen, onClose, onSave, proceso }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="dark max-w-4xl bg-card text-card-foreground">
         <DialogHeader>
-          <DialogTitle>
-            {proceso ? "Editar Proceso" : "Nuevo Proceso"}
+          <DialogTitle className="text-xl font-bold">
+            {proceso ? 'Editar Proceso' : 'Nuevo Proceso'}
           </DialogTitle>
+          <DialogDescription>
+            Completa los campos para registrar o actualizar un proceso.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="titulo">Título del Proceso</Label>
-              <Input
-                id="titulo"
-                value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="codigo">Código</Label>
-              <Input
-                id="codigo"
-                value={formData.codigo}
-                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="version">Versión</Label>
-              <Input
-                id="version"
-                value={formData.version}
-                onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado</Label>
-              <select
-                id="estado"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                value={formData.estado}
-                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-              >
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
-                <option value="revision">En Revisión</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="objetivo">Objetivo</Label>
-            <Textarea
-              id="objetivo"
-              value={formData.objetivo}
-              onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
-              required
-              className="min-h-[100px]"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="alcance">Alcance</Label>
-            <Textarea
-              id="alcance"
-              value={formData.alcance}
-              onChange={(e) => setFormData({ ...formData, alcance: e.target.value })}
-              required
-              className="min-h-[100px]"
-            />
-          </div>
+        <form onSubmit={handleSubmit}>
+          <Tabs defaultValue="principales" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="principales">Datos Principales</TabsTrigger>
+              <TabsTrigger value="documentacion">Documentación del Proceso</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="principales" className="pt-6">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="nombre" className="flex items-center"><FileText className="w-4 h-4 mr-2" />Nombre del Proceso <span className="text-red-500 ml-1">*</span></Label>
+                    <Input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ej: Gestión de Compras" required />
+                  </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="descripcion">Descripción Detallada</Label>
-            <Textarea
-              id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              required
-              className="min-h-[150px]"
-            />
-          </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codigo" className="flex items-center"><Hash className="w-4 h-4 mr-2" />Código <span className="text-red-500 ml-1">*</span></Label>
+                    <Input id="codigo" name="codigo" value={formData.codigo} onChange={handleChange} placeholder="Ej: PRC-COMP-001" required />
+                  </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="imagen">Esquema o Gráfico</Label>
-            <Input
-              id="imagen"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="cursor-pointer"
-            />
-            {formData.imagenPreview && (
-              <div className="mt-2">
-                <img
-                  src={formData.imagenPreview}
-                  alt="Vista previa del esquema"
-                  className="max-h-48 rounded-md border border-border"
-                />
+                  <div className="space-y-2">
+                    <Label htmlFor="version" className="flex items-center"><GitBranch className="w-4 h-4 mr-2" />Versión <span className="text-red-500 ml-1">*</span></Label>
+                    <Input id="version" name="version" value={formData.version} onChange={handleChange} placeholder="Ej: 1.0" required />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="funciones_involucradas" className="flex items-center"><Users className="w-4 h-4 mr-2" />Funciones Involucradas</Label>
+                    <Input id="funciones_involucradas" name="funciones_involucradas" value={formData.funciones_involucradas} onChange={handleChange} placeholder="Ej: Gerente de Compras, Analista de Calidad" />
+                  </div>
+
+                </div>
               </div>
-            )}
-          </div>
+            </TabsContent>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="entradas">Entradas</Label>
-              <Textarea
-                id="entradas"
-                value={formData.entradas}
-                onChange={(e) => setFormData({ ...formData, entradas: e.target.value })}
-                required
-                placeholder="Una entrada por línea"
-                className="min-h-[100px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="salidas">Salidas</Label>
-              <Textarea
-                id="salidas"
-                value={formData.salidas}
-                onChange={(e) => setFormData({ ...formData, salidas: e.target.value })}
-                required
-                placeholder="Una salida por línea"
-                className="min-h-[100px]"
-              />
-            </div>
-          </div>
+            <TabsContent value="documentacion" className="pt-6">
+              <div className="space-y-6">
+                
+                <div className="space-y-2">
+                  <Label htmlFor="objetivo" className="flex items-center"><Target className="w-4 h-4 mr-2" />1. Objetivo</Label>
+                  <Textarea id="objetivo" name="objetivo" value={formData.objetivo} onChange={handleChange} placeholder="¿Cuál es el propósito de este proceso?" className="min-h-[80px]" />
+                </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="indicadores">Indicadores Relacionados</Label>
-            <Textarea
-              id="indicadores"
-              value={formData.indicadores}
-              onChange={(e) => setFormData({ ...formData, indicadores: e.target.value })}
-              required
-              placeholder="Un indicador por línea"
-              className="min-h-[100px]"
-            />
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="alcance" className="flex items-center"><Maximize className="w-4 h-4 mr-2" />2. Alcance</Label>
+                  <Textarea id="alcance" name="alcance" value={formData.alcance} onChange={handleChange} placeholder="¿Dónde empieza y termina el proceso?" className="min-h-[100px]" />
+                </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {proceso ? "Guardar Cambios" : "Crear Proceso"}
+                <div className="space-y-2">
+                  <Label htmlFor="definiciones_abreviaturas" className="flex items-center"><Book className="w-4 h-4 mr-2" />3. Definiciones y Abreviaturas</Label>
+                  <Textarea id="definiciones_abreviaturas" name="definiciones_abreviaturas" value={formData.definiciones_abreviaturas} onChange={handleChange} placeholder="Ej: OC (Orden de Compra), SGC (Sistema de Gestión de Calidad)" className="min-h-[100px]" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="desarrollo" className="flex items-center"><Workflow className="w-4 h-4 mr-2" />4. Desarrollo del Proceso</Label>
+                  <Textarea id="desarrollo" name="desarrollo" value={formData.desarrollo} onChange={handleChange} placeholder="Describe paso a paso las actividades del proceso." className="min-h-[150px]" />
+                </div>
+
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="pt-8">
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+              {proceso ? 'Guardar Cambios' : 'Guardar'}
             </Button>
           </DialogFooter>
         </form>

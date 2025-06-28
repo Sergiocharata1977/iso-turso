@@ -1,477 +1,243 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { useTheme } from "@/context/ThemeContext";
-import { Input } from "@/components/ui/input";
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Plus, 
   Search, 
   Pencil, 
   Trash2, 
   FileText,
-  LayoutGrid,
-  List,
-  ChevronRight,
-  ChevronLeft,
-  ArrowLeft
-} from "lucide-react";
-import ProcesoModal from "./ProcesoModal";
-import ObjetivosListing from "./ObjetivosListing";
-import ProcesoSingle from "./ProcesoSingle";
-import { 
-  AlertDialog, 
-  AlertDialogContent, 
-  AlertDialogHeader, 
-  AlertDialogTitle, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogCancel, 
-  AlertDialogAction 
-} from "@/components/ui/alert-dialog";
+  Filter,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  XCircle
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import ProcesoModal from './ProcesoModal';
 import procesosService from '@/services/procesosService';
 
-// Componente de tarjeta de proceso
-const ProcesoCard = React.memo(({ proceso, onView, onEdit, onDelete }) => {
-  const { isDark } = useTheme();
-  
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div className="bg-card border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors">
-        <div className="p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold truncate">{proceso.nombre}</h3>
-              <p className="text-sm text-muted-foreground">{proceso.tipo}</p>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{proceso.descripcion}</p>
-          <p className="text-sm font-medium">Responsable: <span className="text-muted-foreground">{proceso.responsable || "No asignado"}</span></p>
-          
-          <div className="mt-4 flex justify-end space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={isDark ? "bg-gray-700 hover:bg-gray-600 border-gray-600 text-blue-400" : "bg-blue-50 hover:bg-blue-100 border-blue-200"}
-              onClick={(e) => {
-                e.stopPropagation();
-                onView(proceso);
-              }}
-            >
-              <FileText className="h-4 w-4 mr-1 text-blue-600" />
-              <span className="text-blue-600">Ver</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className={isDark ? "bg-gray-700 hover:bg-gray-600 border-gray-600 text-green-400" : "bg-green-50 hover:bg-green-100 border-green-200"}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(proceso);
-              }}
-            >
-              <Pencil className="h-4 w-4 mr-1 text-green-600" />
-              <span className="text-green-600">Editar</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className={isDark ? "bg-gray-700 hover:bg-gray-600 border-gray-600 text-red-400" : "bg-red-50 hover:bg-red-100 border-red-200"}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(proceso.id);
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-1 text-red-600" />
-              <span className="text-red-600">Borrar</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-});
-
 function ProcesosListing() {
-  const { isDark } = useTheme();
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState("grid");
+  const [procesos, setProcesos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProceso, setSelectedProceso] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [procesoToDelete, setProcesoToDelete] = useState(null);
-  const [procesos, setProcesos] = useState([]);
-  const [showObjetivos, setShowObjetivos] = useState(false);
-  const [showProcesoSingle, setShowProcesoSingle] = useState(false);
-  const [currentProceso, setCurrentProceso] = useState(null);
+  const navigate = useNavigate();
+
+  const loadProcesos = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await procesosService.getProcesos();
+      console.log('Datos de procesos cargados:', data);
+      setProcesos(data || []);
+    } catch (err) {
+      console.error("Error al cargar procesos:", err);
+      setError('No se pudo conectar con el servidor. Intenta de nuevo más tarde.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadProcesos();
-  }, []);
+  }, [loadProcesos]);
 
-  const loadProcesos = async () => {
-    try {
-      setIsLoading(true);
-      const data = await procesosService.getAll();
-      setProcesos(data);
-    } catch (error) {
-      console.error("Error al cargar procesos:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los procesos. Por favor, intenta nuevamente más tarde.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const filteredProcesos = procesos.filter(proceso => 
+    proceso.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    proceso.codigo?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSave = async (procesoData) => {
     try {
-      setIsLoading(true);
-      let response;
-      if (procesoData.id) {
-        response = await procesosService.update(procesoData.id, procesoData);
-        toast({
-          title: "Proceso actualizado",
-          description: `El proceso "${procesoData.nombre}" ha sido actualizado exitosamente.`
-        });
+      if (selectedProceso) {
+        await procesosService.updateProceso(selectedProceso.id, procesoData);
+        toast({ title: 'Proceso actualizado con éxito' });
       } else {
-        response = await procesosService.create(procesoData);
-        toast({
-          title: "Proceso creado",
-          description: `El proceso "${procesoData.nombre}" ha sido creado exitosamente.`
-        });
+        await procesosService.createProceso(procesoData);
+        toast({ title: 'Proceso creado con éxito' });
       }
-      await loadProcesos();
       setIsModalOpen(false);
       setSelectedProceso(null);
+      await loadProcesos();
     } catch (error) {
       console.error("Error al guardar proceso:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo guardar el proceso. Por favor, intenta nuevamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      
+      if (error.response && error.response.status === 409) {
+        toast({
+          title: 'Error: Código Duplicado',
+          description: 'Ya existe un proceso con ese código. Por favor, utiliza un código diferente.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error al guardar',
+          description: error.message || 'Ocurrió un error inesperado.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
-  const handleEdit = (proceso) => {
+  const handleEdit = (e, proceso) => {
+    e.stopPropagation(); // Evitar que el clic se propague a la tarjeta
     setSelectedProceso(proceso);
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    const proceso = procesos.find(p => p.id === id);
+  const confirmDelete = (proceso) => {
     setProcesoToDelete(proceso);
-    setDeleteDialogOpen(true);
+    setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const handleDelete = async () => {
     if (!procesoToDelete) return;
     try {
-      setIsLoading(true);
-      await procesosService.delete(procesoToDelete.id);
-      toast({
-        title: "Proceso eliminado",
-        description: `El proceso "${procesoToDelete.nombre}" ha sido eliminado exitosamente.`
-      });
+      await procesosService.deleteProceso(procesoToDelete.id);
+      toast({ title: 'Proceso eliminado con éxito' });
       await loadProcesos();
     } catch (error) {
-      console.error("Error al eliminar proceso:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el proceso. Por favor, intenta nuevamente.",
-        variant: "destructive"
-      });
+      toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
     } finally {
-      setDeleteDialogOpen(false);
+      setIsDeleteDialogOpen(false);
       setProcesoToDelete(null);
-      setIsLoading(false);
     }
   };
 
-  const handleViewProceso = (proceso) => {
-    setCurrentProceso(proceso);
-    setShowProcesoSingle(true);
-  };
-  
-  const handleViewObjetivos = (proceso) => {
-    setCurrentProceso(proceso);
-    setShowObjetivos(true);
-  };
-
-  const handleBackFromObjetivos = () => {
-    setShowObjetivos(false);
-    setCurrentProceso(null);
-  };
-  
-  const handleBackFromProceso = () => {
-    setShowProcesoSingle(false);
-    setCurrentProceso(null);
-  };
-
-  // Si estamos viendo los objetivos de un proceso o la vista detallada
-  if (showObjetivos && currentProceso) {
-    return (
-      <ObjetivosListing 
-        proceso={currentProceso} 
-        onBack={handleBackFromObjetivos}
-      />
-    );
-  } else if (showProcesoSingle && currentProceso) {
-    return (
-      <ProcesoSingle 
-        proceso={currentProceso} 
-        onBack={handleBackFromProceso}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
-    );
-  }
-
-  // Filtrar procesos según búsqueda
-  const filteredProcesos = procesos.filter(proceso =>
-    proceso.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    proceso.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    proceso.tipo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    proceso.responsable?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="container mx-auto p-4"
-    >
-      <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Procesos</h1>
-          <div className="flex items-center space-x-3">
-            <div className="bg-muted p-1 rounded-lg border flex items-center">
-              <Button 
-                variant={viewMode === "grid" ? "default" : "ghost"} 
-                size="sm"
-                className={viewMode === "grid" ? "shadow-sm" : ""}
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4 mr-1" />
-                <span>Tarjetas</span>
-              </Button>
-              <Button 
-                variant={viewMode === "list" ? "default" : "ghost"} 
-                size="sm"
-                className={viewMode === "list" ? "shadow-sm" : ""}
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4 mr-1" />
-                <span>Lista</span>
-              </Button>
-            </div>
-            <Button onClick={() => {
+    <div className="container mx-auto px-4 py-8">
+      <header className="bg-white shadow-sm rounded-lg p-6 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Gestión de Procesos</h1>
+            <p className="text-sm text-gray-500">Administra los procesos de la organización</p>
+          </div>
+          <Button 
+            className="mt-4 sm:mt-0 bg-teal-600 hover:bg-teal-700 text-white"
+            onClick={() => {
               setSelectedProceso(null);
               setIsModalOpen(true);
-            }} className="bg-green-600 hover:bg-green-700">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Proceso
-            </Button>
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Proceso
+          </Button>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input 
+              placeholder="Buscar procesos..." 
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
+          <Button variant="outline">
+            <Filter className="mr-2 h-4 w-4" /> Filtros
+          </Button>
         </div>
+      </header>
 
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar procesos..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {isLoading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Cargando procesos...</p>
         </div>
-
-        <AnimatePresence mode="wait">
-          {isLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex justify-center items-center h-64"
-            >
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </motion.div>
-          ) : filteredProcesos.length === 0 ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-center py-12"
-            >
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground">
-                No hay procesos que coincidan con tu búsqueda.
-                {searchTerm ? " Intenta con otros términos." : " Haz clic en 'Nuevo Proceso' para comenzar."}
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error al cargar los datos</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button variant="outline" onClick={loadProcesos}>Reintentar</Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
+          {filteredProcesos.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-gray-50 border rounded-lg">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-4 text-gray-500">
+                No se encontraron procesos. {searchTerm ? 'Intenta con otra búsqueda.' : "Haz clic en 'Nuevo Proceso' para comenzar."}
               </p>
-            </motion.div>
-          ) : viewMode === "grid" ? (
-            <motion.div
-              key="grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              layout
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            >
-              <AnimatePresence>
-                {filteredProcesos.map((proceso) => (
-                  <ProcesoCard
-                    key={proceso.id}
-                    proceso={proceso}
-                    onView={handleViewProceso}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            </div>
           ) : (
-            <motion.div
-              key="list"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="w-full overflow-auto"
-            >
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-2 text-left">Proceso</th>
-                    <th className="p-2 text-left">Descripción</th>
-                    <th className="p-2 text-left">Tipo</th>
-                    <th className="p-2 text-left">Responsable</th>
-                    <th className="p-2 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {filteredProcesos.map((proceso) => (
-                      <motion.tr
-                        key={proceso.id}
-                        layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="border-b hover:bg-muted/50 cursor-pointer"
-                        onClick={() => handleViewProceso(proceso)}
-                      >
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <FileText className="h-5 w-5 text-primary" />
-                            <div className="flex items-center">
-                              <span className="font-medium">{proceso.nombre}</span>
-                              <ChevronRight className="ml-2 h-4 w-4 text-muted-foreground" />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <p className="text-sm line-clamp-2">{proceso.descripcion}</p>
-                        </td>
-                        <td className="p-4">{proceso.tipo}</td>
-                        <td className="p-4">{proceso.responsable}</td>
-                        <td className="p-4 text-right space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProceso(proceso);
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-1 text-blue-600" />
-                            <span className="text-blue-600">Ver</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="bg-green-50 hover:bg-green-100 border-green-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(proceso);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4 mr-1 text-green-600" />
-                            <span className="text-green-600">Editar</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="bg-red-50 hover:bg-red-100 border-red-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(proceso.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1 text-red-600" />
-                            <span className="text-red-600">Borrar</span>
-                          </Button>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </motion.div>
+            filteredProcesos.map((proceso) => (
+              <motion.div
+                key={proceso.id}
+                layoutId={`proceso-card-${proceso.id}`}
+                onClick={() => navigate(`/procesos/${proceso.id}`)}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between group transition-all duration-300 hover:shadow-lg hover:border-teal-500 cursor-pointer"
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                      {proceso.codigo}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      v{proceso.version}
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-bold text-gray-800 group-hover:text-teal-600 mt-2 transition-colors">
+                    {proceso.nombre}
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                    {proceso.descripcion || "Sin descripción"}
+                  </p>
+                  <div className="mt-4 text-sm text-gray-500">
+                    <span>Responsable: {proceso.responsable}</span>
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-2 flex justify-end items-center space-x-1 rounded-b-lg border-t">
+                  <Button variant="ghost" size="icon" onClick={(e) => handleEdit(e, proceso)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-red-500 hover:text-red-600" 
+                    onClick={(e) => { e.stopPropagation(); confirmDelete(proceso); }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </motion.div>
+            ))
           )}
-        </AnimatePresence>
-      </div>
+        </div>
+      )}
 
-      {/* Modal para crear/editar proceso */}
-      <ProcesoModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedProceso(null);
-        }}
-        onSave={handleSave}
-        proceso={selectedProceso}
-      />
+      {isModalOpen && (
+        <ProcesoModal
+          isOpen={isModalOpen}
+          onClose={() => { setIsModalOpen(false); setSelectedProceso(null); }}
+          onSave={handleSave}
+          proceso={selectedProceso}
+        />
+      )}
 
-      {/* Diálogo de confirmación para eliminar */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el proceso {procesoToDelete?.nombre}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </motion.div>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription className="pt-2">
+              ¿Estás seguro de que deseas eliminar el proceso "{procesoToDelete?.nombre}"? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete}>Eliminar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

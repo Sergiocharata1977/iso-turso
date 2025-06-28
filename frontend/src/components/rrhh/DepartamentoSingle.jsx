@@ -201,7 +201,7 @@ function DepartamentoSingle({ departamento, onBack, onEdit, onDelete }) {
               Objetivos Relacionados
             </h2>
             <div className="space-y-2">
-              {departamento.objetivos?.length > 0 ? (
+              {Array.isArray(departamento.objetivos) && departamento.objetivos.length > 0 ? (
                 departamento.objetivos.map((objetivo, index) => (
                   <div key={index} className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent">
                     <Target className="h-4 w-4 text-muted-foreground" />

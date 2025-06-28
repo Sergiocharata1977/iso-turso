@@ -95,141 +95,140 @@ function AuditoriaSingle({ auditoria, onBack, onEdit, onDelete }) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Volver a Auditorías
-        </Button>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={downloadPDF}>
-            <FileText className="mr-2 h-4 w-4" />
-            Descargar PDF
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex flex-col h-full bg-gray-50"
+    >
+      <header className="bg-white shadow-sm p-4 border-b flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => onEdit(auditoria)}>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Auditoría {auditoria.numero}</h1>
+            <p className="text-sm text-gray-500">Detalles y resultados de la auditoría.</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={downloadPDF}>
+            <FileText className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onEdit(auditoria)}>
             <Pencil className="mr-2 h-4 w-4" />
             Editar
           </Button>
-          <Button variant="destructive" onClick={() => {
+          <Button variant="destructive" size="sm" onClick={() => {
             onDelete(auditoria.id);
-            onBack();
+            onBack(); // Go back after delete confirmation
           }}>
             <Trash2 className="mr-2 h-4 w-4" />
             Eliminar
           </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Main Content - 2 columns */}
-        <div className="col-span-2 space-y-6">
-          {/* Header Info */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-lg p-6"
-          >
-            <div className="flex items-start space-x-4">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <ClipboardCheck className="h-8 w-8 text-primary" />
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white border rounded-lg p-6"
+            >
+              <div className="flex items-start space-x-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <ClipboardCheck className="h-8 w-8 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-800">{auditoria.numero}</h2>
+                  <p className="text-sm text-muted-foreground">Responsable: {auditoria.responsable}</p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(auditoria.estado)}`}>
+                  {auditoria.estado}
+                </span>
               </div>
+              <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>{new Date(auditoria.fecha_programada).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span>Equipo: {auditoria.equipo_auditor}</span>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white border rounded-lg p-6 space-y-4"
+            >
               <div>
-                <h1 className="text-2xl font-bold">Auditoría {auditoria.numero}</h1>
-                <div className="flex items-center mt-2 space-x-4">
-                  <span className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    {new Date(auditoria.fecha_programada).toLocaleDateString()}
-                  </span>
-                  <span className="flex items-center text-sm text-muted-foreground">
-                    <Users className="h-4 w-4 mr-1" />
-                    {auditoria.responsable}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <span className={`px-2 py-1 rounded-full text-xs ${getEstadoColor(auditoria.estado)}`}>
-                    {auditoria.estado}
-                  </span>
-                </div>
+                <h3 className="text-lg font-semibold mb-2">Objetivo de la Auditoría</h3>
+                <p className="text-muted-foreground whitespace-pre-line">{auditoria.objetivo}</p>
               </div>
-            </div>
-          </motion.div>
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-2">Procesos a Evaluar</h3>
+                <p className="text-muted-foreground whitespace-pre-line">{auditoria.procesos_evaluar}</p>
+              </div>
+            </motion.div>
 
-          {/* Objetivo y Procesos */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-card border border-border rounded-lg p-6 space-y-6"
-          >
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Objetivo</h2>
-              <p className="text-muted-foreground whitespace-pre-line">{auditoria.objetivo}</p>
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Procesos a Evaluar</h2>
-              <p className="text-muted-foreground whitespace-pre-line">{auditoria.procesos_evaluar}</p>
-            </div>
-          </motion.div>
-
-          {/* Puntos Evaluados */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-card border border-border rounded-lg p-6"
-          >
-            <h2 className="text-lg font-semibold mb-4">Puntos Evaluados</h2>
-            <div className="space-y-4">
-              {auditoria.puntos.map((punto, index) => (
-                <div key={index} className="border border-border rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center space-x-2">
-                      <Target className="h-5 w-5 text-primary" />
-                      <h3 className="font-medium">Punto #{index + 1}</h3>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white border rounded-lg p-6"
+            >
+              <h3 className="text-lg font-semibold mb-4">Puntos Evaluados</h3>
+              <div className="space-y-4">
+                {auditoria.puntos.map((punto, index) => (
+                  <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center space-x-3">
+                        <Target className="h-5 w-5 text-primary" />
+                        <h4 className="font-medium">Punto #{index + 1}: {punto.punto_norma}</h4>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs ${getCalificacionColor(punto.calificacion)}`}>
+                        {punto.calificacion}
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getCalificacionColor(punto.calificacion)}`}>
-                      {punto.calificacion}
-                    </span>
+                    <div className="mt-2 pl-8">
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">{punto.comentarios}</p>
+                    </div>
                   </div>
-                  <div className="mt-2">
-                    <p className="font-medium text-sm">Punto de la Norma:</p>
-                    <p className="text-muted-foreground">{punto.punto_norma}</p>
-                  </div>
-                  <div className="mt-2">
-                    <p className="font-medium text-sm">Comentarios:</p>
-                    <p className="text-muted-foreground whitespace-pre-line">{punto.comentarios}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Sidebar - 1 columna */}
-        <div className="space-y-6">
-          {/* Resumen */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-card border border-border rounded-lg p-6"
-          >
-            <h2 className="text-lg font-semibold flex items-center mb-4">
-              <Star className="h-5 w-5 mr-2" />
-              Resumen
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Puntos Evaluados</p>
-                <p className="text-2xl font-bold">{auditoria.puntos.length}</p>
+                ))}
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Calificaciones</p>
+            </motion.div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-white border rounded-lg p-6"
+            >
+              <h3 className="text-lg font-semibold flex items-center mb-4">
+                <Star className="h-5 w-5 mr-2 text-yellow-500" />
+                Resumen de Calificaciones
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total de Puntos Evaluados</p>
+                  <p className="text-2xl font-bold">{auditoria.puntos.length}</p>
+                </div>
                 <div className="space-y-2 mt-2">
                   {['Muy Bueno', 'Bueno', 'Regular', 'Malo'].map(cal => {
                     const count = auditoria.puntos.filter(p => p.calificacion === cal).length;
+                    if (count === 0) return null;
                     return (
-                      <div key={cal} className="flex justify-between items-center">
+                      <div key={cal} className="flex justify-between items-center text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs ${getCalificacionColor(cal)}`}>
                           {cal}
                         </span>
@@ -239,27 +238,26 @@ function AuditoriaSingle({ auditoria, onBack, onEdit, onDelete }) {
                   })}
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Comentarios Finales */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-card border border-border rounded-lg p-6"
-          >
-            <h2 className="text-lg font-semibold flex items-center mb-4">
-              <FileText className="h-5 w-5 mr-2" />
-              Comentarios Finales
-            </h2>
-            <p className="text-muted-foreground whitespace-pre-line">
-              {auditoria.comentarios_finales || "Sin comentarios finales"}
-            </p>
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white border rounded-lg p-6"
+            >
+              <h3 className="text-lg font-semibold flex items-center mb-4">
+                <FileText className="h-5 w-5 mr-2" />
+                Comentarios Finales
+              </h3>
+              <p className="text-muted-foreground whitespace-pre-line text-sm">
+                {auditoria.comentarios_finales || "Sin comentarios finales."}
+              </p>
+            </motion.div>
+          </div>
         </div>
-      </div>
-    </div>
+      </main>
+    </motion.div>
   );
 }
 

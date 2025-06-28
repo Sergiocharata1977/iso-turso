@@ -1,86 +1,59 @@
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2 } from 'lucide-react';
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
+const initialFormData = {
+  objetivo: '',
+  fecha_programada: '',
+  proceso_id: '',
+  puesto_responsable_id: '',
+  estado: 'Planificada',
+  puntos_evaluados: [],
+};
 
-function AuditoriaModal({ isOpen, onClose, onSave, auditoria }) {
-  const [formData, setFormData] = useState({
-    numero: "",
-    fecha_programada: "",
-    responsable: "",
-    objetivo: "",
-    procesos_evaluar: "",
-    estado: "Planificada",
-    puntos: [],
-    comentarios_finales: ""
-  });
-
-  const [personal, setPersonal] = useState(() => {
-    const saved = localStorage.getItem("personal");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [procesos, setProcesos] = useState(() => {
-    const saved = localStorage.getItem("procesos");
-    return saved ? JSON.parse(saved) : [];
-  });
+function AuditoriaModal({ isOpen, onClose, onSave, auditoria, procesos = [], puestos = [] }) {
+  const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
     if (auditoria) {
-      setFormData(auditoria);
-    } else {
-      // Generar número automático
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       setFormData({
-        ...formData,
-        numero: `A${year}${month}-${random}`,
-        puntos: []
+        ...auditoria,
+        fecha_programada: auditoria.fecha_programada ? new Date(auditoria.fecha_programada).toISOString().split('T')[0] : '',
+        puntos_evaluados: auditoria.puntos_evaluados || [],
       });
+    } else {
+      setFormData(initialFormData);
     }
-  }, [auditoria]);
+  }, [auditoria, isOpen]);
 
-  const addPuntoEvaluado = () => {
-    setFormData(prev => ({
-      ...prev,
-      puntos: [
-        ...prev.puntos,
-        {
-          punto_norma: "",
-          calificacion: "Regular",
-          comentarios: ""
-        }
-      ]
-    }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const removePuntoEvaluado = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      puntos: prev.puntos.filter((_, i) => i !== index)
-    }));
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const updatePuntoEvaluado = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      puntos: prev.puntos.map((punto, i) => 
-        i === index ? { ...punto, [field]: value } : punto
-      )
-    }));
+  const handlePuntoChange = (index, e) => {
+    const { name, value } = e.target;
+    const puntos = [...formData.puntos_evaluados];
+    puntos[index][name] = value;
+    setFormData(prev => ({ ...prev, puntos_evaluados: puntos }));
+  };
+
+  const addPunto = () => {
+    setFormData(prev => ({ ...prev, puntos_evaluados: [...prev.puntos_evaluados, { norma: '', requisito: '', descripcion: '' }] }));
+  };
+
+  const removePunto = (index) => {
+    const puntos = [...formData.puntos_evaluados];
+    puntos.splice(index, 1);
+    setFormData(prev => ({ ...prev, puntos_evaluados: puntos }));
   };
 
   const handleSubmit = (e) => {
@@ -90,174 +63,77 @@ function AuditoriaModal({ isOpen, onClose, onSave, auditoria }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>
-            {auditoria ? "Editar Auditoría" : "Nueva Auditoría"}
-          </DialogTitle>
+          <DialogTitle>{auditoria ? 'Editar Auditoría' : 'Crear Nueva Auditoría'}</DialogTitle>
+          <DialogDescription>
+            {auditoria ? 'Modifica los detalles de la auditoría.' : 'Completa el formulario para registrar una nueva auditoría.'}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="numero">Número de Auditoría</Label>
-              <Input
-                id="numero"
-                value={formData.numero}
-                disabled
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fecha_programada">Fecha Programada</Label>
-              <Input
-                id="fecha_programada"
-                type="date"
-                value={formData.fecha_programada}
-                onChange={(e) => setFormData({ ...formData, fecha_programada: e.target.value })}
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="objetivo" className="text-right">Objetivo</Label>
+            <Input id="objetivo" name="objetivo" value={formData.objetivo} onChange={handleChange} className="col-span-3" required />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="fecha_programada" className="text-right">Fecha Programada</Label>
+            <Input id="fecha_programada" name="fecha_programada" type="date" value={formData.fecha_programada} onChange={handleChange} className="col-span-3" required />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="proceso_id" className="text-right">Proceso</Label>
+            <Select onValueChange={(value) => handleSelectChange('proceso_id', value)} value={formData.proceso_id?.toString()}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecciona un proceso" />
+              </SelectTrigger>
+              <SelectContent>
+                {procesos.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="puesto_responsable_id" className="text-right">Puesto Responsable</Label>
+            <Select onValueChange={(value) => handleSelectChange('puesto_responsable_id', value)} value={formData.puesto_responsable_id?.toString()}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecciona un puesto" />
+              </SelectTrigger>
+              <SelectContent>
+                {puestos.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="estado" className="text-right">Estado</Label>
+            <Select onValueChange={(value) => handleSelectChange('estado', value)} value={formData.estado}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecciona un estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Planificada">Planificada</SelectItem>
+                <SelectItem value="En Progreso">En Progreso</SelectItem>
+                <SelectItem value="Completada">Completada</SelectItem>
+                <SelectItem value="Cancelada">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="responsable">Responsable</Label>
-            <select
-              id="responsable"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              value={formData.responsable}
-              onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
-              required
-            >
-              <option value="">Seleccione un responsable</option>
-              {personal.map((persona) => (
-                <option key={persona.id} value={persona.nombre}>
-                  {persona.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="objetivo">Objetivo</Label>
-            <Textarea
-              id="objetivo"
-              value={formData.objetivo}
-              onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
-              required
-              className="min-h-[100px]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="procesos_evaluar">Procesos a Evaluar</Label>
-            <select
-              id="procesos_evaluar"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              value={formData.procesos_evaluar}
-              onChange={(e) => setFormData({ ...formData, procesos_evaluar: e.target.value })}
-              required
-            >
-              <option value="">Seleccione un proceso</option>
-              {procesos.map((proceso) => (
-                <option key={proceso.id} value={proceso.titulo}>
-                  {proceso.titulo}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="estado">Estado de la Auditoría</Label>
-            <select
-              id="estado"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              value={formData.estado}
-              onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-              required
-            >
-              <option value="Planificada">Planificada</option>
-              <option value="En Ejecución">En Ejecución</option>
-              <option value="Terminada">Terminada</option>
-              <option value="Controlada">Controlada</option>
-            </select>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Label>Puntos Evaluados</Label>
-              <Button type="button"onClick={addPuntoEvaluado} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Punto
-              </Button>
-            </div>
-
-            {formData.puntos.map((punto, index) => (
-              <div key={index} className="border border-border rounded-lg p-4 space-y-4">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-medium">Punto Evaluado #{index + 1}</h4>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removePuntoEvaluado(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Punto de la Norma</Label>
-                    <Input
-                      value={punto.punto_norma}
-                      onChange={(e) => updatePuntoEvaluado(index, 'punto_norma', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Calificación</Label>
-                    <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                      value={punto.calificacion}
-                      onChange={(e) => updatePuntoEvaluado(index, 'calificacion', e.target.value)}
-                      required
-                    >
-                      <option value="Malo">Malo</option>
-                      <option value="Regular">Regular</option>
-                      <option value="Bueno">Bueno</option>
-                      <option value="Muy Bueno">Muy Bueno</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Comentarios</Label>
-                  <Textarea
-                    value={punto.comentarios}
-                    onChange={(e) => updatePuntoEvaluado(index, 'comentarios', e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                </div>
+          <div>
+            <h4 className="font-semibold mb-2">Puntos a Evaluar</h4>
+            {formData.puntos_evaluados.map((punto, index) => (
+              <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
+                <Input name="norma" placeholder="Norma" value={punto.norma} onChange={(e) => handlePuntoChange(index, e)} className="col-span-3" />
+                <Input name="requisito" placeholder="Requisito" value={punto.requisito} onChange={(e) => handlePuntoChange(index, e)} className="col-span-3" />
+                <Input name="descripcion" placeholder="Descripción" value={punto.descripcion} onChange={(e) => handlePuntoChange(index, e)} className="col-span-5" />
+                <Button type="button" variant="destructive" size="icon" onClick={() => removePunto(index)} className="col-span-1">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ))}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="comentarios_finales">Comentarios Finales</Label>
-            <Textarea
-              id="comentarios_finales"
-              value={formData.comentarios_finales}
-              onChange={(e) => setFormData({ ...formData, comentarios_finales: e.target.value })}
-              className="min-h-[100px]"
-            />
+            <Button type="button" variant="outline" onClick={addPunto} className="mt-2">Añadir Punto</Button>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {auditoria ? "Guardar Cambios" : "Crear Auditoría"}
-            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+            <Button type="submit">Guardar Cambios</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,14 +1,53 @@
-// Servicio para el módulo de Procesos
-import { createApiClient } from './apiService.js';
+import { apiService } from './apiService';
 
-const apiClient = createApiClient('/procesos');
+const BASE_URL = '/procesos';
 
+/**
+ * Servicio para gestionar las operaciones CRUD de procesos
+ */
 const procesosService = {
-  getAll: () => apiClient.get(''),
-  getById: (id) => apiClient.get(`/${id}`),
-  create: (data) => apiClient.post('', data),
-  update: (id, data) => apiClient.put(`/${id}`, data),
-  delete: (id) => apiClient.delete(`/${id}`)
+  /**
+   * Obtiene todos los procesos
+   * @returns {Promise<Array>} Lista de procesos
+   */
+  getProcesos: async () => {
+    return await apiService.get(BASE_URL);
+  },
+
+  /**
+   * Obtiene un proceso por su ID
+   * @param {string} id - ID del proceso
+   * @returns {Promise<Object>} Proceso encontrado
+   */
+  getProcesoById: async (id) => {
+    return await apiService.get(`${BASE_URL}/${id}`);
+  },
+
+  /**
+   * Crea un nuevo proceso
+   * @param {Object} procesoData - Datos del proceso a crear
+   * @returns {Promise<Object>} Proceso creado
+   */
+  createProceso: async (procesoData) => {
+    return await apiService.post(BASE_URL, procesoData);
+  },
+
+  /**
+   * Actualiza un proceso existente
+   * @param {string} id - ID del proceso a actualizar
+   * @param {Object} procesoData - Nuevos datos del proceso
+   * @returns {Promise<Object>} Proceso actualizado
+   */
+  updateProceso: (id, data) => apiService.put(`${BASE_URL}/${id}`, data),
+
+  /**
+   * Elimina un proceso
+   * @param {string} id - ID del proceso a eliminar
+   * @returns {Promise<Object>} Respuesta de confirmación
+   */
+  deleteProceso: async (id) => {
+    return await apiService.delete(`${BASE_URL}/${id}`);
+  }
 };
 
 export default procesosService;

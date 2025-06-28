@@ -68,6 +68,35 @@ async function crearDatosPrueba() {
     });
     console.log('✅ Puesto TI creado');
     
+    // Crear algunos procesos
+    console.log('🔄 Creando procesos...');
+    
+    await tursoClient.execute({
+      sql: 'INSERT INTO procesos (id, nombre, codigo, descripcion, tipo_proceso, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [
+        'proc-001',
+        'Gestión de Calidad',
+        'GC-01',
+        'Proceso para asegurar la calidad de los productos y servicios.',
+        'Estratégico',
+        new Date().toISOString()
+      ]
+    });
+    console.log('✅ Proceso Gestión de Calidad creado');
+
+    await tursoClient.execute({
+      sql: 'INSERT INTO procesos (id, nombre, codigo, descripcion, tipo_proceso, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [
+        'proc-002',
+        'Desarrollo de Software',
+        'DS-01',
+        'Proceso para el ciclo de vida del desarrollo de software.',
+        'Clave',
+        new Date().toISOString()
+      ]
+    });
+    console.log('✅ Proceso Desarrollo de Software creado');
+
     // Verificar resultados
     console.log('🔍 Verificando datos creados...');
     
@@ -76,6 +105,9 @@ async function crearDatosPrueba() {
     
     const puestos = await tursoClient.execute('SELECT COUNT(*) as count FROM puestos');
     console.log(`💼 Puestos creados: ${puestos.rows[0].count}`);
+
+    const procesos = await tursoClient.execute('SELECT COUNT(*) as count FROM procesos');
+    console.log(`🔄 Procesos creados: ${procesos.rows[0].count}`);
     
     console.log('🎉 ¡Datos de prueba creados exitosamente!');
     

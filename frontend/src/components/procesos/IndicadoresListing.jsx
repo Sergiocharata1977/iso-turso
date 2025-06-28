@@ -1,175 +1,113 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { 
-  Plus,
-  Search,
-  Download,
-  Pencil,
-  Trash2, 
-  BarChart2,
-  SlidersHorizontal
-} from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import IndicadorModal from "./IndicadorModal";
-import MedicionesListing from "./MedicionesListing";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { indicadoresService } from "@/services";
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { Plus, Search, Download, Pencil, Trash2, SlidersHorizontal, BarChart3, Target, Calendar, User } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import IndicadorModal from './IndicadorModal';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import indicadoresService from '@/services/indicadoresService';
 
-const IndicadorCard = React.memo(({ indicador, onView, onEdit, onDelete }) => (
+const IndicadorCard = React.memo(({ indicador, onEdit, onDelete, onNavigate }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-card border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-lg hover:border-teal-500 transition-all duration-300 flex flex-col h-full group cursor-pointer"
+    onClick={onNavigate}
   >
-    <div className="p-6">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-bold truncate">{indicador.titulo}</h3>
-        <Badge variant="outline">{indicador.unidad_medida}</Badge>
+    <CardHeader>
+      <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-teal-600 transition-colors duration-300 flex items-center justify-between">
+        <span className="truncate">{indicador.nombre}</span>
+        {indicador.tipo && (
+          <Badge 
+            variant={indicador.tipo === 'manual' ? 'default' : 'secondary'}
+            className={`ml-2 text-xs ${indicador.tipo === 'manual' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}
+          >
+            {indicador.tipo}
+          </Badge>
+        )}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="flex-grow space-y-3 text-sm text-gray-600 dark:text-gray-400">
+      <p className="line-clamp-2">{indicador.descripcion}</p>
+      <div className="flex items-center gap-2 pt-2">
+        <Target className="h-4 w-4 text-teal-500" />
+        <span>Meta: <span className="font-semibold text-gray-800 dark:text-gray-200">{indicador.meta}</span></span>
       </div>
-      <p className="text-muted-foreground line-clamp-2 mb-4">{indicador.descripcion}</p>
-      <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Límite de aceptación:</span>
-          <span className="font-medium">{indicador.limite_aceptacion}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Frecuencia:</span>
-          <span>{indicador.frecuencia_medicion}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Responsable:</span>
-          <span>{indicador.responsable}</span>
-        </div>
+      <div className="flex items-center gap-2">
+        <Calendar className="h-4 w-4 text-blue-500" />
+        <span>Frecuencia: <span className="font-semibold text-gray-800 dark:text-gray-200">{indicador.frecuencia}</span></span>
       </div>
-    </div>
-    <CardFooter className="border-t p-4 bg-muted/30 flex justify-between">
-      <Button variant="outline" size="sm" onClick={() => onView(indicador)}>
-        <BarChart2 className="h-4 w-4 mr-2" />
-        Mediciones
+    </CardContent>
+    <CardFooter className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-2">
+      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); onEdit(indicador); }}>
+        <Pencil className="h-4 w-4" />
       </Button>
-      <div className="space-x-2">
-        <Button variant="ghost" size="icon" onClick={() => onEdit(indicador)}>
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(indicador.id)}>
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); onDelete(indicador.id); }}>
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </CardFooter>
   </motion.div>
 ));
 
-export default function IndicadoresListing({ objetivoId, objetivoTitulo, procesoId }) {
+export default function IndicadoresListing() {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
   const [indicadores, setIndicadores] = useState([]);
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [indicadorToDelete, setIndicadorToDelete] = useState(null);
-  const [showMediciones, setShowMediciones] = useState(false);
   const [currentIndicador, setCurrentIndicador] = useState(null);
-
-  useEffect(() => {
-    loadIndicadores();
-  }, [objetivoId]);
+  const [indicadorToDelete, setIndicadorToDelete] = useState(null);
 
   const loadIndicadores = async () => {
     try {
       setIsLoading(true);
-      
-      // Cargar desde API backend
-      const data = await indicadoresService.getByObjetivo(objetivoId);
-      
-      if (data && Array.isArray(data)) {
-        setIndicadores(data);
-      } else {
-        setIndicadores([]);
-      }
+      const data = await indicadoresService.getAll();
+      setIndicadores(data || []);
     } catch (error) {
-      console.error("Error al cargar indicadores:", error);
-      toast({ 
-        title: "Error", 
-        description: "No se pudieron cargar los indicadores", 
-        variant: "destructive" 
-      });
-      setIndicadores([]);
+      toast({ title: 'Error', description: 'No se pudieron cargar los indicadores.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadIndicadores();
+  }, []);
+
   const handleSave = async (indicadorData) => {
     try {
-      setIsLoading(true);
-      let savedIndicador;
-      
-      if (currentIndicador) {
-        // Actualizar indicador existente
-        savedIndicador = await indicadoresService.update(currentIndicador.id, indicadorData);
-        toast({
-          title: "Indicador actualizado",
-          description: "El indicador ha sido actualizado exitosamente"
-        });
-      } else {
-        // Crear nuevo indicador
-        indicadorData = {
-          ...indicadorData,
-          objetivo_id: objetivoId,
-          objetivo_titulo: objetivoTitulo,
-          proceso_id: procesoId
-        };
-        
-        savedIndicador = await indicadoresService.create(indicadorData);
-        toast({
-          title: "Indicador creado",
-          description: "El indicador ha sido creado exitosamente"
-        });
-      }
-      
+      const action = currentIndicador
+        ? indicadoresService.update(currentIndicador.id, indicadorData)
+        : indicadoresService.create(indicadorData);
+
+      const savedIndicador = await action;
+
+      toast({ 
+        title: `Indicador ${currentIndicador ? 'actualizado' : 'creado'}`, 
+        description: `El indicador "${savedIndicador.nombre}" se guardó correctamente.`
+      });
+
       await loadIndicadores();
       setIsModalOpen(false);
       setCurrentIndicador(null);
     } catch (error) {
-      console.error("Error al guardar indicador:", error);
-      toast({
-        title: "Error", 
-        description: "No se pudo guardar el indicador",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      toast({ title: 'Error', description: error.message || 'No se pudo guardar el indicador.', variant: 'destructive' });
     }
   };
-  
+
   const handleDelete = async (id) => {
     try {
-      setIsLoading(true);
-      setIsDeleteDialogOpen(false);
-      
       await indicadoresService.delete(id);
+      toast({ title: 'Indicador eliminado', description: 'El indicador ha sido eliminado correctamente.' });
       await loadIndicadores();
-      
-      toast({
-        title: "Indicador eliminado",
-        description: "El indicador ha sido eliminado exitosamente"
-      });
+      setIndicadorToDelete(null);
     } catch (error) {
-      console.error("Error al eliminar indicador:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el indicador",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      toast({ title: 'Error', description: 'No se pudo eliminar el indicador.', variant: 'destructive' });
     }
   };
 
@@ -177,137 +115,110 @@ export default function IndicadoresListing({ objetivoId, objetivoTitulo, proceso
     setCurrentIndicador(indicador);
     setIsModalOpen(true);
   };
-  
+
   const confirmDelete = (id) => {
     setIndicadorToDelete(id);
-    setIsDeleteDialogOpen(true);
   };
-  
-  const handleViewMediciones = (indicador) => {
-    setCurrentIndicador(indicador);
-    setShowMediciones(true);
+
+  const handleNavigate = (indicador) => {
+    if (indicador.tipo === 'manual') {
+      navigate(`/indicadores/${indicador.id}`);
+    } else {
+      toast({
+        title: 'Indicador Calculado',
+        description: 'La vista detallada para indicadores calculados aún no está implementada.',
+      });
+    }
   };
-  
-  const handleCloseMediciones = () => {
-    setShowMediciones(false);
-    setCurrentIndicador(null);
-  };
-  
-  const filteredIndicadores = indicadores.filter(indicador => 
-    indicador.titulo.toLowerCase().includes(searchText.toLowerCase()) || 
-    indicador.descripcion.toLowerCase().includes(searchText.toLowerCase())
-  );
+
+  const filteredIndicadores = useMemo(() => 
+    indicadores.filter(indicador =>
+      indicador.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
+      indicador.descripcion.toLowerCase().includes(searchText.toLowerCase()) ||
+      indicador.responsable.toLowerCase().includes(searchText.toLowerCase())
+    ), [indicadores, searchText]);
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold">Indicadores</h2>
-          <p className="text-muted-foreground">
-            {objetivoTitulo ? `Indicadores para: ${objetivoTitulo}` : "Todos los indicadores"}
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-slate-100">
+            Indicadores de Calidad
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Gestiona y monitorea todos los indicadores clave de la organización, según ISO 9001.
           </p>
         </div>
-        <Button onClick={() => { setCurrentIndicador(null); setIsModalOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Nuevo Indicador
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => { setCurrentIndicador(null); setIsModalOpen(true); }} 
+            className="bg-teal-600 hover:bg-teal-700 text-white shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Indicador
+          </Button>
+        </div>
       </div>
 
-      <div className="flex items-center space-x-4">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar indicadores..."
-            className="pl-8"
+            placeholder="Buscar por nombre, descripción o responsable..."
+            className="pl-10 w-full bg-background"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" /> Exportar
-        </Button>
-        <Button variant="outline" className="gap-2">
-          <SlidersHorizontal className="h-4 w-4" /> Filtrar
-        </Button>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        </div>
+        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div></div>
       ) : filteredIndicadores.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No hay indicadores disponibles para este objetivo.</p>
-          <Button 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => { setCurrentIndicador(null); setIsModalOpen(true); }}
-          >
-            <Plus className="h-4 w-4 mr-2" /> Crear indicador
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+          <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">No se encontraron indicadores</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Empieza creando un nuevo indicador de calidad.</p>
+          <Button variant="outline" className="mt-4" onClick={() => { setCurrentIndicador(null); setIsModalOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Crear Indicador
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredIndicadores.map(indicador => (
             <IndicadorCard
               key={indicador.id}
               indicador={indicador}
-              onView={handleViewMediciones}
               onEdit={handleEdit}
               onDelete={confirmDelete}
+              onNavigate={() => handleNavigate(indicador)}
             />
           ))}
         </div>
       )}
 
-      {/* Modal para crear/editar indicador */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {currentIndicador ? "Editar Indicador" : "Nuevo Indicador"}
-            </DialogTitle>
-          </DialogHeader>
-          <IndicadorModal
-            indicador={currentIndicador}
-            onSave={handleSave}
-            onCancel={() => setIsModalOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <IndicadorModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSave}
+        indicador={currentIndicador}
+      />
 
-      {/* Modal para ver mediciones */}
-      <Dialog open={showMediciones} onOpenChange={setShowMediciones}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Mediciones de: {currentIndicador?.titulo}
-            </DialogTitle>
-          </DialogHeader>
-          {currentIndicador && (
-            <MedicionesListing 
-              indicadorId={currentIndicador.id} 
-              indicadorData={currentIndicador}
-              onClose={handleCloseMediciones}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Diálogo de confirmación para eliminar */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog open={!!indicadorToDelete} onOpenChange={(open) => !open && setIndicadorToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar indicador?</AlertDialogTitle>
+            <AlertDialogTitle>¿Estás seguro de que quieres eliminar este indicador?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El indicador será eliminado permanentemente 
-              junto con todas sus mediciones asociadas.
+              Esta acción no se puede deshacer. El indicador será eliminado permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setIndicadorToDelete(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => handleDelete(indicadorToDelete)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700"
             >
               Eliminar
             </AlertDialogAction>

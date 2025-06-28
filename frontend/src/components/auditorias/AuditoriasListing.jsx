@@ -1,23 +1,19 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Plus, 
   Search, 
-  Download, 
   Pencil, 
   Trash2, 
   ClipboardCheck,
   Calendar,
   AlertCircle,
-  ChevronRight,
-  BarChart2,
-  PieChart,
-  LineChart,
-  Filter
+  Filter,
+  PlusCircle,
+  FileDown
 } from "lucide-react";
 import ReactECharts from 'echarts-for-react';
 import AuditoriaModal from "./AuditoriaModal";
@@ -25,7 +21,7 @@ import AuditoriaSingle from "./AuditoriaSingle";
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
 import auditoriasService from "@/services/auditorias";
-import apiService from "@/services/apiService";
+import { apiService } from "@/services/apiService";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +29,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 function AuditoriasListing() {
   const { toast } = useToast();
@@ -45,13 +39,12 @@ function AuditoriasListing() {
   const [currentAuditoria, setCurrentAuditoria] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [auditorias, setAuditorias] = useState([]);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("list"); 
   const [procesoFiltro, setProcesoFiltro] = useState("");
   const [procesos, setProcesos] = useState([]);
+  const [puestos, setPuestos] = useState([]); 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [auditoriaToDelete, setAuditoriaToDelete] = useState(null);
-
-  // Usamos el cliente Turso centralizado
 
   useEffect(() => {
     loadData();
@@ -60,27 +53,21 @@ function AuditoriasListing() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      
-      // Cargar auditorías desde el servicio API
-      const auditoriasData = await auditoriasService.getAllAuditorias();
-      setAuditorias(auditoriasData);
-      
-      // Cargar procesos para el filtro
-      try {
-        const procesosResponse = await apiService.get('/procesos');
-        if (procesosResponse.data) {
-          setProcesos(procesosResponse.data);
-        }
-      } catch (procesosError) {
-        console.error("Error al cargar procesos:", procesosError);
-        // Si no hay API de procesos, usar un array vacío
-        setProcesos([]);
-      }
+      const [auditoriasData, procesosData, puestosData] = await Promise.all([
+        auditoriasService.getAllAuditorias(),
+        apiService.get('/procesos'),
+        apiService.get('/puestos') 
+      ]);
+
+      setAuditorias(auditoriasData || []);
+      setProcesos(procesosData.data || []);
+      setPuestos(puestosData.data || []);
+
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los datos",
+        description: "No se pudieron cargar los datos. Verifique la conexión con el servidor.",
         variant: "destructive"
       });
     } finally {
@@ -91,10 +78,8 @@ function AuditoriasListing() {
   const saveAuditoriaToAPI = async (auditoria) => {
     try {
       if (auditoria.id) {
-        // Actualizar auditoría existente
         await auditoriasService.updateAuditoria(auditoria.id, auditoria);
       } else {
-        // Crear nueva auditoría
         await auditoriasService.createAuditoria(auditoria);
       }
       return true;
@@ -106,40 +91,40 @@ function AuditoriasListing() {
 
   const handleSave = async (auditoriaData) => {
     try {
-      // Si es una edición, usar el ID existente
       const isEditing = !!selectedAuditoria;
+      if (auditoriaData.puesto_responsable_id) {
+        auditoriaData.puesto_responsable_id = parseInt(auditoriaData.puesto_responsable_id, 10);
+      }
+      if (auditoriaData.proceso_id) {
+        auditoriaData.proceso_id = parseInt(auditoriaData.proceso_id, 10);
+      }
+
       const auditoria = {
         ...auditoriaData,
-        id: isEditing ? selectedAuditoria.id : undefined, // El backend asignará un ID para nuevas auditorías
-        estado: auditoriaData.estado || "Programada",
+        id: isEditing ? selectedAuditoria.id : undefined,
         numero: auditoriaData.numero || `AUD-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
       };
 
-      // Guardar en la API
-      await saveAuditoriaToAPI(auditoria);
-      
-      // Recargar datos para asegurar consistencia
-      await loadData();
+      const success = await saveAuditoriaToAPI(auditoria);
 
-      // Cerrar modal y mostrar notificación
-      setIsModalOpen(false);
-      setSelectedAuditoria(null);
-      
-      toast({
-        title: isEditing ? "Auditoría actualizada" : "Auditoría creada",
-        description: "Los datos se han guardado correctamente",
-        variant: "default"
-      });
-
+      if (success) {
+        toast({
+          title: "Éxito",
+          description: `Auditoría ${isEditing ? 'actualizada' : 'creada'} correctamente.`,
+          className: "bg-green-500 text-white",
+        });
+        setIsModalOpen(false);
+        setSelectedAuditoria(null);
+        loadData();
+      } else {
+        throw new Error("Error al guardar en la API");
+      }
     } catch (error) {
-      console.error("Error saving auditoria:", error);
       toast({
         title: "Error",
-        description: "No se pudo guardar la auditoría",
-        variant: "destructive"
+        description: "No se pudo guardar la auditoría.",
+        variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -153,38 +138,16 @@ function AuditoriasListing() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async () => {
     try {
-      setIsLoading(true);
-      
-      // Eliminar usando el servicio API
-      await auditoriasService.deleteAuditoria(id);
-      
-      // Recargar datos para asegurar consistencia
-      await loadData();
-      
-      toast({
-        title: "Auditoría eliminada",
-        description: "La auditoría ha sido eliminada exitosamente"
-      });
-      
-      // Si estamos viendo la auditoría, volver a la lista
-      if (showSingle && currentAuditoria && currentAuditoria.id === id) {
-        setShowSingle(false);
-        setCurrentAuditoria(null);
-      }
-      
-      setIsLoading(false);
+      await auditoriasService.deleteAuditoria(auditoriaToDelete);
+      toast({ title: "Eliminado", description: "La auditoría ha sido eliminada." });
+      loadData();
     } catch (error) {
-      console.error("Error deleting auditoría:", error);
-      setIsLoading(false);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar la auditoría",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "No se pudo eliminar la auditoría.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsDeleteDialogOpen(false);
+      setAuditoriaToDelete(null);
     }
   };
 
@@ -195,464 +158,166 @@ function AuditoriasListing() {
 
   const getEstadoColor = (estado) => {
     switch (estado) {
-      case 'Programada':
-        return 'bg-blue-100 text-blue-800';
-      case 'En Proceso':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Completada':
-        return 'bg-green-100 text-green-800';
-      case 'Cancelada':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'Planificada': return 'bg-blue-100 text-blue-800';
+      case 'En Progreso': return 'bg-yellow-100 text-yellow-800';
+      case 'Completada': return 'bg-green-100 text-green-800';
+      case 'Cancelada': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    
-    // Título
-    doc.setFontSize(18);
-    doc.text('Reporte de Auditorías', 14, 22);
-    
-    // Fecha
-    doc.setFontSize(11);
-    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 30);
-    
-    // Tabla
-    const tableColumn = ["Número", "Fecha", "Responsable", "Proceso", "Estado"];
+    doc.text("Reporte de Auditorías", 14, 16);
+    const tableColumn = ["Número", "Fecha", "Proceso", "Puesto Responsable", "Estado"];
     const tableRows = [];
-
     filteredAuditorias.forEach(auditoria => {
-      const auditoriaData = [
+      const rowData = [
         auditoria.numero,
         new Date(auditoria.fecha_programada).toLocaleDateString(),
-        auditoria.responsable,
-        auditoria.proceso,
+        procesos.find(p => p.id === auditoria.proceso_id)?.nombre || 'N/A',
+        puestos.find(p => p.id === auditoria.puesto_responsable_id)?.nombre || 'N/A',
         auditoria.estado
       ];
-      tableRows.push(auditoriaData);
+      tableRows.push(rowData);
     });
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 40,
-      styles: { fontSize: 10, cellPadding: 3 }
-    });
-
-    doc.save('auditorias.pdf');
+    doc.autoTable(tableColumn, tableRows, { startY: 20 });
+    doc.save("reporte_auditorias.pdf");
   };
 
-  // Si estamos viendo el detalle de una auditoría
-  if (showSingle && currentAuditoria) {
-    return (
-      <AuditoriaSingle
-        auditoria={currentAuditoria}
-        onBack={() => setShowSingle(false)}
-        onEdit={handleEdit}
-        onDelete={confirmDelete}
-      />
-    );
+  const filteredAuditorias = auditorias.filter((auditoria) => {
+    const searchTermLower = searchTerm.toLowerCase();
+    const responsableName = puestos.find(p => p.id === auditoria.puesto_responsable_id)?.nombre || '';
+    const matchesSearch = 
+      auditoria.objetivo?.toLowerCase().includes(searchTermLower) ||
+      responsableName.toLowerCase().includes(searchTermLower);
+    const matchesProceso = procesoFiltro ? auditoria.proceso_id === parseInt(procesoFiltro) : true;
+    return matchesSearch && matchesProceso;
+  });
+
+  if (showSingle) {
+    return <AuditoriaSingle auditoria={currentAuditoria} onBack={() => setShowSingle(false)} />;
   }
 
-  // Filtrar auditorías según búsqueda y proceso
-  const filteredAuditorias = auditorias.filter(auditoria => 
-    (auditoria.numero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     auditoria.objetivo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     auditoria.responsable?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (!procesoFiltro || auditoria.proceso === procesoFiltro)
-  );
-
-  // Datos para gráficos
-  const estadoData = [
-    { name: 'Programada', value: auditorias.filter(a => a.estado === 'Programada').length },
-    { name: 'En Proceso', value: auditorias.filter(a => a.estado === 'En Proceso').length },
-    { name: 'Completada', value: auditorias.filter(a => a.estado === 'Completada').length },
-    { name: 'Cancelada', value: auditorias.filter(a => a.estado === 'Cancelada').length }
-  ].filter(item => item.value > 0);
-
-  const procesoData = procesos.map(proceso => ({
-    name: proceso.titulo,
-    value: auditorias.filter(a => a.proceso === proceso.titulo).length
-  })).filter(item => item.value > 0);
-
-  // Datos para gráfico de tendencia
-  const getMonthData = () => {
-    const monthsData = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = month.toLocaleString('default', { month: 'short' });
-      const monthYear = `${monthName} ${month.getFullYear()}`;
-      
-      const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-      const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      
-      const count = auditorias.filter(a => {
-        const date = new Date(a.fecha_programada);
-        return date >= startOfMonth && date <= endOfMonth;
-      }).length;
-      
-      monthsData.push({
-        name: monthName,
-        auditorias: count
-      });
-    }
-    return monthsData;
-  };
-
-  const monthData = getMonthData();
-
   return (
-    <div className="space-y-6">
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-          <div className="flex justify-between items-center mb-6">
-            <TabsList>
-              <TabsTrigger value="dashboard">
-                <BarChart2 className="h-4 w-4 mr-2" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="list">
-                <ClipboardCheck className="h-4 w-4 mr-2" />
-                Auditorías
-              </TabsTrigger>
-            </TabsList>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" onClick={exportToPDF}>
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-              <Button onClick={() => {
-                setSelectedAuditoria(null);
-                setIsModalOpen(true);
-              }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nueva Auditoría
-              </Button>
-            </div>
+    <div className="h-screen flex flex-col bg-gray-50/50">
+      <header className="bg-white shadow-sm p-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Gestión de Auditorías</h1>
+            <p className="text-sm text-gray-600">Supervisa, planifica y gestiona todas las auditorías del sistema.</p>
           </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" onClick={exportToPDF}><FileDown className="h-4 w-4 mr-2"/>Exportar</Button>
+            <Button onClick={() => { setSelectedAuditoria(null); setIsModalOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white"><PlusCircle className="h-4 w-4 mr-2"/>Nueva Auditoría</Button>
+          </div>
+        </div>
+      </header>
 
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Resumen */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Auditorías</h3>
-                <div className="flex items-center">
-                  <ClipboardCheck className="h-8 w-8 text-primary mr-2" />
-                  <span className="text-3xl font-bold">{auditorias.length}</span>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Programadas</h3>
-                <div className="flex items-center">
-                  <Calendar className="h-8 w-8 text-blue-500 mr-2" />
-                  <span className="text-3xl font-bold">{auditorias.filter(a => a.estado === 'Programada').length}</span>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">En Proceso</h3>
-                <div className="flex items-center">
-                  <AlertCircle className="h-8 w-8 text-yellow-500 mr-2" />
-                  <span className="text-3xl font-bold">{auditorias.filter(a => a.estado === 'En Proceso').length}</span>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Completadas</h3>
-                <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-green-500 mr-2" />
-                  <span className="text-3xl font-bold">{auditorias.filter(a => a.estado === 'Completada').length}</span>
-                </div>
-              </div>
+      <main className="flex-1 p-4 overflow-y-auto">
+        <div className="bg-white p-2 rounded-lg shadow-sm mb-4">
+          <div className="flex items-center justify-between">
+            <div className="relative flex-grow max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Buscar por objetivo o puesto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full"
+              />
             </div>
-
-            {/* Gráficos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Gráfico de Estado */}
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <PieChart className="h-5 w-5 mr-2" />
-                  Auditorías por Estado
-                </h3>
-                <div className="h-64">
-                  <ReactECharts 
-                    option={{
-                      tooltip: {
-                        trigger: 'item',
-                        formatter: '{a} <br/>{b}: {c} ({d}%)'
-                      },
-                      legend: {
-                        orient: 'vertical',
-                        right: 10,
-                        top: 'center',
-                        data: estadoData.map(item => item.name)
-                      },
-                      series: [
-                        {
-                          name: 'Estado',
-                          type: 'pie',
-                          radius: ['40%', '70%'],
-                          avoidLabelOverlap: false,
-                          itemStyle: {
-                            borderRadius: 10,
-                            borderColor: '#fff',
-                            borderWidth: 2
-                          },
-                          label: {
-                            show: false,
-                            position: 'center'
-                          },
-                          emphasis: {
-                            label: {
-                              show: true,
-                              fontSize: '14',
-                              fontWeight: 'bold'
-                            }
-                          },
-                          labelLine: {
-                            show: false
-                          },
-                          data: estadoData.map((item, index) => ({
-                            value: item.value,
-                            name: item.name,
-                            itemStyle: {
-                              color: COLORS[index % COLORS.length]
-                            }
-                          }))
-                        }
-                      ]
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                  />
-                </div>
-              </div>
-
-              {/* Gráfico de Procesos */}
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <BarChart2 className="h-5 w-5 mr-2" />
-                  Auditorías por Proceso
-                </h3>
-                <div className="h-64">
-                  <ReactECharts 
-                    option={{
-                      tooltip: {
-                        trigger: 'axis',
-                        axisPointer: {
-                          type: 'shadow'
-                        }
-                      },
-                      legend: {
-                        data: ['Auditorías']
-                      },
-                      grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '3%',
-                        containLabel: true
-                      },
-                      xAxis: {
-                        type: 'value',
-                        boundaryGap: [0, 0.01]
-                      },
-                      yAxis: {
-                        type: 'category',
-                        data: procesoData.map(item => item.name)
-                      },
-                      series: [
-                        {
-                          name: 'Auditorías',
-                          type: 'bar',
-                          data: procesoData.map(item => item.value),
-                          itemStyle: {
-                            color: '#10b981'
-                          }
-                        }
-                      ]
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                  />
-                </div>
-              </div>
-
-              {/* Gráfico de Tendencia */}
-              <div className="bg-card border border-border rounded-lg p-6 md:col-span-2">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <LineChart className="h-5 w-5 mr-2" />
-                  Tendencia de Auditorías (Últimos 6 meses)
-                </h3>
-                <div className="h-64">
-                  <ReactECharts 
-                    option={{
-                      tooltip: {
-                        trigger: 'axis'
-                      },
-                      legend: {
-                        data: ['Auditorías']
-                      },
-                      grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '3%',
-                        containLabel: true
-                      },
-                      xAxis: {
-                        type: 'category',
-                        boundaryGap: false,
-                        data: monthData.map(item => item.name)
-                      },
-                      yAxis: {
-                        type: 'value'
-                      },
-                      series: [
-                        {
-                          name: 'Auditorías',
-                          type: 'line',
-                          data: monthData.map(item => item.auditorias),
-                          itemStyle: {
-                            color: '#3b82f6'
-                          },
-                          areaStyle: {
-                            color: {
-                              type: 'linear',
-                              x: 0,
-                              y: 0,
-                              x2: 0,
-                              y2: 1,
-                              colorStops: [{
-                                offset: 0, color: 'rgba(59, 130, 246, 0.5)'
-                              }, {
-                                offset: 1, color: 'rgba(59, 130, 246, 0.05)'
-                              }]
-                            }
-                          },
-                          smooth: true
-                        }
-                      ]
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                  />
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="list" className="space-y-6">
-            {/* Filtros */}
-            <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Buscar auditorías..."
-                  className="pl-8 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Filter className="h-5 w-5 text-gray-500" />
                 <select
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                   value={procesoFiltro}
                   onChange={(e) => setProcesoFiltro(e.target.value)}
+                  className="bg-transparent border-0 focus:ring-0 text-sm text-gray-600"
                 >
                   <option value="">Todos los procesos</option>
-                  {procesos.map((proceso) => (
-                    <option key={proceso.id} value={proceso.titulo}>
-                      {proceso.titulo}
-                    </option>
-                  ))}
+                  {procesos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
               </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                  <TabsTrigger value="list">Lista</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
+          </div>
+        </div>
 
-            {/* Lista de Auditorías */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="text-left p-4">Número</th>
-                    <th className="text-left p-4">Fecha</th>
-                    <th className="text-left p-4">Responsable</th>
-                    <th className="text-left p-4">Objetivo</th>
-                    <th className="text-left p-4">Estado</th>
-                    <th className="text-right p-4">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAuditorias.map((auditoria) => (
-                    <motion.tr
-                      key={auditoria.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="border-b border-border cursor-pointer hover:bg-accent/50"
-                      onClick={() => handleViewAuditoria(auditoria)}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <ClipboardCheck className="h-5 w-5 text-primary" />
-                          <span className="font-medium">{auditoria.numero}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>{new Date(auditoria.fecha_programada).toLocaleDateString()}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">{auditoria.responsable}</td>
-                      <td className="p-4">
-                        <p className="text-sm line-clamp-2">{auditoria.objetivo}</p>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${getEstadoColor(auditoria.estado)}`}>
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+                <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32 mb-4 mx-auto"></div>
+                <h2 className="text-xl font-semibold">Cargando...</h2>
+            </div>
+          </div>
+        ) : activeTab === 'list' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredAuditorias.length > 0 ? (
+              filteredAuditorias.map(auditoria => {
+                const proceso = procesos.find(p => p.id === auditoria.proceso_id);
+                const puestoResponsable = puestos.find(p => p.id === auditoria.puesto_responsable_id);
+                return (
+                  <motion.div
+                    key={auditoria.id}
+                    className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden flex flex-col hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => handleViewAuditoria(auditoria)}
+                  >
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg text-gray-800 truncate">{auditoria.objetivo}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getEstadoColor(auditoria.estado)}`}>
                           {auditoria.estado}
                         </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(auditoria);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            confirmDelete(auditoria.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredAuditorias.length === 0 && (
-                <div className="text-center py-12">
-                  <ClipboardCheck className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-4 text-muted-foreground">
-                    No hay auditorías registradas. Haz clic en "Nueva Auditoría" para comenzar.
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{auditoria.numero}</p>
+                    </div>
+                    <div className="p-4 flex-grow">
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <ClipboardCheck className="h-4 w-4 mr-2 text-gray-400" />
+                        <span>Proceso: {proceso?.nombre || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <AlertCircle className="h-4 w-4 mr-2 text-gray-400" />
+                        <span>Responsable: {puestoResponsable?.nombre || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                        <span>{new Date(auditoria.fecha_programada).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="p-2 bg-gray-50 border-t border-gray-200 flex justify-end space-x-1">
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(auditoria); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); confirmDelete(auditoria.id); }}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <ClipboardCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground">No se encontraron auditorías. Haz clic en "Nueva Auditoría" para comenzar.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-4 rounded-lg shadow"><ReactECharts option={{ title: { text: 'Dashboard en desarrollo' } }} /></div>
+            <div className="bg-white p-4 rounded-lg shadow"><ReactECharts option={{ title: { text: 'Dashboard en desarrollo' } }} /></div>
+          </div>
+        )}
+      </main>
 
       <AuditoriaModal
         isOpen={isModalOpen}
@@ -662,9 +327,10 @@ function AuditoriasListing() {
         }}
         onSave={handleSave}
         auditoria={selectedAuditoria}
+        procesos={procesos}
+        puestos={puestos}
       />
 
-      {/* Diálogo de confirmación para eliminar */}
       {isDeleteDialogOpen && (
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DialogContent className="max-w-md">
@@ -676,7 +342,7 @@ function AuditoriasListing() {
               <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button variant="destructive" onClick={() => handleDelete(auditoriaToDelete)}>
+              <Button variant="destructive" onClick={handleDelete}>
                 Eliminar
               </Button>
             </DialogFooter>

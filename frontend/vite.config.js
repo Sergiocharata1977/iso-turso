@@ -141,6 +141,13 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'credentialless',
     },
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   build: {
     outDir: 'dist',

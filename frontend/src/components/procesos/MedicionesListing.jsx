@@ -14,37 +14,58 @@ import {
   Calendar
 } from "lucide-react";
 import MedicionModal from "./MedicionModal";
-import { medicionesService } from "@/services"; // Asegúrate que la ruta sea correcta y medicionesService esté exportado
+import { useParams, useNavigate } from "react-router-dom";
+import { medicionesService, indicadoresService } from "@/services";
 
-function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoTitulo, procesoId, procesoNombre, onBack }) {
+function MedicionesListing() {
+  const { id: indicadorId } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMedicion, setSelectedMedicion] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [mediciones, setMediciones] = useState([]);
+  const [indicador, setIndicador] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadMediciones();
-  }, [indicadorId]);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [indicadorData, medicionesData] = await Promise.all([
+          indicadoresService.getById(indicadorId),
+          medicionesService.getByIndicador(indicadorId),
+        ]);
 
-  const loadMediciones = async () => {
-    setIsLoading(true);
-    try {
-      const result = await medicionesService.getByIndicador(indicadorId);
-      setMediciones(result || []); 
-    } catch (error) {
-      console.error("Error al cargar mediciones:", error);
-      toast({
-        title: "Error al cargar mediciones",
-        description: error.message || "No se pudieron obtener los datos de las mediciones.",
-        variant: "destructive"
-      });
-      setMediciones([]);
-    } finally {
-      setIsLoading(false);
+        if (indicadorData) {
+          setIndicador(indicadorData);
+        } else {
+          toast({
+            title: "Indicador no encontrado",
+            description: `No se pudo encontrar el indicador con ID ${indicadorId}.`,
+            variant: "destructive",
+          });
+          navigate("/indicadores");
+          return;
+        }
+        setMediciones(medicionesData || []);
+      } catch (error) {
+        console.error("Error al cargar datos para el indicador:", error);
+        toast({
+          title: "Error al cargar datos",
+          description: error.message || "No se pudieron obtener los datos.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (indicadorId) {
+      loadData();
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicadorId]);
 
   const handleSave = async (medicionData) => {
     try {
@@ -116,19 +137,16 @@ function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoT
   return (
     <div className="space-y-6">
       {/* Breadcrumb y título */}
-      <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a Indicadores
-        </Button>
-      </div>
-      
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">{indicadorTitulo}</h2>
-          <p className="text-muted-foreground">
-            Mediciones del indicador para el objetivo: {objetivoTitulo}
-          </p>
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold">Mediciones del Indicador</h2>
+            {indicador && <p className="text-muted-foreground">{indicador.nombre}</p>}
+          </div>
         </div>
       </div>
 
@@ -262,7 +280,7 @@ function MedicionesListing({ indicadorId, indicadorTitulo, objetivoId, objetivoT
         onSave={handleSave}
         medicion={selectedMedicion}
         indicadorId={indicadorId}
-        indicadorTitulo={indicadorTitulo}
+        indicadorTitulo={indicador?.nombre}
       />
     </div>
   );

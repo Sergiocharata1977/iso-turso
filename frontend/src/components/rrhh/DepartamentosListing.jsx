@@ -13,11 +13,18 @@ import {
   ChevronDown,
   LayoutGrid,
   List,
-  Filter
+  Filter,
+  MoreHorizontal
 } from "lucide-react";
 import DepartamentoModal from "./DepartamentoModal";
 import DepartamentoSingle from "./DepartamentoSingle";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { departamentosService } from "@/services/departamentos";
 import { useDepartamentos } from "@/hooks/useDepartamentos";
 import { Input } from "@/components/ui/input"; // Import the Input component
@@ -179,84 +186,37 @@ function DepartamentosListing() {
     const isExpanded = expandedDepts.includes(departamento.id);
     const hasChildren = departamentos.some(d => d.departamentoPadreId === departamento.id);
     const childDepartamentos = departamentos.filter(d => d.departamentoPadreId === departamento.id);
-    
+
     return (
-      <div key={departamento.id} className="border-b border-gray-200 last:border-b-0">
+      <React.Fragment key={departamento.id}>
         <div 
-          className={`flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer ${level > 0 ? 'pl-' + (level * 8 + 4) + 'px' : ''}`}
+          className={`flex items-center p-4 ${level > 0 ? 'bg-gray-50 dark:bg-slate-800/20' : ''} hover:bg-gray-100 dark:hover:bg-slate-800/50 cursor-pointer transition-colors`}
           onClick={() => handleViewDepartamento(departamento)}
         >
-          <div className="flex items-center">
-            {hasChildren && (
-              <button
-                className="mr-2 p-1 rounded-full hover:bg-gray-200"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleDepartamento(departamento.id);
-                }}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-500" />
-                )}
+          <div style={{ paddingLeft: `${level * 2}rem` }} className="flex-1 flex items-center">
+            {hasChildren ? (
+              <button onClick={(e) => { e.stopPropagation(); toggleDepartamento(departamento.id); }} className="mr-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700">
+                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
+            ) : (
+              // Use a span to maintain alignment for items without children
+              <span className="w-8 mr-2 inline-block"></span>
             )}
-            {!hasChildren && <div className="w-6" />}
-            <div className="flex items-center">
-              <div className="bg-primary/10 p-2 rounded-lg mr-3">
-                <Building className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium">{departamento.nombre}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {departamento.responsable}
-                </p>
-              </div>
-            </div>
+            <span className="font-medium">{departamento.nombre}</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdit(departamento);
-              }}
-            >
+          <div className="w-1/4 hidden md:block text-muted-foreground">{departamento.responsable}</div>
+          <div className="w-1/4 hidden sm:block text-muted-foreground">{departamento.codigo}</div>
+          <div className="flex items-center space-x-0" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(departamento)}>
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete(departamento.id);
-              }}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(departamento.id)}>
               <Trash2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewDepartamento(departamento);
-              }}
-            >
-              <span className="mr-1">Ver detalles</span>
-              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
-        
-        {isExpanded && childDepartamentos.length > 0 && (
-          <div className="border-t border-gray-100">
-            {childDepartamentos.map(child => renderDepartamento(child, level + 1))}
-          </div>
-        )}
-      </div>
+        {isExpanded && childDepartamentos.map(child => renderDepartamento(child, level + 1))}
+      </React.Fragment>
     );
   };
 
@@ -264,70 +224,60 @@ function DepartamentosListing() {
     return (
       <motion.div
         key={departamento.id}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:border-teal-500 hover:shadow-lg transition-all duration-300 group"
-        onClick={() => handleViewDepartamento(departamento)}
+        layout
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className="relative group"
       >
-        <div className="p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <Building className="h-5 w-5 text-primary" />
+        <div 
+          className="bg-card border border-border rounded-lg shadow-sm hover:shadow-lg hover:border-teal-500 transition-all duration-300 cursor-pointer h-full flex flex-col"
+          onClick={() => handleViewDepartamento(departamento)}
+        >
+          <div className="p-6 flex-grow">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="bg-teal-100 dark:bg-teal-900/50 p-3 rounded-lg">
+                  <Building className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-card-foreground group-hover:text-teal-600 transition-colors">{departamento.nombre}</h3>
+                  <p className="text-sm text-muted-foreground">{departamento.codigo}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold group-hover:text-teal-600 transition-colors">{departamento.nombre}</h3>
-              <p className="text-xs text-muted-foreground">
-                {departamento.responsable}
-              </p>
+            <p className="text-sm text-muted-foreground mt-4 h-12 overflow-hidden text-ellipsis">
+              {departamento.descripcion || 'Sin descripción.'}
+            </p>
+          </div>
+          <div className="border-t border-border px-6 py-4 bg-muted/50 dark:bg-slate-800/50 rounded-b-lg">
+            <div className="flex justify-between items-center">
+              <div className="text-sm">
+                <p className="text-muted-foreground text-xs">Responsable</p>
+                <p className="font-medium text-card-foreground">{departamento.responsable}</p>
+              </div>
             </div>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {departamento.descripcion}
-          </p>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm flex items-center">
-              <Building className="h-4 w-4 mr-1 text-muted-foreground" />
-              {departamento.departamentoPadreId ? 
-                departamentos.find(d => d.id === departamento.departamentoPadreId)?.nombre || "Sin departamento padre" : 
-                "Departamento principal"}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm flex items-center">
-              {departamento.personal?.length || 0} miembros
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center"
-            >
-              <span className="mr-1">Ver detalles</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
-        <div className="bg-muted/50 px-6 py-3 flex justify-end space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(departamento);
-            }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete(departamento.id);
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <div className="absolute top-4 right-4" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-card/50 backdrop-blur-sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleEdit(departamento)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  <span>Editar</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDelete(departamento.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Eliminar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </motion.div>
     );

@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { tursoClient } from '../lib/tursoClient.js';
+import tursoClient from '../db.js';
+import { randomUUID } from 'crypto';
 
 const router = Router();
 
@@ -8,7 +9,7 @@ router.get('/', async (req, res) => {
   try {
     const result = await tursoClient.execute(`
       SELECT * FROM productos
-      ORDER BY nombre
+      ORDER BY fecha_creacion DESC
     `);
     res.json(result.rows);
   } catch (error) {
@@ -19,80 +20,35 @@ router.get('/', async (req, res) => {
 
 // POST /api/productos - Crear un nuevo producto
 router.post('/', async (req, res) => {
-  const { 
-    nombre, 
-    descripcion, 
-    codigo,
-    categoria,
-    estado,
-    responsable_id,
-    especificaciones,
-    fecha_creacion,
-    version
-  } = req.body;
+  const { nombre, descripcion, codigo, estado } = req.body;
 
   if (!nombre) {
     return res.status(400).json({ error: 'El campo "nombre" es obligatorio.' });
   }
 
   try {
-    // Verificar si ya existe un producto con el mismo código
     if (codigo) {
       const existing = await tursoClient.execute({
         sql: 'SELECT id FROM productos WHERE codigo = ?',
         args: [codigo],
       });
-
       if (existing.rows.length > 0) {
         return res.status(409).json({ error: 'Ya existe un producto con ese código.' });
       }
     }
 
-    const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    
-    const result = await tursoClient.execute({
-      sql: `INSERT INTO productos (
-              nombre, descripcion, codigo, categoria,
-              estado, responsable_id, especificaciones,
-              fecha_creacion, version, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        nombre, 
-        descripcion || null, 
-        codigo || null,
-        categoria || null,
-        estado || 'Activo',
-        responsable_id || null,
-        especificaciones ? JSON.stringify(especificaciones) : null,
-        fecha_creacion || createdAt,
-        version || '1.0',
-        createdAt
-      ],
+    const newId = randomUUID();
+    await tursoClient.execute({
+      sql: 'INSERT INTO productos (id, nombre, descripcion, codigo, estado) VALUES (?, ?, ?, ?, ?)',
+      args: [newId, nombre, descripcion || null, codigo || null, estado || 'En Desarrollo'],
     });
 
-    // Devolver el producto recién creado
-    const newId = result.lastInsertRowid;
-    if (newId) {
-      const newProducto = await tursoClient.execute({
-          sql: 'SELECT * FROM productos WHERE id = ?',
-          args: [newId]
-      });
-      res.status(201).json(newProducto.rows[0]);
-    } else {
-      res.status(201).json({ 
-        id: 'Desconocido', 
-        nombre, 
-        descripcion, 
-        codigo,
-        categoria,
-        estado: estado || 'Activo',
-        responsable_id,
-        especificaciones: especificaciones ? JSON.stringify(especificaciones) : null,
-        fecha_creacion: fecha_creacion || createdAt,
-        version: version || '1.0',
-        created_at: createdAt
-      });
-    }
+    const newProducto = await tursoClient.execute({
+      sql: 'SELECT * FROM productos WHERE id = ?',
+      args: [newId],
+    });
+
+    res.status(201).json(newProducto.rows[0]);
   } catch (error) {
     console.error('Error al crear el producto:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -118,73 +74,79 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/productos/:id - Actualizar un producto
+// PUT /api/productos/:id - Actualizar un producto con historial de cambios
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { 
-    nombre, 
-    descripcion, 
-    codigo,
-    categoria,
-    estado,
-    responsable_id,
-    especificaciones,
-    version,
-    historial_cambios
-  } = req.body;
+  const { nombre, descripcion, codigo, estado } = req.body;
+  const usuario_responsable = 'admin'; // Placeholder for user management
 
   if (!nombre) {
     return res.status(400).json({ error: 'El campo "nombre" es obligatorio.' });
   }
 
+  const tx = await tursoClient.transaction();
   try {
-    // Verificar si el nuevo código ya está en uso por otro producto
-    if (codigo) {
-      const existing = await tursoClient.execute({
-          sql: 'SELECT id FROM productos WHERE codigo = ? AND id != ?',
-          args: [codigo, id]
-      });
+    const currentProductResult = await tx.execute({
+      sql: 'SELECT * FROM productos WHERE id = ?',
+      args: [id],
+    });
 
+    if (currentProductResult.rows.length === 0) {
+      await tx.rollback();
+      return res.status(404).json({ error: 'Producto no encontrado.' });
+    }
+    const productoAnterior = currentProductResult.rows[0];
+
+    if (codigo && codigo !== productoAnterior.codigo) {
+      const existing = await tx.execute({
+        sql: 'SELECT id FROM productos WHERE codigo = ? AND id != ?',
+        args: [codigo, id],
+      });
       if (existing.rows.length > 0) {
-          return res.status(409).json({ error: 'Ya existe otro producto con ese código.' });
+        await tx.rollback();
+        return res.status(409).json({ error: 'Ya existe otro producto con ese código.' });
       }
     }
 
-    const updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const batchStatements = [];
+    const camposAComparar = { nombre, descripcion, codigo, estado };
 
-    const result = await tursoClient.execute({
-      sql: `UPDATE productos SET 
-              nombre = ?, descripcion = ?, codigo = ?, categoria = ?,
-              estado = ?, responsable_id = ?, especificaciones = ?,
-              version = ?, historial_cambios = ?, updated_at = ?
-            WHERE id = ?`,
-      args: [
-        nombre, 
-        descripcion || null, 
-        codigo || null,
-        categoria || null,
-        estado || 'Activo',
-        responsable_id || null,
-        especificaciones ? JSON.stringify(especificaciones) : null,
-        version || '1.0',
-        historial_cambios ? JSON.stringify(historial_cambios) : null,
-        updatedAt,
-        id
-      ],
-    });
+    for (const campo in camposAComparar) {
+      const valorNuevo = camposAComparar[campo] ?? null;
+      const valorAnterior = productoAnterior[campo] ?? null;
 
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ error: 'Producto no encontrado.' });
+      if (String(valorNuevo) !== String(valorAnterior)) {
+        batchStatements.push({
+          sql: 'INSERT INTO productos_historial_cambios (id, producto_id, campo_modificado, valor_anterior, valor_nuevo, usuario_responsable) VALUES (?, ?, ?, ?, ?, ?)',
+          args: [randomUUID(), id, campo, String(valorAnterior), String(valorNuevo), usuario_responsable],
+        });
+      }
     }
 
-    // Devolver el producto actualizado
-    const updatedProducto = await tursoClient.execute({
-        sql: 'SELECT * FROM productos WHERE id = ?',
-        args: [id]
+    if (batchStatements.length > 0) {
+      batchStatements.push({
+        sql: 'UPDATE productos SET nombre = ?, descripcion = ?, codigo = ?, estado = ? WHERE id = ?',
+        args: [nombre, descripcion || null, codigo || null, estado || 'En Desarrollo', id],
+      });
+      await tx.batch(batchStatements);
+    } else {
+      // No changes, but we still commit to close the transaction
+      await tx.commit();
+      return res.json(productoAnterior); // Return old product if no changes
+    }
+
+    await tx.commit();
+
+    const updatedProduct = await tursoClient.execute({
+      sql: 'SELECT * FROM productos WHERE id = ?',
+      args: [id],
     });
 
-    res.json(updatedProducto.rows[0]);
+    res.json(updatedProduct.rows[0]);
   } catch (error) {
+    if (tx && !tx.closed) {
+      await tx.rollback();
+    }
     console.error(`Error al actualizar el producto ${id}:`, error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -194,17 +156,25 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await tursoClient.execute({
-      sql: 'DELETE FROM productos WHERE id = ?',
-      args: [id],
-    });
-
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ error: 'Producto no encontrado.' });
-    }
-    res.status(204).send(); // No content
+    await tursoClient.execute({ sql: 'DELETE FROM productos WHERE id = ?', args: [id] });
+    res.status(204).send();
   } catch (error) {
     console.error(`Error al eliminar el producto ${id}:`, error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/productos/:id/historial - Obtener el historial de cambios de un producto
+router.get('/:id/historial', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await tursoClient.execute({
+      sql: 'SELECT * FROM productos_historial_cambios WHERE producto_id = ? ORDER BY fecha_cambio DESC',
+      args: [id],
+    });
+    res.json(result.rows);
+  } catch (error) {
+    console.error(`Error al obtener el historial del producto ${id}:`, error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

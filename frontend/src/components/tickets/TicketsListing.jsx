@@ -1,602 +1,200 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Plus, 
   Search, 
-  Download, 
   Pencil, 
   Trash2, 
   Ticket,
-  BarChart2,
-  PieChart,
-  LineChart,
-  ChevronRight,
-  CheckCircle,
-  Clock,
   AlertCircle
 } from "lucide-react";
-import ReactECharts from 'echarts-for-react';
 import TicketModal from "./TicketModal";
 import TicketSingle from "./TicketSingle";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import ticketsService from "@/services/ticketsService";
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-
 function TicketsListing() {
   const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [showSingle, setShowSingle] = useState(false);
-  const [currentTicket, setCurrentTicket] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [ticketToEdit, setTicketToEdit] = useState(null);
+
+  const [isDetailView, setIsDetailView] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState(null);
 
-  // No se requiere cliente Turso - Migrado a API Backend
-
-  useEffect(() => {
-    loadTickets();
-  }, []);
-
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const data = await ticketsService.getAll();
-      setTickets(data);
+      setTickets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error loading tickets:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los tickets",
-        variant: "destructive"
-      });
+      toast({ title: "Error de Carga", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Ya no es necesario saveTicketToTurso - Migrado a API Backend
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
 
   const handleSave = async (ticketData) => {
     try {
-      setIsLoading(true);
-      let savedTicket;
-      
-      if (selectedTicket) {
-        // Actualizar ticket existente
-        savedTicket = await ticketsService.update(selectedTicket.id, ticketData);
-        
-        toast({
-          title: "Ticket actualizado",
-          description: "Los datos del ticket han sido actualizados exitosamente"
-        });
+      if (ticketToEdit) {
+        await ticketsService.update(ticketToEdit.id, ticketData);
+        toast({ title: "Ticket actualizado", className: "bg-teal-500 text-white" });
       } else {
-        // Crear nuevo ticket
-        const newTicket = { 
-          ...ticketData,
-          fechaCreacion: new Date().toISOString()
-        };
-        
-        savedTicket = await ticketsService.create(newTicket);
-        
-        toast({
-          title: "Ticket creado",
-          description: "Se ha agregado un nuevo ticket exitosamente"
-        });
+        await ticketsService.create(ticketData);
+        toast({ title: "Ticket Creado", className: "bg-teal-500 text-white" });
       }
-      
-      // Recargar tickets desde el backend
       await loadTickets();
-      
       setIsModalOpen(false);
-      setSelectedTicket(null);
+      setTicketToEdit(null);
     } catch (error) {
-      console.error("Error saving ticket:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo guardar el ticket",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      console.error('Error al guardar:', error);
+      toast({ title: 'Error al guardar', variant: 'destructive' });
+    }
+  };
+
+  const handleAddComment = async (ticketId, commentData) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    const updatedTicket = { ...ticket, comentarios: [...(ticket.comentarios || []), commentData] };
+    try {
+      const saved = await ticketsService.update(ticketId, updatedTicket);
+      setTickets(tickets.map(t => (t.id === ticketId ? saved : t)));
+      setSelectedTicket(saved);
+      toast({ title: 'Comentario añadido', className: 'bg-teal-500 text-white' });
+    } catch (error) {
+      toast({ title: 'Error al comentar', variant: 'destructive' });
     }
   };
 
   const handleEdit = (ticket) => {
-    setSelectedTicket(ticket);
+    setTicketToEdit(ticket);
     setIsModalOpen(true);
+    setIsDetailView(false);
   };
 
-  const handleDelete = (id) => {
-    const ticket = tickets.find(t => t.id === id);
-    setTicketToDelete(ticket);
+  const handleDeleteRequest = (id) => {
+    setTicketToDelete(id);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!ticketToDelete) return;
-    
     try {
-      setIsLoading(true);
-      
-      // Eliminar ticket usando el servicio
-      await ticketsService.delete(ticketToDelete.id);
-      
-      // Recargar tickets desde el backend
+      await ticketsService.remove(ticketToDelete);
+      toast({ title: "Ticket eliminado" });
       await loadTickets();
-      
-      toast({
-        title: "Ticket eliminado",
-        description: "El ticket ha sido eliminado exitosamente"
-      });
-      
-      // Si estamos viendo el detalle del ticket que se eliminó, volver a la lista
-      if (showSingle && currentTicket && currentTicket.id === ticketToDelete.id) {
-        setShowSingle(false);
-        setCurrentTicket(null);
-      }
-      
       setDeleteDialogOpen(false);
-      setTicketToDelete(null);
+      if (selectedTicket?.id === ticketToDelete) {
+        setIsDetailView(false);
+        setSelectedTicket(null);
+      }
     } catch (error) {
-      console.error("Error deleting ticket:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el ticket",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      toast({ title: 'Error al eliminar', variant: 'destructive' });
     }
   };
 
   const handleViewTicket = (ticket) => {
-    setCurrentTicket(ticket);
-    setShowSingle(true);
+    setSelectedTicket(ticket);
+    setIsDetailView(true);
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'Abierto':
-        return 'bg-blue-100 text-blue-800';
-      case 'En Proceso':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Resuelto':
-        return 'bg-green-100 text-green-800';
-      case 'Cerrado':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+    const colors = {
+      'Abierto': 'bg-blue-100 text-blue-800',
+      'En Proceso': 'bg-yellow-100 text-yellow-800',
+      'Resuelto': 'bg-green-100 text-green-800',
+      'Cerrado': 'bg-gray-100 text-gray-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Si estamos viendo el detalle de un ticket
-  if (showSingle && currentTicket) {
-    return (
-      <TicketSingle
-        ticket={currentTicket}
-        onBack={() => setShowSingle(false)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
-    );
-  }
-
-  // Filtrar tickets según búsqueda
-  const filteredTickets = tickets.filter(ticket =>
-    ticket.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.solicitante?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.asignado?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTickets = tickets.filter(t =>
+    t.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Datos para gráficos
-  const estadoData = [
-    { name: 'Abierto', value: tickets.filter(t => t.estado === 'Abierto').length },
-    { name: 'En Proceso', value: tickets.filter(t => t.estado === 'En Proceso').length },
-    { name: 'Resuelto', value: tickets.filter(t => t.estado === 'Resuelto').length },
-    { name: 'Cerrado', value: tickets.filter(t => t.estado === 'Cerrado').length }
-  ].filter(item => item.value > 0);
-
-  const prioridadData = [
-    { name: 'Alta', value: tickets.filter(t => t.prioridad === 'Alta').length },
-    { name: 'Media', value: tickets.filter(t => t.prioridad === 'Media').length },
-    { name: 'Baja', value: tickets.filter(t => t.prioridad === 'Baja').length }
-  ].filter(item => item.value > 0);
-
-  // Datos para gráfico de tendencia
-  const getMonthData = () => {
-    const monthsData = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = month.toLocaleString('default', { month: 'short' });
-      
-      const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-      const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      
-      const count = tickets.filter(t => {
-        if (!t.fechaCreacion) return false;
-        const date = new Date(t.fechaCreacion);
-        return date >= startOfMonth && date <= endOfMonth;
-      }).length;
-      
-      monthsData.push({
-        name: monthName,
-        tickets: count
-      });
-    }
-    return monthsData;
-  };
-
-  const monthData = getMonthData();
+  if (isDetailView && selectedTicket) {
+    return <TicketSingle ticket={selectedTicket} onBack={() => setIsDetailView(false)} onEdit={handleEdit} onDelete={() => handleDeleteRequest(selectedTicket.id)} onAddComment={handleAddComment} />;
+  }
 
   return (
-    <div className="space-y-6">
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <div className="flex flex-col h-full bg-gray-50">
+      <header className="bg-white shadow-sm border-b p-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Gestión de Tickets</h1>
+            <p className="text-sm text-gray-500">Crea, gestiona y sigue el estado de los tickets.</p>
+          </div>
+          <Button onClick={() => { setTicketToEdit(null); setIsModalOpen(true); }} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Ticket
+          </Button>
         </div>
-      ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-between items-center mb-6">
-            <TabsList>
-              <TabsTrigger value="dashboard">
-                <BarChart2 className="h-4 w-4 mr-2" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="list">
-                <Ticket className="h-4 w-4 mr-2" />
-                Tickets
-              </TabsTrigger>
-            </TabsList>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" onClick={() => {
-                // Exportar a PDF o CSV
-                toast({
-                  title: "Exportación iniciada",
-                  description: "Se está generando el archivo de exportación"
-                });
-              }}>
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-              <Button onClick={() => {
-                setSelectedTicket(null);
-                setIsModalOpen(true);
-              }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Ticket
-              </Button>
+      </header>
+
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input type="text" placeholder="Buscar por título o descripción..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" />
             </div>
           </div>
 
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Resumen */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Tickets</h3>
-                <div className="flex items-center">
-                  <Ticket className="h-8 w-8 text-primary mr-2" />
-                  <span className="text-3xl font-bold">{tickets.length}</span>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Abiertos</h3>
-                <div className="flex items-center">
-                  <AlertCircle className="h-8 w-8 text-blue-500 mr-2" />
-                  <span className="text-3xl font-bold">{tickets.filter(t => t.estado === 'Abierto').length}</span>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">En Proceso</h3>
-                <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-yellow-500 mr-2" />
-                  <span className="text-3xl font-bold">{tickets.filter(t => t.estado === 'En Proceso').length}</span>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Resueltos</h3>
-                <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-green-500 mr-2" />
-                  <span className="text-3xl font-bold">{tickets.filter(t => t.estado === 'Resuelto').length}</span>
-                </div>
-              </div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-lg p-5 shadow border animate-pulse"><div className="h-5 bg-gray-200 rounded w-1/4 mb-4"></div><div className="h-6 bg-gray-300 rounded w-3/4 mb-3"></div><div className="h-12 bg-gray-200 rounded mb-4"></div><div className="h-5 bg-gray-200 rounded w-1/2"></div></div>
+              ))}
             </div>
-
-            {/* Gráficos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Gráfico de Estado */}
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <PieChart className="h-5 w-5 mr-2" />
-                  Tickets por Estado
-                </h3>
-                <div className="h-64">
-                  <ReactECharts 
-                    option={{
-                      tooltip: {
-                        trigger: 'item',
-                        formatter: '{a} <br/>{b}: {c} ({d}%)'
-                      },
-                      legend: {
-                        orient: 'vertical',
-                        right: 10,
-                        top: 'center',
-                        data: estadoData.map(item => item.name)
-                      },
-                      series: [
-                        {
-                          name: 'Estado',
-                          type: 'pie',
-                          radius: ['40%', '70%'],
-                          avoidLabelOverlap: false,
-                          itemStyle: {
-                            borderRadius: 10,
-                            borderColor: '#fff',
-                            borderWidth: 2
-                          },
-                          label: {
-                            show: false,
-                            position: 'center'
-                          },
-                          emphasis: {
-                            label: {
-                              show: true,
-                              fontSize: '14',
-                              fontWeight: 'bold'
-                            }
-                          },
-                          labelLine: {
-                            show: false
-                          },
-                          data: estadoData.map((item, index) => ({
-                            value: item.value,
-                            name: item.name,
-                            itemStyle: {
-                              color: COLORS[index % COLORS.length]
-                            }
-                          }))
-                        }
-                      ]
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                  />
-                </div>
-              </div>
-
-              {/* Gráfico de Prioridad */}
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <BarChart2 className="h-5 w-5 mr-2" />
-                  Tickets por Prioridad
-                </h3>
-                <div className="h-64">
-                  <ReactECharts 
-                    option={{
-                      tooltip: {
-                        trigger: 'axis',
-                        axisPointer: {
-                          type: 'shadow'
-                        }
-                      },
-                      legend: {
-                        data: ['Tickets']
-                      },
-                      grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '3%',
-                        containLabel: true
-                      },
-                      xAxis: {
-                        type: 'category',
-                        data: prioridadData.map(item => item.name)
-                      },
-                      yAxis: {
-                        type: 'value'
-                      },
-                      series: [
-                        {
-                          name: 'Tickets',
-                          type: 'bar',
-                          data: prioridadData.map(item => item.value),
-                          itemStyle: {
-                            color: '#10b981'
-                          }
-                        }
-                      ]
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                  />
-                </div>
-              </div>
-
-              {/* Gráfico de Tendencia */}
-              <div className="bg-card border border-border rounded-lg p-6 md:col-span-2">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <LineChart className="h-5 w-5 mr-2" />
-                  Tendencia de Tickets (Últimos 6 meses)
-                </h3>
-                <div className="h-64">
-                  <ReactECharts 
-                    option={{
-                      tooltip: {
-                        trigger: 'axis'
-                      },
-                      legend: {
-                        data: ['Tickets']
-                      },
-                      grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '3%',
-                        containLabel: true
-                      },
-                      xAxis: {
-                        type: 'category',
-                        boundaryGap: false,
-                        data: monthData.map(item => item.name)
-                      },
-                      yAxis: {
-                        type: 'value'
-                      },
-                      series: [
-                        {
-                          name: 'Tickets',
-                          type: 'line',
-                          data: monthData.map(item => item.tickets),
-                          itemStyle: {
-                            color: '#3b82f6'
-                          },
-                          areaStyle: {
-                            color: {
-                              type: 'linear',
-                              x: 0,
-                              y: 0,
-                              x2: 0,
-                              y2: 1,
-                              colorStops: [{
-                                offset: 0, color: 'rgba(59, 130, 246, 0.5)'
-                              }, {
-                                offset: 1, color: 'rgba(59, 130, 246, 0.05)'
-                              }]
-                            }
-                          },
-                          smooth: true
-                        }
-                      ]
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                  />
-                </div>
-              </div>
+          ) : filteredTickets.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTickets.map((ticket) => (
+                <motion.div key={ticket.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }} className="bg-white rounded-lg border shadow-sm hover:shadow-lg hover:border-teal-500 transition-all duration-300 flex flex-col group cursor-pointer" onClick={() => handleViewTicket(ticket)}>
+                  <div className="p-5 flex-1">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.estado)}`}>{ticket.estado}</span>
+                      <span className="text-xs text-gray-500">{new Date(ticket.fechaCreacion).toLocaleDateString()}</span>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-800 group-hover:text-teal-600 mb-2 line-clamp-2">{ticket.titulo}</h3>
+                    <p className="text-gray-600 text-sm line-clamp-3 mb-4">{ticket.descripcion}</p>
+                    <div className="flex items-center text-sm text-gray-500"><AlertCircle className="h-4 w-4 mr-2" />Prioridad: <span className="font-semibold ml-1 text-gray-700">{ticket.prioridad}</span></div>
+                  </div>
+                  <div className="bg-gray-50 p-3 flex justify-between items-center rounded-b-lg border-t">
+                    <div className="text-xs text-gray-500"><p>Solicitante: <span className="font-semibold text-gray-700">{ticket.solicitante}</span></p><p>Asignado: <span className="font-semibold text-gray-700">{ticket.asignado || "N/A"}</span></p></div>
+                    <div className="flex items-center">
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(ticket); }} className="text-gray-500 hover:text-teal-600 hover:bg-teal-100"><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(ticket.id); }} className="text-gray-500 hover:text-red-600 hover:bg-red-100"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </TabsContent>
-
-          <TabsContent value="list">
-            {/* Barra de búsqueda */}
-            <div className="relative mb-6">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar tickets..."
-                className="pl-8 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          ) : (
+            <div className="text-center py-20 col-span-full bg-white rounded-lg border">
+              <Ticket className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-4 text-lg font-semibold text-gray-800">No se encontraron tickets</h3>
+              <p className="mt-2 text-sm text-gray-500">Intenta ajustar tu búsqueda o crea un nuevo ticket.</p>
             </div>
+          )}
+        </div>
+      </main>
 
-            {/* Lista de Tickets */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="text-left p-4">Solicitante</th>
-                    <th className="text-left p-4">Título</th>
-                    <th className="text-left p-4">Estado</th>
-                    <th className="text-left p-4">Asignado a</th>
-                    <th className="text-right p-4">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTickets.map((ticket) => (
-                    <motion.tr
-                      key={ticket.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="border-b border-border cursor-pointer hover:bg-accent/50"
-                      onClick={() => handleViewTicket(ticket)}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <Ticket className="h-5 w-5 text-primary" />
-                          <span className="font-medium">{ticket.solicitante}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <p className="text-sm line-clamp-2">{ticket.titulo}</p>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(ticket.estado)}`}>
-                          {ticket.estado}
-                        </span>
-                      </td>
-                      <td className="p-4">{ticket.asignado || "No asignado"}</td>
-                      <td className="p-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(ticket);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(ticket.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredTickets.length === 0 && (
-                <div className="text-center py-12">
-                  <Ticket className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-4 text-muted-foreground">
-                    No hay tickets registrados. Haz clic en "Nuevo Ticket" para comenzar.
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      )}
-
-      <TicketModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedTicket(null);
-        }}
-        onSave={handleSave}
-        ticket={selectedTicket}
-      />
+      <TicketModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setTicketToEdit(null); }} onSave={handleSave} ticket={ticketToEdit} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el ticket.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente el ticket.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={confirmDelete} className="bg-red-600 text-white hover:bg-red-700">Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
     </div>
   );

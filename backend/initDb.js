@@ -17,7 +17,8 @@ async function initDatabase() {
         console.log('Paso 2: Eliminando tablas individualmente...');
         const tablesToDrop = [
             'evaluaciones_capacitaciones', 'personal', 'puestos', 'departamentos',
-            'indicadores', 'capacitaciones', 'procesos', 'usuarios', 'mejoras', 'noticias'
+            'indicadores', 'capacitaciones', 'procesos', 'usuarios', 'mejoras', 'noticias',
+            'tickets', 'encuestas_respuestas', 'encuestas_preguntas', 'encuestas' // Nuevas tablas
         ];
         for (const table of tablesToDrop) {
             await tursoClient.execute(`DROP TABLE IF EXISTS ${table}`);
@@ -73,21 +74,30 @@ async function initDatabase() {
     });
     console.log('Tabla noticias creada correctamente');
     
-    // Crear tabla de mejoras
+    // Crear tabla de hallazgos (anteriormente 'mejoras')
     await tursoClient.execute({
       sql: `
-        CREATE TABLE IF NOT EXISTS mejoras (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS hallazgos (
+          id TEXT PRIMARY KEY,
+          numeroHallazgo TEXT UNIQUE NOT NULL,
           titulo TEXT NOT NULL,
-          descripcion TEXT NOT NULL,
+          descripcion TEXT,
           estado TEXT NOT NULL,
-          responsable TEXT NOT NULL,
-          fecha_inicio TEXT NOT NULL,
-          fecha_fin_estimada TEXT
+          origen TEXT,
+          categoria TEXT,
+          prioridad TEXT,
+          fechaRegistro TEXT NOT NULL,
+          fechaCierre TEXT,
+          proceso_id TEXT,
+          requisitoIncumplido TEXT,
+          accionInmediata TEXT,
+          responsable_id TEXT,
+          FOREIGN KEY (proceso_id) REFERENCES procesos(id),
+          FOREIGN KEY (responsable_id) REFERENCES personal(id)
         )
       `
     });
-    console.log('Tabla mejoras creada correctamente');
+    console.log('Tabla hallazgos creada correctamente');
     
     // Crear tabla de procesos
     await tursoClient.execute({
@@ -248,6 +258,73 @@ async function initDatabase() {
       `
     });
     console.log('Tabla personal creada correctamente');
+
+    // Crear tabla de tickets
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS tickets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          titulo TEXT NOT NULL,
+          descripcion TEXT NOT NULL,
+          estado TEXT NOT NULL CHECK(estado IN ('Abierto', 'En Proceso', 'Resuelto', 'Cerrado')),
+          prioridad TEXT NOT NULL CHECK(prioridad IN ('Baja', 'Media', 'Alta', 'Urgente')),
+          solicitante TEXT,
+          asignado TEXT,
+          categoria TEXT,
+      comentarios TEXT DEFAULT '[]',
+      archivos TEXT DEFAULT '[]',
+          fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+          fechaCierre DATETIME
+        )
+      `
+    });
+    console.log('Tabla tickets creada correctamente');
+
+    // Crear tabla de encuestas
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS encuestas (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          titulo TEXT NOT NULL,
+          descripcion TEXT,
+          fecha_creacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+          fecha_cierre TEXT,
+          estado TEXT NOT NULL DEFAULT 'Borrador' -- Borrador, Activa, Cerrada
+        )
+      `
+    });
+    console.log('Tabla encuestas creada correctamente');
+
+    // Crear tabla de preguntas de encuestas
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS encuestas_preguntas (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          encuesta_id INTEGER NOT NULL,
+          texto_pregunta TEXT NOT NULL,
+          tipo_pregunta TEXT NOT NULL, -- 'texto_libre', 'opcion_multiple', 'escala_1_5'
+          opciones TEXT, -- JSON para opciones de opción múltiple
+          FOREIGN KEY (encuesta_id) REFERENCES encuestas (id) ON DELETE CASCADE
+        )
+      `
+    });
+    console.log('Tabla encuestas_preguntas creada correctamente');
+
+    // Crear tabla de respuestas de encuestas
+    await tursoClient.execute({
+      sql: `
+        CREATE TABLE IF NOT EXISTS encuestas_respuestas (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          pregunta_id INTEGER NOT NULL,
+          usuario_id INTEGER, -- Puede ser nulo para encuestas anónimas
+          respuesta TEXT NOT NULL,
+          fecha_respuesta TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+          FOREIGN KEY (pregunta_id) REFERENCES encuestas_preguntas (id) ON DELETE CASCADE,
+          FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL
+        )
+      `
+    });
+    console.log('Tabla encuestas_respuestas creada correctamente');
     
     console.log('Base de datos inicializada completamente con nuevas tablas');
   } catch (error) {

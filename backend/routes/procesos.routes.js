@@ -49,14 +49,12 @@ router.post('/', async (req, res) => {
   const { 
     codigo, 
     nombre, 
-    descripcion, 
-    tipo,
-    responsable,
-    entradas,
-    salidas,
-    indicadores,
-    documentos_relacionados,
-    estado = 'activo'
+    version = '1.0',
+    objetivo,
+    alcance,
+    funciones_involucradas,
+    definiciones_abreviaturas,
+    desarrollo
   } = req.body;
 
   console.log('[POST /api/procesos] Datos recibidos:', req.body);
@@ -86,14 +84,10 @@ router.post('/', async (req, res) => {
 
     const result = await tursoClient.execute({
       sql: `INSERT INTO procesos (
-              id, codigo, nombre, descripcion, tipo, responsable, 
-              entradas, salidas, indicadores, documentos_relacionados, 
-              estado, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              id, codigo, nombre, version, objetivo, alcance, funciones_involucradas, definiciones_abreviaturas, desarrollo, fecha_creacion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
       args: [
-        id, codigo, nombre, descripcion, tipo, responsable,
-        entradas, salidas, indicadores, documentos_relacionados,
-        estado, fechaCreacion
+        id, codigo, nombre, version, objetivo, alcance, funciones_involucradas, definiciones_abreviaturas, desarrollo, fechaCreacion
       ]
     });
 
@@ -117,13 +111,12 @@ router.put('/:id', async (req, res) => {
   const { 
     codigo, 
     nombre, 
-    descripcion, 
-    tipo,
-    responsable,
-    entradas,
-    salidas,
-    indicadores,
-    documentos_relacionados,
+    version = '1.o',
+    objetivo,
+    alcance,
+    funciones_involucradas,
+    definiciones_abreviaturas,
+    desarrollo,
     estado
   } = req.body;
 
@@ -160,14 +153,10 @@ router.put('/:id', async (req, res) => {
 
     await tursoClient.execute({
       sql: `UPDATE procesos SET 
-            codigo = ?, nombre = ?, descripcion = ?, tipo = ?, 
-            responsable = ?, entradas = ?, salidas = ?, 
-            indicadores = ?, documentos_relacionados = ?, estado = ?
+            codigo = ?, nombre = ?, version = ?, objetivo = ?, alcance = ?, funciones_involucradas = ?, definiciones_abreviaturas = ?, desarrollo = ?, estado = ?
             WHERE id = ?`,
       args: [
-        codigo, nombre, descripcion, tipo, responsable,
-        entradas, salidas, indicadores, documentos_relacionados,
-        estado, id
+        codigo, nombre, version, objetivo, alcance, funciones_involucradas, definiciones_abreviaturas, desarrollo, estado, id
       ]
     });
 

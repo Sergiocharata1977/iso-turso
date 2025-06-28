@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,32 +11,47 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function IndicadorModal({ isOpen, onClose, onSave, indicador }) {
-  const [formData, setFormData] = useState({
-    titulo: "",
-    descripcion: "",
-    responsable: "",
-    unidad_medida: "",
-    limite_aceptacion: "",
-    objetivo_calidad: ""
+  const getInitialFormData = () => ({
+    nombre: '',
+    descripcion: '',
+    tipo: 'manual', // Valor por defecto
+    formula: '',
+    frecuencia: '',
+    meta: '',
+    responsable: '',
   });
 
+  const [formData, setFormData] = useState(getInitialFormData());
+
   useEffect(() => {
-    if (indicador) {
-      setFormData(indicador);
-    } else {
-      setFormData({
-        titulo: "",
-        descripcion: "",
-        responsable: "",
-        unidad_medida: "",
-        limite_aceptacion: "",
-        objetivo_calidad: ""
-      });
+    if (isOpen) {
+      if (indicador) {
+        setFormData({
+          nombre: indicador.nombre || '',
+          descripcion: indicador.descripcion || '',
+          tipo: indicador.tipo || 'manual',
+          formula: indicador.formula || '',
+          frecuencia: indicador.frecuencia || '',
+          meta: indicador.meta || '',
+          responsable: indicador.responsable || '',
+        });
+      } else {
+        setFormData(getInitialFormData());
+      }
     }
-  }, [indicador]);
+  }, [indicador, isOpen]);
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleTypeChange = (value) => {
+    setFormData(prev => ({ ...prev, tipo: value }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -45,32 +60,35 @@ function IndicadorModal({ isOpen, onClose, onSave, indicador }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {indicador ? "Editar Indicador" : "Nuevo Indicador"}
+            {indicador ? 'Editar Indicador' : 'Crear Nuevo Indicador'}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="titulo">Título</Label>
+        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="nombre">Nombre del Indicador</Label>
               <Input
-                id="titulo"
-                value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                id="nombre"
+                value={formData.nombre}
+                onChange={handleInputChange}
+                placeholder="Ej: Tasa de Satisfacción del Cliente"
                 required
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="responsable">Responsable</Label>
-              <Input
-                id="responsable"
-                value={formData.responsable}
-                onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
-                required
-              />
+              <Label htmlFor="tipo">Tipo de Indicador</Label>
+              <Select value={formData.tipo} onValueChange={handleTypeChange}>
+                <SelectTrigger id="tipo">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="calculado">Calculado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -79,52 +97,67 @@ function IndicadorModal({ isOpen, onClose, onSave, indicador }) {
             <Textarea
               id="descripcion"
               value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              onChange={handleInputChange}
+              placeholder="Describe qué mide este indicador y por qué es importante."
               required
               className="min-h-[100px]"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="unidad_medida">Unidad de Medida</Label>
-              <Input
-                id="unidad_medida"
-                value={formData.unidad_medida}
-                onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value })}
-                required
-              />
+          {formData.tipo === 'manual' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="space-y-2">
+                <Label htmlFor="formula">Fórmula de Cálculo</Label>
+                <Textarea
+                  id="formula"
+                  value={formData.formula}
+                  onChange={handleInputChange}
+                  placeholder="Ej: (Clientes satisfechos / Total encuestados) * 100"
+                  className="min-h-[80px] font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="frecuencia">Frecuencia de Medición</Label>
+                  <Input
+                    id="frecuencia"
+                    value={formData.frecuencia}
+                    onChange={handleInputChange}
+                    placeholder="Ej: Mensual, Trimestral"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="meta">Meta</Label>
+                  <Input
+                    id="meta"
+                    value={formData.meta}
+                    onChange={handleInputChange}
+                    placeholder="Ej: > 95%"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="responsable">Responsable</Label>
+                  <Input
+                    id="responsable"
+                    value={formData.responsable}
+                    onChange={handleInputChange}
+                    placeholder="Ej: Gerente de Calidad"
+                    required
+                  />
+                </div>
+              </div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="limite_aceptacion">Límite de Aceptación</Label>
-              <Input
-                id="limite_aceptacion"
-                type="number"
-                value={formData.limite_aceptacion}
-                onChange={(e) => setFormData({ ...formData, limite_aceptacion: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="objetivo_calidad">Objetivo de Calidad</Label>
-            <Textarea
-              id="objetivo_calidad"
-              value={formData.objetivo_calidad}
-              onChange={(e) => setFormData({ ...formData, objetivo_calidad: e.target.value })}
-              required
-              className="min-h-[100px]"
-            />
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit">
-              {indicador ? "Guardar Cambios" : "Crear Indicador"}
+              {indicador ? 'Guardar Cambios' : 'Crear Indicador'}
             </Button>
           </DialogFooter>
         </form>

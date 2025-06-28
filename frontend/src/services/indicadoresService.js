@@ -1,100 +1,58 @@
-import { createApiClient } from './apiService.js';
+// src/services/indicadoresService.js
 
-const apiClient = createApiClient('/indicadores');
+import { createService } from './serviceFactory';
 
-/**
- * Servicio para gestionar indicadores a través de la API backend
- */
-export const indicadoresService = {
+// 1. Creamos un cliente de servicio para el recurso '/indicadores'
+// La factory se encargará de decidir si es mock o real.
+const apiClient = createService('/indicadores');
+
+// 2. Definimos el objeto de servicio con métodos que usan el apiClient.
+const indicadoresService = {
   /**
-   * Obtiene todos los indicadores
-   * @returns {Promise<Array>} Lista de indicadores
+   * Obtiene todos los indicadores.
+   * @returns {Promise<Array>} Lista de indicadores.
    */
-  async getAll() {
-    try {
-      const response = await apiClient.get('');
-      return response;
-    } catch (error) {
-      console.error('Error al obtener indicadores:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar los indicadores');
-    }
+  getAll() {
+    return apiClient.get();
   },
 
   /**
-   * Obtiene todos los indicadores para un objetivo específico
-   * @param {string|number} objetivoId - ID del objetivo
-   * @returns {Promise<Array>} Lista de indicadores para el objetivo
+   * Obtiene un indicador por su ID.
+   * @param {string} id - ID del indicador.
+   * @returns {Promise<Object>} Datos del indicador.
    */
-  async getByObjetivo(objetivoId) {
-    try {
-      const response = await apiClient.get(`/?objetivo_id=${objetivoId}`); // Confirmado que el backend espera objetivo_id
-      return response;
-    } catch (error) {
-      console.error(`Error al obtener indicadores para el objetivo ${objetivoId}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar los indicadores para el objetivo');
-    }
+  getById(id) {
+    return apiClient.get(`/${id}`);
   },
 
   /**
-   * Obtiene un indicador por su ID
-   * @param {string|number} id - ID del indicador
-   * @returns {Promise<Object>} Datos del indicador
+   * Crea un nuevo indicador.
+   * @param {Object} indicadorData - Datos del indicador a crear.
+   * @returns {Promise<Object>} Indicador creado.
    */
-  async getById(id) {
-    try {
-      const response = await apiClient.get(`/${id}`);
-      return response;
-    } catch (error) {
-      console.error(`Error al obtener indicador con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar el indicador');
-    }
+  create(indicadorData) {
+    return apiClient.post('', indicadorData);
   },
 
   /**
-   * Crea un nuevo indicador
-   * @param {Object} indicador - Datos del indicador a crear
-   * @returns {Promise<Object>} Indicador creado
+   * Actualiza un indicador existente.
+   * @param {string} id - ID del indicador a actualizar.
+   * @param {Object} indicadorData - Datos actualizados.
+   * @returns {Promise<Object>} Indicador actualizado.
    */
-  async create(indicador) {
-    try {
-      const response = await apiClient.post('', indicador);
-      return response;
-    } catch (error) {
-      console.error('Error al crear indicador:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear el indicador');
-    }
+  update(id, indicadorData) {
+    return apiClient.put(`/${id}`, indicadorData);
   },
 
   /**
-   * Actualiza un indicador existente
-   * @param {string|number} id - ID del indicador a actualizar
-   * @param {Object} indicador - Datos actualizados del indicador
-   * @returns {Promise<Object>} Indicador actualizado
+   * Elimina un indicador.
+   * @param {string} id - ID del indicador a eliminar.
+   * @returns {Promise<Object>} Mensaje de confirmación.
    */
-  async update(id, indicador) {
-    try {
-      const response = await apiClient.put(`/${id}`, indicador);
-      return response;
-    } catch (error) {
-      console.error(`Error al actualizar indicador con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar el indicador');
-    }
+  delete(id) {
+    return apiClient.delete(`/${id}`);
   },
-
-  /**
-   * Elimina un indicador
-   * @param {string|number} id - ID del indicador a eliminar
-   * @returns {Promise<Object>} Resultado de la eliminación
-   */
-  async delete(id) {
-    try {
-      const response = await apiClient.delete(`/${id}`);
-      return response;
-    } catch (error) {
-      console.error(`Error al eliminar indicador con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar el indicador');
-    }
-  }
 };
 
 export default indicadoresService;
+

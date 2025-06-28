@@ -21,7 +21,8 @@ const getAuthHeaders = () => {
 
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    // Asegurarse de que no haya una barra al final de la URL base
+    this.baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
   }
 
   async request(endpoint, options = {}) {
@@ -97,6 +98,8 @@ class ApiService {
 }
 
 const masterApiService = new ApiService();
+
+export const apiService = masterApiService;
 
 export const createApiClient = (baseRoute) => {
   if (!baseRoute.startsWith('/')) {

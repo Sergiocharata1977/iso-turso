@@ -32,6 +32,11 @@ import evaluacionesGrupalesRouter from './routes/evaluaciones-grupales.routes.js
 import indicadoresRouter from './routes/indicadores.routes.js';
 import medicionesRouter from './routes/mediciones.routes.js';
 import ticketsRouter from './routes/tickets.routes.js';
+import productosRouter from './routes/productos.routes.js';
+import encuestasRouter from './routes/encuestas.routes.js';
+import hallazgosRouter from './routes/mejoras.routes.js'; // Renombrado a hallazgos
+import tratamientosRouter from './routes/tratamientos.routes.js';
+import verificacionesRouter from './routes/verificaciones.routes.js';
 
 
 
@@ -49,6 +54,13 @@ app.use('/api/evaluaciones-grupales', evaluacionesGrupalesRouter);
 app.use('/api/indicadores', indicadoresRouter);
 app.use('/api/mediciones', medicionesRouter);
 app.use('/api/tickets', ticketsRouter);
+app.use('/api/productos', productosRouter);
+app.use('/api/encuestas', encuestasRouter);
+
+// Nuevas rutas para el módulo de Mejoras
+app.use('/api/hallazgos', hallazgosRouter);
+app.use('/api/tratamientos', tratamientosRouter);
+app.use('/api/verificaciones', verificacionesRouter);
 
 
 

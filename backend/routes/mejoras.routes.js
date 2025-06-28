@@ -4,283 +4,167 @@ import crypto from 'crypto';
 
 const router = Router();
 
-// GET /api/mejoras - Listar todas las mejoras
+// GET /api/hallazgos - Listar todos los hallazgos
 router.get('/', async (req, res) => {
   try {
     const result = await tursoClient.execute({
       sql: `
-        SELECT m.*, p.nombre as proceso_nombre 
-        FROM mejoras m
-        LEFT JOIN procesos p ON m.proceso_id = p.id
-        ORDER BY m.fecha_creacion DESC
-      `
+        SELECT h.*
+        FROM hallazgos h
+        ORDER BY h.fechaRegistro DESC
+      `,
     });
     res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener mejoras:', error);
+    console.error('Error al obtener hallazgos:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// POST /api/mejoras - Crear una nueva mejora
-router.post('/', async (req, res) => {
-  const { 
-    codigo,
-    titulo, 
-    descripcion, 
-    tipo, 
-    origen,
-    estado, 
-    proceso_id, 
-    responsable,
-    fecha_identificacion,
-    fecha_implementacion,
-    resultado
-  } = req.body;
-
-  if (!codigo || !titulo) {
-    return res.status(400).json({ error: 'Los campos "codigo" y "titulo" son obligatorios.' });
-  }
-
-  try {
-    // Verificar si ya existe una mejora con el mismo código
-    const existingMejora = await tursoClient.execute({
-      sql: 'SELECT id FROM mejoras WHERE codigo = ?',
-      args: [codigo]
-    });
-
-    if (existingMejora.rows.length > 0) {
-      return res.status(400).json({ error: 'Ya existe una mejora con ese código.' });
-    }
-
-    const id = crypto.randomUUID();
-    const fechaCreacion = new Date().toISOString();
-    
-    const result = await tursoClient.execute({
-      sql: `INSERT INTO mejoras (
-              id, codigo, titulo, descripcion, tipo, origen, 
-              proceso_id, responsable, fecha_identificacion, 
-              fecha_implementacion, estado, resultado, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        id,
-        codigo,
-        titulo, 
-        descripcion || null, 
-        tipo || null, 
-        origen || null,
-        proceso_id || null, 
-        responsable || null,
-        fecha_identificacion || null,
-        fecha_implementacion || null,
-        estado || 'identificada',
-        resultado || null,
-        fechaCreacion
-      ],
-    });
-
-    // Devolver la mejora recién creada
-    const newMejora = await tursoClient.execute({
-      sql: `
-        SELECT m.*, p.nombre as proceso_nombre 
-        FROM mejoras m
-        LEFT JOIN procesos p ON m.proceso_id = p.id
-        WHERE m.id = ?
-      `,
-      args: [id]
-    });
-    
-    if (newMejora.rows.length > 0) {
-      res.status(201).json(newMejora.rows[0]);
-    } else {
-      res.status(201).json({ 
-        id, 
-        codigo,
-        titulo, 
-        descripcion, 
-        tipo, 
-        origen,
-        proceso_id, 
-        responsable,
-        fecha_identificacion,
-        fecha_implementacion,
-        estado: estado || 'identificada',
-        resultado,
-        fecha_creacion: fechaCreacion
-      });
-    }
-  } catch (error) {
-    console.error('Error al crear la mejora:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// GET /api/mejoras/:id - Obtener una mejora por ID
+// GET /api/hallazgos/:id - Obtener un hallazgo por ID
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const result = await tursoClient.execute({
       sql: `
-        SELECT m.*, p.nombre as proceso_nombre 
-        FROM mejoras m
-        LEFT JOIN procesos p ON m.proceso_id = p.id
-        WHERE m.id = ?
+        SELECT h.*
+        FROM hallazgos h
+        WHERE h.id = ?
       `,
       args: [id],
     });
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Mejora no encontrada.' });
+      return res.status(404).json({ error: 'Hallazgo no encontrado.' });        
     }
     res.json(result.rows[0]);
   } catch (error) {
-    console.error(`Error al obtener la mejora ${id}:`, error);
+    console.error(`Error al obtener el hallazgo ${id}:`, error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// PUT /api/mejoras/:id - Actualizar una mejora
-router.put('/:id', async (req, res) => {
-  const { id } = req.params;
-  const { 
-    codigo,
-    titulo, 
-    descripcion, 
-    tipo, 
-    origen,
-    estado, 
-    proceso_id, 
-    responsable,
-    fecha_identificacion,
-    fecha_implementacion,
-    resultado
+// POST /api/hallazgos - Crear un nuevo hallazgo
+router.post('/', async (req, res) => {
+  console.log('API POST /hallazgos - Recibido:', req.body);
+  let {
+    titulo, descripcion, estado, origen, categoria,
+    fechaRegistro, requisitoIncumplido
   } = req.body;
 
-  if (!codigo || !titulo) {
-    return res.status(400).json({ error: 'Los campos "codigo" y "titulo" son obligatorios.' });
+  // Asignar estado por defecto si no se proporciona
+  estado = estado || 'PENDIENTE';
+
+  // Asegurarse de que los campos opcionales tengan un valor nulo si no se proporcionan
+  const fechaCierre = req.body.fechaCierre || null;
+
+  if (!titulo || !fechaRegistro || !origen || !categoria) {
+    return res.status(400).json({ error: 'Los campos título, fecha de registro, origen y categoría son obligatorios.' });
   }
 
   try {
-    // Verificar que la mejora existe
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM mejoras WHERE id = ?',
-      args: [id]
+    // 1. Obtener el último número de hallazgo
+    const lastHallazgoResult = await tursoClient.execute('SELECT numeroHallazgo FROM hallazgos ORDER BY id DESC LIMIT 1');
+    let nextNumeroHallazgo = 'H-001';
+    if (lastHallazgoResult.rows.length > 0 && lastHallazgoResult.rows[0].numeroHallazgo) {
+      const lastNumero = lastHallazgoResult.rows[0].numeroHallazgo;
+      const lastId = parseInt(lastNumero.split('-')[1], 10);
+      nextNumeroHallazgo = `H-${(lastId + 1).toString().padStart(3, '0')}`;
+    }
+
+    const existing = await tursoClient.execute({
+      sql: 'SELECT id FROM hallazgos WHERE numeroHallazgo = ?',
+      args: [nextNumeroHallazgo]
     });
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Ya existe un hallazgo con ese número.' });
+    }
+
+    const id = crypto.randomUUID();
     
-    if (existsCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Mejora no encontrada.' });
-    }
-
-    // Verificar que no exista otra mejora con el mismo código (excepto esta misma)
-    const duplicateCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM mejoras WHERE codigo = ? AND id != ?',
-      args: [codigo, id]
-    });
-
-    if (duplicateCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Ya existe otra mejora con ese código.' });
-    }
-
-    const result = await tursoClient.execute({
-      sql: `UPDATE mejoras SET 
-              codigo = ?, titulo = ?, descripcion = ?, tipo = ?, 
-              origen = ?, proceso_id = ?, responsable = ?, 
-              fecha_identificacion = ?, fecha_implementacion = ?,
-              estado = ?, resultado = ?
-            WHERE id = ?`,
+    await tursoClient.execute({
+      sql: `INSERT INTO hallazgos (
+        id, numeroHallazgo, titulo, descripcion, estado, origen, categoria,
+        fechaRegistro, fechaCierre, requisitoIncumplido
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, // 10 values
       args: [
-        codigo,
-        titulo, 
-        descripcion || null, 
-        tipo || null, 
-        origen || null,
-        proceso_id || null, 
-        responsable || null,
-        fecha_identificacion || null,
-        fecha_implementacion || null,
-        estado || 'identificada',
-        resultado || null,
-        id
+        id, nextNumeroHallazgo, titulo, descripcion, estado, origen, categoria,
+        fechaRegistro, fechaCierre, requisitoIncumplido
       ],
     });
 
-    // Devolver la mejora actualizada
-    const updatedMejora = await tursoClient.execute({
-      sql: `
-        SELECT m.*, p.nombre as proceso_nombre 
-        FROM mejoras m
-        LEFT JOIN procesos p ON m.proceso_id = p.id
-        WHERE m.id = ?
-      `,
-      args: [id]
+    const newHallazgoResult = await tursoClient.execute({
+        sql: 'SELECT * FROM hallazgos WHERE id = ?',
+        args: [id]
     });
 
-    res.json(updatedMejora.rows[0]);
+    res.status(201).json(newHallazgoResult.rows[0]);
   } catch (error) {
-    console.error(`Error al actualizar la mejora ${id}:`, error);
+    console.error('Error al crear el hallazgo:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// DELETE /api/mejoras/:id - Eliminar una mejora
+// PUT /api/hallazgos/:id - Actualizar un hallazgo
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { ...fieldsToUpdate } = req.body;
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    return res.status(400).json({ error: 'No se proporcionaron campos para actualizar.' });
+  }
+
+  const allowedFields = [
+    'titulo', 'descripcion', 'estado', 'origen', 'categoria',
+    'fechaRegistro', 'fechaCierre', 'requisitoIncumplido'
+  ];
+
+  const fields = Object.keys(fieldsToUpdate)
+    .filter(key => allowedFields.includes(key));
+
+  const sqlSetParts = fields.map(key => `${key} = ?`);
+  const sqlArgs = fields.map(key => fieldsToUpdate[key]);
+  sqlArgs.push(id);
+
+  try {
+    await tursoClient.execute({
+      sql: `UPDATE hallazgos SET ${sqlSetParts.join(', ')} WHERE id = ?`,
+      args: sqlArgs,
+    });
+
+    const updatedHallazgoResult = await tursoClient.execute({
+        sql: 'SELECT * FROM hallazgos WHERE id = ?',
+        args: [id]
+    });
+
+    res.json(updatedHallazgoResult.rows[0]);
+  } catch (error) {
+    console.error(`Error al actualizar el hallazgo ${id}:`, error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/hallazgos/:id - Eliminar un hallazgo y sus registros asociados
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
+  const tx = await tursoClient.transaction();
   try {
-    const result = await tursoClient.execute({
-      sql: 'DELETE FROM mejoras WHERE id = ?',
-      args: [id],
-    });
+
+    
+    // Luego eliminar el hallazgo principal
+    const result = await tx.execute({ sql: 'DELETE FROM hallazgos WHERE id = ?', args: [id] });
+
+    await tx.commit();
 
     if (result.rowsAffected === 0) {
-      return res.status(404).json({ error: 'Mejora no encontrada.' });
+      return res.status(404).json({ error: 'Hallazgo no encontrado.' });
     }
-    res.status(204).send(); // No content
+    
+    res.status(204).send();
   } catch (error) {
-    console.error(`Error al eliminar la mejora ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// GET /api/mejoras/estado/:estado - Obtener mejoras por estado
-router.get('/estado/:estado', async (req, res) => {
-  const { estado } = req.params;
-  try {
-    const result = await tursoClient.execute({
-      sql: `
-        SELECT m.*, p.nombre as proceso_nombre 
-        FROM mejoras m
-        LEFT JOIN procesos p ON m.proceso_id = p.id
-        WHERE m.estado = ?
-        ORDER BY m.fecha_creacion DESC
-      `,
-      args: [estado]
-    });
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error(`Error al obtener mejoras con estado ${estado}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// GET /api/mejoras/proceso/:procesoId - Obtener mejoras por proceso
-router.get('/proceso/:procesoId', async (req, res) => {
-  const { procesoId } = req.params;
-  try {
-    const result = await tursoClient.execute({
-      sql: `
-        SELECT m.*, p.nombre as proceso_nombre 
-        FROM mejoras m
-        LEFT JOIN procesos p ON m.proceso_id = p.id
-        WHERE m.proceso_id = ?
-        ORDER BY m.fecha_creacion DESC
-      `,
-      args: [procesoId]
-    });
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error(`Error al obtener mejoras para el proceso ${procesoId}:`, error);
+    await tx.rollback();
+    console.error(`Error al eliminar el hallazgo ${id}:`, error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

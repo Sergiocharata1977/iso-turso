@@ -8,7 +8,7 @@ const puntosApiClient = createApiClient('/auditoria-puntos');
 // Obtener todas las auditorías
 export async function getAllAuditorias() {
   try {
-    const data = await auditoriasApiClient.get('/');
+    const data = await auditoriasApiClient.get('');
     return data || [];
   } catch (error) {
     console.error('Error al obtener auditorías:', error);
@@ -30,7 +30,7 @@ export async function getAuditoriaById(id) {
 // Crear una nueva auditoría
 export async function createAuditoria(data) {
   try {
-    const responseData = await auditoriasApiClient.post('/', data);
+    const responseData = await auditoriasApiClient.post('', data);
     return responseData;
   } catch (error) {
     console.error('Error al crear auditoría:', error);
