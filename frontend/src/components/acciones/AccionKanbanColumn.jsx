@@ -3,7 +3,7 @@ import { SortableContext, useSortable } from '@dnd-kit/sortable';
 import { AccionKanbanCard } from './AccionKanbanCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export function AccionKanbanColumn({ id, title, acciones }) {
+export function AccionKanbanColumn({ id, title, acciones, onCardClick }) {
   const { setNodeRef } = useSortable({ id });
 
   return (
@@ -21,7 +21,7 @@ export function AccionKanbanColumn({ id, title, acciones }) {
           <SortableContext items={acciones.map(a => a.id)}>
             <div className="space-y-4">
               {acciones.map((accion) => (
-                <AccionKanbanCard key={accion.id} accion={accion} />
+                <AccionKanbanCard key={accion.id} accion={accion} onClick={onCardClick} />
               ))}
             </div>
           </SortableContext>

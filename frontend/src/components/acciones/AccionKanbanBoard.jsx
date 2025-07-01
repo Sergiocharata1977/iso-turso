@@ -1,35 +1,28 @@
 import { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext } from '@dnd-kit/sortable';
 import { AccionKanbanColumn } from './AccionKanbanColumn';
 import { AccionKanbanCard } from './AccionKanbanCard';
-// import { accionesService } from '@/services/accionesService'; // A crear
 import { toast } from 'sonner';
+import { accionWorkflow, ACCION_ESTADOS } from '@/config/accionWorkflow';
 
-// Estados basados en la imagen proporcionada
-const estadoMap = {
-  'i3_programada': 'Programada',
-  'i5_implementacion_finalizada': 'Implementación Finalizada',
-  'c3_planificacion_de_la_verificacion': 'Planificación Verificación',
-  'c4_ejecutada_la_verificacion': 'Verificación Ejecutada',
-  'c5_cerrado': 'Cerrado',
-};
-
-export function AccionKanbanBoard({ acciones, onStateChange }) {
+export function AccionKanbanBoard({ acciones, onStateChange, onCardClick }) {
   const [columns, setColumns] = useState([]);
   const [activeAccion, setActiveAccion] = useState(null);
 
   useEffect(() => {
-    const groupedAcciones = Object.keys(estadoMap).reduce((acc, estadoKey) => {
-      acc[estadoKey] = acciones
-        .filter(a => a.estado === estadoKey)
-        .sort((a, b) => a.orden - b.orden); // Asumiendo que hay un campo 'orden'
+    const statesForBoard = Object.keys(accionWorkflow).filter(
+      (key) => key !== ACCION_ESTADOS.CERRADA
+    );
+
+    const groupedAcciones = statesForBoard.reduce((acc, estadoKey) => {
+      acc[estadoKey] = acciones.filter((a) => a.estado === estadoKey);
       return acc;
     }, {});
 
-    const boardColumns = Object.keys(estadoMap).map(estadoKey => ({
+    const boardColumns = statesForBoard.map((estadoKey) => ({
       id: estadoKey,
-      title: estadoMap[estadoKey],
+      title: accionWorkflow[estadoKey].title,
       acciones: groupedAcciones[estadoKey] || [],
     }));
     setColumns(boardColumns);
@@ -38,7 +31,7 @@ export function AccionKanbanBoard({ acciones, onStateChange }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // 10px
+        distance: 10,
       },
     })
   );
@@ -63,21 +56,15 @@ export function AccionKanbanBoard({ acciones, onStateChange }) {
     const overContainer = over.data.current?.sortable.containerId || over.id;
 
     if (activeContainer !== overContainer) {
-      // Mover a otra columna (cambio de estado)
-      const accionId = activeId;
       const targetState = overContainer;
-      console.log(`Solicitando cambio de estado para la acción ${activeId} a ${targetState}`);
-
-      // Notificar al componente padre que se ha solicitado un cambio de estado.
-      // El padre se encargará de abrir el modal y, si se confirma, de actualizar los datos.
+      
       if (onStateChange) {
         onStateChange(activeId, targetState);
       } else {
-        console.warn('onStateChange no fue proporcionado a AccionKanbanBoard');
+        console.warn('onStateChange handler not provided to AccionKanbanBoard');
       }
     } else {
-      // Reordenar en la misma columna (lógica pendiente si es necesaria)
-      toast.info('Reordenamiento en la misma columna pendiente.');
+      toast.info('Reordenamiento dentro de la misma columna no implementado.');
     }
   }
 
@@ -86,7 +73,13 @@ export function AccionKanbanBoard({ acciones, onStateChange }) {
       <div className="flex gap-4 overflow-x-auto p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
         <SortableContext items={columns.map(col => col.id)}>
           {columns.map(col => (
-            <AccionKanbanColumn key={col.id} id={col.id} title={col.title} acciones={col.acciones} />
+            <AccionKanbanColumn 
+              key={col.id} 
+              id={col.id} 
+              title={col.title} 
+              acciones={col.acciones} 
+              onCardClick={onCardClick}
+            />
           ))}
         </SortableContext>
       </div>

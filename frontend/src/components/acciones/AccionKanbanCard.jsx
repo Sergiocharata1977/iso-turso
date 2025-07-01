@@ -27,7 +27,7 @@ const InfoRow = ({ icon: Icon, text }) => (
 // Props:
 // - accion: objeto con los datos de la acción
 // - columnColor: color opcional para el borde (lo puede pasar la columna)
-export function AccionKanbanCard({ accion, columnColor }) {
+export function AccionKanbanCard({ accion, columnColor, onClick }) {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: accion.id,
@@ -68,8 +68,8 @@ export function AccionKanbanCard({ accion, columnColor }) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={handleCardClick}
-      className={`cursor-grab active:cursor-grabbing`}
+      onClick={() => onClick(accion.id)}
+      className="cursor-grab active:cursor-grabbing"
     >
       <Card className={`bg-white dark:bg-gray-800 hover:shadow-xl transition-shadow border-l-4 ${borderColor}`}>
         {/* Header: Prioridad y Título */}

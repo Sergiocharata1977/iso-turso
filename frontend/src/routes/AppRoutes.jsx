@@ -8,6 +8,7 @@ import MenuPrincipal from '@/components/menu/MenuPrincipal';
 
 // Pages
 const AccionesPage2 = lazy(() => import('@/pages/AccionesPage2'));
+const AccionSinglePage = lazy(() => import('@/pages/AccionSinglePage'));
 const HallazgosPage2 = lazy(() => import('@/pages/HallazgosPage2'));
 const HallazgoSinglePage = lazy(() => import('@/pages/HallazgoSinglePage'));
 // const AccionesPage = lazy(() => import('@/pages/AccionesPage'));
@@ -52,9 +53,8 @@ export default function AppRoutes() {
 
           {/* Rutas del Menú */}
           <Route path="acciones" element={<AccionesPage2 />} />
+          <Route path="acciones/:id" element={<AccionSinglePage />} />
           <Route path="hallazgos" element={<HallazgosPage2 />} />
-          {/* <Route path="acciones" element={<AccionesPage />} />
-          <Route path="hallazgos" element={<HallazgosPage />} /> */}
           <Route path="hallazgos/:id" element={<HallazgoSinglePage />} />
           <Route path="auditorias" element={<AuditoriasListing />} />
           
