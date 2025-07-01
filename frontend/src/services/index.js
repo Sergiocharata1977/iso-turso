@@ -6,12 +6,12 @@ import personalService from './personalService.js';
 import auditoriasService from './auditoriasService.js';
 import indicadoresService from './indicadoresService.js';
 import medicionesService from './medicionesService.js';
-import { mejorasService } from './mejorasService.js';
-import { capacitacionesService } from './capacitacionesService.js';
-import { evaluacionesService } from './evaluacionesService.js';
-import { productosService } from './productosService.js';
-import { encuestasService } from './encuestasService.js';
-import { usuariosService } from './usuariosService.js';
+import mejorasService from './mejorasService.js';
+import capacitacionesService from './capacitacionesService.js';
+import evaluacionesService from './evaluacionesService.js';
+import productosService from './productosService.js';
+import encuestasService from './encuestasService.js';
+import usuariosService from './usuariosService.js';
 
 import documentosService from './documentosService.js';
 import normasService from './normasService.js';

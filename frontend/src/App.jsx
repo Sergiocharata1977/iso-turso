@@ -8,8 +8,8 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import AppRoutes from "@/routes/AppRoutes";
 import { AssistantProvider } from "@/components/assistant/AssistantProvider";
 import AssistantButton from "@/components/assistant/AssistantButton";
-import IsoAssistantPage from "@/pages/IsoAssistantPage";
-const MejorasPage = lazy(() => import('./pages/MejorasPage'));
+
+
 
 function App() {
   return (

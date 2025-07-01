@@ -11,7 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getEstadoInfo, ESTADOS_POR_ETAPA, LABELS, DESCRIPTIONS } from '@/lib/hallazgoEstados';
-import { STAGES, getStageFromEstado, getInitialStateForStage, canMove } from '@/lib/hallazgoWorkflow';
+
 import hallazgosService from '@/services/hallazgosService';
 import { toast } from 'react-toastify';
 import {
@@ -72,18 +72,7 @@ const HallazgoDetailModal = ({ isOpen, onClose, hallazgo, onUpdate }) => {
 
   const estadoInfo = getEstadoInfo(hallazgo.estado);
 
-  const handleStateChange = async (newEstado) => {
-    try {
-      await hallazgosService.updateHallazgo(hallazgo.id, { estado: newEstado });
-      toast.success(`Estado actualizado a ${newEstado}`);
-      if(onUpdate) {
-        onUpdate();
-      }
-    } catch (error) {
-      console.error('Failed to update state', error);
-      toast.error('No se pudo actualizar el estado.');
-    }
-  };
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -121,30 +110,7 @@ const HallazgoDetailModal = ({ isOpen, onClose, hallazgo, onUpdate }) => {
         </div>
 
         <DialogFooter className="sm:justify-between">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                Cambiar Estado
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {Object.values(STAGES).map(stage => {
-                const targetState = getInitialStateForStage(stage);
-                if (canMove(hallazgo.estado, targetState)) {
-                  return (
-                    <DropdownMenuItem
-                      key={stage}
-                      onClick={() => handleStateChange(targetState)}
-                    >
-                      Mover a {stage}
-                    </DropdownMenuItem>
-                  );
-                }
-                return null;
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
         </DialogFooter>
       </DialogContent>

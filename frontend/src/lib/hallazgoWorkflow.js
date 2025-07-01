@@ -1,62 +1,82 @@
-export const STAGES = {
-  DETECCION: 'Deteccion',
-  TRATAMIENTO: 'Tratamiento',
-  VERIFICACION: 'Verificacion',
+// Única fuente de verdad para las etapas y estados del flujo de trabajo de mejoras.
+
+export const stages = [
+  { 
+    id: 'deteccion', 
+    title: 'Detección',
+    estados: ['d1_iniciado', 'd2_accion_inmedita-programada', 'd3_accion_inmedita-finalizada'] 
+  },
+  { 
+    id: 'analisis', 
+    title: 'Análisis',
+    estados: ['t1_en_analisis', 't2_no_requiere_accion', 't3_requiere_accion'] 
+  },
+  { 
+    id: 'planificacion_accion', 
+    title: 'Planificación Acción',
+    estados: ['p1_planificacion_accion'] 
+  },
+  { 
+    id: 'ejecucion_accion', 
+    title: 'Ejecución Acción',
+    estados: ['e2_ejecucion_accion'] 
+  },
+  { 
+    id: 'verificacion', 
+    title: 'Verificación',
+    estados: ['v3_planificacion_verificacion', 'v4_ejecucion_verificacion'] 
+  },
+  { 
+    id: 'cierre', 
+    title: 'Cierre',
+    estados: ['c5_cerrado', 'c5_cerrada'] 
+  },
+];
+
+// Mapeo inverso de estado a ID de etapa para búsqueda rápida.
+const estadoToStageMap = stages.reduce((acc, stage) => {
+  stage.estados.forEach(estado => {
+    acc[estado] = stage.id;
+  });
+  return acc;
+}, {});
+
+/**
+ * Devuelve el ID de la etapa correspondiente a un estado dado.
+ * @param {string} estado - El estado a buscar (ej: 'd1_iniciado').
+ * @returns {string|null} El ID de la etapa (ej: 'deteccion') o null si no se encuentra.
+ */
+export const getStageFromEstado = (estado) => {
+  return estadoToStageMap[estado] || null;
 };
 
-export const ESTADOS = {
-  // Detección
-  D1_INICIADO: { id: 'd1_iniciado', nombre: 'Iniciado', etapa: STAGES.DETECCION },
-  D2_CON_ACCION_INMEDIATA: { id: 'd2_con_accion_inmediata', nombre: 'Con Acción Inmediata', etapa: STAGES.DETECCION },
-  D4_CORREGIDO_COMPLETO: { id: 'd4_corregido_completo', nombre: 'Corrección Finalizada', etapa: STAGES.DETECCION },
+/**
+ * Devuelve el primer estado válido para una etapa de destino.
+ * @param {string} stageId - El ID de la etapa de destino.
+ * @returns {string|null} El primer estado de esa etapa o null.
+ */
+export const getInitialStateForStage = (stageId) => {
+  const stage = stages.find(s => s.id === stageId);
+  return stage ? stage.estados[0] : null;
+};
 
-  // Tratamiento
-  T1_EN_ANALISIS: { id: 't1_en_analisis', nombre: 'En Análisis de Causa', etapa: STAGES.TRATAMIENTO },
-  T2_NO_REQUIERE_ACCION: { id: 't2_no_requiere_accion', nombre: 'No Requiere Acción', etapa: STAGES.TRATAMIENTO },
-  T3_PROGRAMADA: { id: 't3_programada', nombre: 'Acción Planificada', etapa: STAGES.TRATAMIENTO },
-  T5_IMPLEMENTACION_FINALIZADA: { id: 't5_implementacion_finalizada', nombre: 'Acción Ejecutada', etapa: STAGES.TRATAMIENTO },
+/**
+ * Determina si un item puede moverse de su estado actual a una nueva etapa.
+ * @param {string} fromEstado - El estado actual del item.
+ * @param {string} toStageId - El ID de la etapa de destino.
+ * @returns {boolean} True si el movimiento es válido.
+ */
+export const canMove = (fromEstado, toStageId) => {
+  const fromStageId = getStageFromEstado(fromEstado);
   
-  // Verificación
-  C3_VERIFICACION_PLANIFICADA: { id: 'c3_verificacion_planificada', nombre: 'Verificación Planificada', etapa: STAGES.VERIFICACION },
-  C4_EJECUTADA_LA_VERIFICACION: { id: 'c4_ejecutada_la_verificacion', nombre: 'Verificación Ejecutada', etapa: STAGES.VERIFICACION },
-  C5_CERRADO: { id: 'c5_cerrado', nombre: 'Cerrado', etapa: STAGES.VERIFICACION },
-};
+  const fromIndex = stages.findIndex(s => s.id === fromStageId);
+  const toIndex = stages.findIndex(s => s.id === toStageId);
 
-export const getStageFromEstado = (estadoId) => {
-  const estado = Object.values(ESTADOS).find(e => e.id === estadoId);
-  return estado ? estado.etapa : null;
-};
-
-// This defines the first state when moving to a new stage
-export const getInitialStateForStage = (stage) => {
-  switch (stage) {
-    case STAGES.DETECCION:
-      return ESTADOS.D1_INICIADO.id;
-    case STAGES.TRATAMIENTO:
-      return ESTADOS.T1_EN_ANALISIS.id;
-    case STAGES.VERIFICACION:
-      return ESTADOS.C3_VERIFICACION_PLANIFICADA.id;
-    default:
-      return null;
-  }
-};
-
-// This can be expanded later to enforce strict transition rules
-export const canMove = (fromEstadoId, toStage) => {
-  const fromStage = getStageFromEstado(fromEstadoId);
-  if (!fromStage || !toStage) return false;
-
-  const stageOrder = [STAGES.DETECCION, STAGES.TRATAMIENTO, STAGES.VERIFICACION];
-  const fromIndex = stageOrder.indexOf(fromStage);
-  const toIndex = stageOrder.indexOf(toStage);
-
-
-  
-  // Allow moving back from Verificacion to Tratamiento (e.g., if action was ineffective)
-  if (fromStage === STAGES.VERIFICACION && toStage === STAGES.TRATAMIENTO) {
-    return true;
+  if (fromIndex === -1 || toIndex === -1) {
+    return false; // Etapa de origen o destino no válida.
   }
 
-  // Only allow moving forward to the very next stage.
-  return toIndex === fromIndex + 1;
+  // Lógica simple por ahora: permitir mover hacia adelante o en la misma columna.
+  // Se puede refinar con reglas más estrictas en el futuro.
+  return toIndex >= fromIndex;
 };

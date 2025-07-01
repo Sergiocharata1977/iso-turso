@@ -80,7 +80,7 @@ const MenuPrincipal = () => {
         { id: 'tablero', label: 'Tablero Central', icon: BarChart2, to: '/tablero' },
         { id: 'calendario', label: 'Calendario', icon: Calendar, to: '/calendario' },
         { id: 'auditorias', label: 'Auditorías', icon: ClipboardList, to: '/auditorias' },
-        { id: 'mejoras', label: 'Mejoras', icon: ArrowUpCircle, to: '/mejoras' },
+        
       ]
     },
     {
@@ -93,6 +93,15 @@ const MenuPrincipal = () => {
         { id: 'personal', label: 'Personal', to: '/personal' },
         { id: 'capacitaciones', label: 'Capacitaciones', to: '/capacitaciones' },
         { id: 'evaluaciones', label: 'Evaluaciones', to: '/evaluaciones' },
+      ]
+    },
+    {
+      title: 'Mejoras',
+      id: 'mejoras',
+      collapsible: true,
+      items: [
+        { id: 'hallazgos', label: 'Hallazgos', to: '/hallazgos' },
+        { id: 'acciones', label: 'Acciones', to: '/acciones' },
       ]
     },
     {

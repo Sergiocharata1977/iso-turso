@@ -23,8 +23,7 @@ router.get('/', async (req, res) => {
   try {
     const result = await tursoClient.execute({
       sql: `
-        SELECT id, numeroHallazgo, titulo, descripcion, origen, categoria, 
-               requisitoIncumplido, fechaRegistro, fechaCierre, orden, estado
+        SELECT *
         FROM hallazgos
         ORDER BY orden ASC, fechaRegistro DESC NULLS LAST
       `,
@@ -107,7 +106,7 @@ router.post('/', async (req, res) => {
     } else {
       // Fallback: crear el objeto de respuesta manualmente
       const responseData = {
-        id: String(result.lastInsertRowid), // Convertir BigInt a string
+        id: result.lastInsertRowid,
         numeroHallazgo: nextNumero,
         titulo,
         descripcion,
@@ -118,8 +117,9 @@ router.post('/', async (req, res) => {
         estado,
         orden: newOrder
       };
-      console.log('📋 Enviando respuesta fallback:', responseData);
-      res.status(201).json(responseData);
+      const convertedResponse = convertBigIntToString(responseData);
+      console.log('📋 Enviando respuesta fallback convertida:', convertedResponse);
+      res.status(201).json(convertedResponse);
     }
   } catch (error) {
     console.error('Error al crear el hallazgo:', error);
@@ -136,8 +136,38 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ error: 'No se proporcionaron campos para actualizar.' });
   }
 
+  // Añadir campos de timestamp al body si hay cambio de estado
+  const timestamp = new Date().toISOString();
+  if (fieldsToUpdate.estado) {
+    switch (fieldsToUpdate.estado) {
+      case 'd2_accion_inmediata_programada':
+        fieldsToUpdate.fecha_planificacion_finalizada = timestamp;
+        break;
+      case 'd3_accion_inmediata_finalizada':
+        fieldsToUpdate.fecha_ejecucion_finalizada = timestamp;
+        break;
+      case 't1_pendiente_ac':
+      case 't2_cerrado':
+        fieldsToUpdate.fecha_analisis_finalizado = timestamp;
+        if (fieldsToUpdate.estado === 't2_cerrado') {
+            fieldsToUpdate.fechaCierre = timestamp;
+        }
+        break;
+    }
+  }
+
   const allowedFields = [
-    'titulo', 'descripcion', 'origen', 'categoria', 'requisitoIncumplido', 'fechaRegistro', 'fechaCierre', 'estado'
+    'titulo', 'descripcion', 'origen', 'categoria', 'requisitoIncumplido', 'fechaRegistro', 'fechaCierre', 'estado',
+    // Campos de FormPlanificacionAI
+    'descripcion_plan_accion', 'fecha_compromiso_plan_accion', 'responsable_plan_accion',
+    // Campos de FormEjecucionAI
+    'fecha_ejecucion', 'comentarios_ejecucion', 'responsable_ejecucion',
+    // Campos de FormAnalisisAccion
+    'decision', 'analisis_causa_raiz', 'descripcion_plan_accion_correctiva', 'responsable_implementacion_ac', 'fecha_compromiso_ac',
+    // Campos de FormVerificacionCierre
+    'eficacia_verificacion', 'comentarios_verificacion',
+    // Campos de timestamp (pueden ser redundantes si se manejan por estado, pero es más seguro incluirlos)
+    'fecha_planificacion_finalizada', 'fecha_ejecucion_finalizada', 'fecha_analisis_finalizado'
   ];
 
   const fields = Object.keys(fieldsToUpdate)

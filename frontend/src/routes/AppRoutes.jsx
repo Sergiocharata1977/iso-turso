@@ -5,14 +5,17 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MenuPrincipal from '@/components/menu/MenuPrincipal';
 
 // --- Componentes para las rutas (Lazy Loaded) ---
+
+// Pages
+const AccionesPage2 = lazy(() => import('@/pages/AccionesPage2'));
+const HallazgosPage2 = lazy(() => import('@/pages/HallazgosPage2'));
+const HallazgoSinglePage = lazy(() => import('@/pages/HallazgoSinglePage'));
+// const AccionesPage = lazy(() => import('@/pages/AccionesPage'));
+// const HallazgosPage = lazy(() => import('@/pages/HallazgosPage'));
+
+// Components
 const DocumentosListing = lazy(() => import('@/components/documentos/DocumentosListing'));
 const DocumentoSingle = lazy(() => import('@/components/documentos/DocumentoSingle'));
-// Módulo de Mejoras (Nuevos componentes)
-const DeteccionHallazgo = lazy(() => import('@/components/mejoras/DeteccionHallazgo'));
-const HallazgoDetail = lazy(() => import('@/components/mejoras/HallazgoDetail'));
-const TratamientoHallazgo = lazy(() => import('@/components/mejoras/TratamientoHallazgo'));
-const VerificacionEficacia = lazy(() => import('@/components/mejoras/VerificacionEficacia'));
-const MejorasPage = lazy(() => import('@/pages/MejorasPage'));
 const AuditoriasListing = lazy(() => import('@/components/auditorias/AuditoriasListing'));
 const DepartamentosListing = lazy(() => import('@/components/rrhh/DepartamentosListing'));
 const PuestosListing = lazy(() => import('@/components/rrhh/PuestosListing'));
@@ -48,13 +51,11 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="/normas" replace />} />
 
           {/* Rutas del Menú */}
-          {/* Módulo de Mejoras */}
-          <Route path="mejoras/deteccion" element={<DeteccionHallazgo />} />
-          <Route path="mejoras/hallazgos/:id" element={<HallazgoDetail />} />
-          <Route path="mejoras/tratamiento" element={<TratamientoHallazgo />} />
-                    <Route path="mejoras/verificacion" element={<VerificacionEficacia />} />
-          <Route path="mejoras/board" element={<MejorasPage />} />
-          <Route path="mejoras" element={<MejorasPage />} />
+          <Route path="acciones" element={<AccionesPage2 />} />
+          <Route path="hallazgos" element={<HallazgosPage2 />} />
+          {/* <Route path="acciones" element={<AccionesPage />} />
+          <Route path="hallazgos" element={<HallazgosPage />} /> */}
+          <Route path="hallazgos/:id" element={<HallazgoSinglePage />} />
           <Route path="auditorias" element={<AuditoriasListing />} />
           
           {/* RRHH */}
@@ -72,7 +73,7 @@ export default function AppRoutes() {
           <Route path="normas" element={<NormasList />} />
           <Route path="normas/:id" element={<NormaSingleView />} />
           <Route path="objetivos" element={<ObjetivosListing />} />
-                    <Route path="indicadores" element={<IndicadoresListing />} />
+          <Route path="indicadores" element={<IndicadoresListing />} />
           <Route path="indicadores/:id" element={<IndicadorSingle />} />
           <Route path="indicadores/:id/mediciones" element={<MedicionesListing />} />
 

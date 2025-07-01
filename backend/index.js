@@ -37,6 +37,7 @@ import encuestasRouter from './routes/encuestas.routes.js';
 import hallazgosRouter from './routes/mejoras.routes.js'; // Renombrado a hallazgos
 import tratamientosRouter from './routes/tratamientos.routes.js';
 import verificacionesRouter from './routes/verificaciones.routes.js';
+import accionesRouter from './routes/acciones.routes.js'; // Importar el nuevo router
 
 
 
@@ -59,6 +60,7 @@ app.use('/api/encuestas', encuestasRouter);
 
 // Nuevas rutas para el módulo de Mejoras
 app.use('/api/hallazgos', hallazgosRouter);
+app.use('/api/acciones', accionesRouter); // Nueva ruta para acciones de mejora
 app.use('/api/tratamientos', tratamientosRouter);
 app.use('/api/verificaciones', verificacionesRouter);
 

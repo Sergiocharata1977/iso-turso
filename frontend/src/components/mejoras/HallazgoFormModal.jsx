@@ -1,58 +1,76 @@
-import React, { useState } from 'react';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import hallazgosService from '@/services/hallazgosService';
 
-const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
-  const [titulo, setTitulo] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [origen, setOrigen] = useState('');
-  const [categoria, setCategoria] = useState('');
-  const [requisitoIncumplido, setRequisitoIncumplido] = useState('');
-  const [estado, setEstado] = useState('d1_iniciado');
+const HallazgoFormModal = ({ isOpen, onClose, onSave, hallazgo }) => {
+  const [formData, setFormData] = useState({
+    titulo: '',
+    descripcion: '',
+    origen: '',
+    categoria: '',
+    requisitoIncumplido: '',
+    estado: 'd1_iniciado',
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (hallazgo) {
+      setFormData({
+        titulo: hallazgo.titulo || '',
+        descripcion: hallazgo.descripcion || '',
+        origen: hallazgo.origen || '',
+        categoria: hallazgo.categoria || '',
+        requisitoIncumplido: hallazgo.requisitoIncumplido || '',
+        estado: hallazgo.estado || 'd1_iniciado',
+      });
+    } else {
+      // Reset form for new entry
+      setFormData({
+        titulo: '',
+        descripcion: '',
+        origen: '',
+        categoria: '',
+        requisitoIncumplido: '',
+        estado: 'd1_iniciado',
+      });
+    }
+  }, [hallazgo, isOpen]);
+
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSelectChange = (value) => {
+    setFormData((prev) => ({ ...prev, estado: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!titulo || !descripcion || !origen || !categoria) {
+    if (!formData.titulo || !formData.descripcion || !formData.origen || !formData.categoria) {
       toast.error('Por favor, completa todos los campos obligatorios.');
       return;
     }
 
     setIsSubmitting(true);
-    try {
-      const hallazgoData = {
-        titulo,
-        descripcion,
-        origen,
-        categoria,
-        requisitoIncumplido,
-        estado,
-      };
-      await hallazgosService.createHallazgo(hallazgoData);
-      toast.success('Hallazgo creado con éxito.');
-      onUpdate();
-      onClose();
-    } catch (error) {
-      console.error('Error creating hallazgo:', error);
-      toast.error('No se pudo crear el hallazgo.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await onSave(formData);
+    setIsSubmitting(false);
   };
+  
+  const isEditing = !!hallazgo;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Registrar Nuevo Hallazgo</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Hallazgo' : 'Registrar Nuevo Hallazgo'}</DialogTitle>
           <DialogDescription>
-            Completa los detalles para registrar un nuevo hallazgo en el sistema.
+            {isEditing ? 'Modifica los detalles del hallazgo.' : 'Completa los detalles para registrar un nuevo hallazgo en el sistema.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -64,8 +82,8 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
               <Input
                 id="titulo"
                 placeholder="Un título breve para el hallazgo"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
+                value={formData.titulo}
+                onChange={handleChange}
                 className="col-span-3"
               />
             </div>
@@ -76,8 +94,8 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
               <Textarea
                 id="descripcion"
                 placeholder="Describe el hallazgo detalladamente"
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
+                value={formData.descripcion}
+                onChange={handleChange}
                 className="col-span-3 min-h-[100px]"
               />
             </div>
@@ -88,8 +106,8 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
               <Input
                 id="origen"
                 placeholder="Origen del hallazgo"
-                value={origen}
-                onChange={(e) => setOrigen(e.target.value)}
+                value={formData.origen}
+                onChange={handleChange}
                 className="col-span-3"
               />
             </div>
@@ -100,8 +118,8 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
               <Input
                 id="categoria"
                 placeholder="Categoría del hallazgo"
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
+                value={formData.categoria}
+                onChange={handleChange}
                 className="col-span-3"
               />
             </div>
@@ -112,8 +130,8 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
               <Input
                 id="requisitoIncumplido"
                 placeholder="Requisito incumplido (opcional)"
-                value={requisitoIncumplido}
-                onChange={(e) => setRequisitoIncumplido(e.target.value)}
+                value={formData.requisitoIncumplido}
+                onChange={handleChange}
                 className="col-span-3"
               />
             </div>
@@ -121,7 +139,7 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
               <Label htmlFor="estado" className="text-right">
                 Estado
               </Label>
-              <Select value={estado} onValueChange={setEstado}>
+              <Select value={formData.estado} onValueChange={handleSelectChange}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecciona estado" />
                 </SelectTrigger>
@@ -142,7 +160,7 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creando...' : 'Crear Hallazgo'}</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Crear Hallazgo')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -150,4 +168,4 @@ const NuevoHallazgoModal = ({ isOpen, onClose, onUpdate }) => {
   );
 };
 
-export default NuevoHallazgoModal;
+export default HallazgoFormModal;
