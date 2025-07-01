@@ -29,3 +29,32 @@ La información está organizada en tres pestañas:
 ## 3. Lógica Centralizada: HallazgoWorkflowManager
 
 La lógica que determina qué formulario mostrar en cada estado del flujo de trabajo está centralizada en el componente `HallazgoWorkflowManager`. Este gestor lee el estado actual del hallazgo y renderiza dinámicamente el componente de formulario apropiado, asegurando que el usuario siempre vea la acción correcta en el momento adecuado.
+
+---
+
+## 4. Módulo de Acciones: Flujo y Experiencia de Usuario
+
+El módulo de Acciones ha sido rediseñado para ofrecer una experiencia visual y de gestión consistente con el módulo de Hallazgos, facilitando el seguimiento y control de las acciones correctivas y de mejora.
+
+### 4.1. Vista Principal: KPIs y Tablero Kanban
+
+- **Tarjetas de Indicadores (KPIs):** En la parte superior de la página se muestran tarjetas con el total de acciones y su distribución por estado (Planificación, Ejecución, Verificación). Esto permite una visión rápida del estado general del sistema de acciones.
+- **Selector de Vistas:** El usuario puede alternar entre tres vistas principales: Kanban, Lista y Gráficos.
+  - **Kanban:** Organiza las acciones en columnas según su estado de avance, permitiendo mover acciones entre estados mediante drag-and-drop.
+  - **Lista:** Muestra todas las acciones en formato de lista detallada.
+  - **Gráficos:** Visualiza la distribución de acciones por estado y por prioridad mediante gráficos de barras y circulares.
+
+### 4.2. Interacción con las Tarjetas
+
+- **Clic en la Tarjeta:** Abre un modal con el formulario correspondiente al flujo de trabajo de la acción, permitiendo avanzar en el proceso sin salir de la vista actual.
+- **Página de Detalle:** Cada acción cuenta con una página de detalle accesible desde la lista, donde se visualizan todos los datos y el historial de la acción.
+
+### 4.3. Flujo de Trabajo Centralizado
+
+La lógica de los estados y formularios de las acciones está centralizada en el componente `AccionWorkflowManager`, que determina dinámicamente qué formulario mostrar según el estado actual de la acción, asegurando coherencia y facilidad de mantenimiento.
+
+### 4.4. Gráficos de Gestión
+
+La pestaña de gráficos permite visualizar rápidamente:
+- **Acciones por Estado:** Gráfico de barras que muestra la cantidad de acciones en cada fase.
+- **Acciones por Prioridad:** Gráfico circular con la distribución de acciones según su prioridad (Alta, Media, Baja).
