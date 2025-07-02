@@ -38,11 +38,12 @@ import hallazgosRouter from './routes/mejoras.routes.js'; // Renombrado a hallaz
 import tratamientosRouter from './routes/tratamientos.routes.js';
 import verificacionesRouter from './routes/verificaciones.routes.js';
 import accionesRouter from './routes/acciones.routes.js'; // Importar el nuevo router
-
+import authRouter from './routes/auth.routes.js'; // Importar rutas de autenticación
 
 
 // Rutas de la API
 
+app.use('/api/auth', authRouter); // Registrar rutas de autenticación
 app.use('/api/departamentos', departamentosRouter);
 app.use('/api/puestos', puestosRouter);
 app.use('/api/procesos', procesosRouter);

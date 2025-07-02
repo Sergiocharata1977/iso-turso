@@ -11,14 +11,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'isoflow3_secret_key';
  */
 export const register = async (req, res) => {
   try {
-    const { username, email, nombre, apellido, password } = req.body;
+    const { username, email, nombre, apellido, password, tenant_id } = req.body; // Se espera tenant_id del cliente
 
     // Validación de campos requeridos
-    if (!username || !email || !password || !nombre || !apellido) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos.' });
+    if (!username || !email || !password || !nombre || !apellido || !tenant_id) { // tenant_id es mandatorio para el registro
+      return res.status(400).json({ error: 'Todos los campos, incluyendo tenant_id, son requeridos.' });
     }
 
-    // Verificar si el usuario ya existe
+    // Verificar si el usuario ya existe (la unicidad de email/username es global por ahora)
+    // Se podría refinar para que sea único por tenant si la lógica de negocio lo requiere.
     const usuariosExistentes = await findBy('usuarios', { username });
     if (usuariosExistentes.length > 0) {
       return res.status(400).json({ error: 'El nombre de usuario ya está en uso.' });
@@ -35,20 +36,25 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Crear nuevo usuario
+    // Asumiendo que la tabla 'usuarios' ahora tiene una columna 'tenant_id' y 'password_hash'
     const result = await executeQuery(`
-      INSERT INTO usuarios (username, email, nombre, apellido, password, rol, activo)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [username, email, nombre, apellido, hashedPassword, 'usuario', true]);
+      INSERT INTO usuarios (username, email, nombre, apellido, password_hash, rol, activo, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [username, email, nombre, apellido, hashedPassword, 'usuario', true, tenant_id]);
 
-    // Crear token JWT
-    const token = jwt.sign({ id: result.lastInsertRowid }, JWT_SECRET, {
+    const userId = result.lastInsertRowid; // O la forma apropiada de obtener el ID del usuario insertado
+
+    // Crear token JWT: Incluye el ID del usuario y el tenant_id en el payload del token.
+    // Esto permitirá al middleware de autenticación y a los servicios posteriores identificar al usuario y su tenant.
+    const token = jwt.sign({ id: userId, tenant_id: tenant_id }, JWT_SECRET, {
       expiresIn: '24h'
     });
 
     // Obtener usuario creado sin la contraseña
+    // La consulta debería devolver todos los campos relevantes del usuario, incluyendo tenant_id si se va a mostrar.
     const nuevoUsuario = await executeQuery(
-      'SELECT id, username, email, nombre, apellido, rol, activo, fecha_creacion FROM usuarios WHERE id = ?',
-      [result.lastInsertRowid]
+      'SELECT id, username, email, nombre, apellido, rol, activo, fecha_creacion, tenant_id FROM usuarios WHERE id = ?', // Añadido tenant_id a la consulta
+      [userId] // Usar userId en lugar de result.lastInsertRowid directamente para claridad
     );
 
     res.status(201).json({ 
@@ -102,17 +108,19 @@ export const login = async (req, res) => {
       ultimo_acceso: new Date().toISOString() 
     });
 
-    // Crear token JWT
-    const token = jwt.sign({ id: usuario.id }, JWT_SECRET, {
+    // Crear token JWT: Incluye el ID del usuario y el tenant_id (obtenido del registro del usuario en la BD)
+    // en el payload del token. Esto es crucial para la operativa multi-tenant.
+    const token = jwt.sign({ id: usuario.id, tenant_id: usuario.tenant_id }, JWT_SECRET, {
       expiresIn: '24h'
     });
 
     // Eliminar la contraseña del objeto antes de enviarlo
-    // La password ya no está en el objeto
+    // y asegurarse de que el objeto usuarioSinPassword contenga todos los campos necesarios, incluyendo tenant_id
+    const { password_hash, ...usuarioSinPassword } = usuario;
 
-    // Responder con el usuario y token
+    // Responder con el usuario (sin contraseña) y token
     res.json({
-      usuario,
+      usuario: usuarioSinPassword, // usuarioSinPassword ya incluye tenant_id si estaba en el objeto 'usuario' original
       token
     });
   } catch (error) {
