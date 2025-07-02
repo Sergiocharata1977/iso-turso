@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileDown, Plus, Trash2, Edit, Search, FileText, Download, Filter, Eye, Grid, List } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Trash2, Edit, FileText, Download, Filter, Upload, LayoutGrid, List } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,19 +16,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import documentosService from '../../services/documentosService';
 import DocumentoModal from './DocumentoModal';
+import GenericCard from '@/components/ui/GenericCard';
+import ListingHeader from '../common/ListingHeader';
 
 const DocumentosListing = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [documentos, setDocumentos] = useState([]);
-  const [viewMode, setViewMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDocumento, setSelectedDocumento] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentoToDelete, setDocumentoToDelete] = useState(null);
+  const [viewMode, setViewMode] = useState('grid');
 
   const fetchDocumentos = useCallback(async () => {
     setIsLoading(true);
@@ -40,11 +39,7 @@ const DocumentosListing = () => {
       setDocumentos(data || []);
     } catch (error) {
       console.error('Error al cargar documentos:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Error al cargar los documentos. Por favor, intenta de nuevo más tarde."
-      });
+      toast({ variant: "destructive", title: "Error", description: "Error al cargar los documentos." });
     } finally {
       setIsLoading(false);
     }
@@ -54,29 +49,25 @@ const DocumentosListing = () => {
     fetchDocumentos();
   }, [fetchDocumentos]);
 
-  // Memoizar documentos filtrados
   const filteredDocumentos = useMemo(() => {
     if (!searchTerm.trim()) return documentos;
-    
     const searchLower = searchTerm.toLowerCase();
     return documentos.filter(doc => 
       doc.titulo?.toLowerCase().includes(searchLower) ||
-      doc.archivo?.toLowerCase().includes(searchLower) ||
       doc.descripcion?.toLowerCase().includes(searchLower) ||
       doc.version?.toLowerCase().includes(searchLower)
     );
   }, [documentos, searchTerm]);
 
-  // Memoizar handlers
-  const handleViewSingle = useCallback((id) => {
-    navigate(`/documentos/${id}`);
-  }, [navigate]);
-
+  const handleViewSingle = useCallback((id) => navigate(`/documentos/${id}`), [navigate]);
+  const handleNewDocumento = () => {
+    setSelectedDocumento(null);
+    setIsModalOpen(true);
+  };
   const handleEdit = useCallback((documento) => {
     setSelectedDocumento(documento);
     setIsModalOpen(true);
   }, []);
-
   const handleDelete = useCallback((documento) => {
     setDocumentoToDelete(documento);
     setDeleteDialogOpen(true);
@@ -85,359 +76,129 @@ const DocumentosListing = () => {
   const handleDownload = useCallback(async (documento) => {
     try {
       await documentosService.downloadDocumento(documento.id);
-      toast({
-        title: "Descarga iniciada",
-        description: `Descargando ${documento.archivo}`
-      });
+      toast({ title: "Descarga iniciada", description: `Descargando ${documento.archivo_nombre || 'documento'}` });
     } catch (error) {
       console.error('Error al descargar documento:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Error al descargar el documento"
-      });
+      toast({ variant: "destructive", title: "Error", description: "Error al descargar el documento" });
     }
-  }, [toast]);
+  }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!documentoToDelete) return;
-    
     try {
       await documentosService.deleteDocumento(documentoToDelete.id);
       setDocumentos(prev => prev.filter(d => d.id !== documentoToDelete.id));
-      toast({
-        title: "Éxito",
-        description: "Documento eliminado correctamente"
-      });
+      toast({ title: "Éxito", description: "Documento eliminado correctamente" });
     } catch (error) {
       console.error('Error al eliminar documento:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Error al eliminar el documento"
-      });
+      toast({ variant: "destructive", title: "Error", description: "Error al eliminar el documento" });
     } finally {
       setDeleteDialogOpen(false);
       setDocumentoToDelete(null);
     }
-  }, [documentoToDelete, toast]);
+  }, [documentoToDelete]);
 
-  const handleNewDocumento = useCallback(() => {
-    setSelectedDocumento(null);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleExport = useCallback(() => {
-    toast({
-      title: "Exportación",
-      description: "Funcionalidad de exportación en desarrollo"
-    });
-  }, [toast]);
-
-  // Memoizar badge de extensión
-  const getExtensionBadge = useCallback((archivo) => {
-    if (!archivo) return null;
-    
-    const extension = archivo.split('.').pop()?.toUpperCase();
-    let variant = 'secondary';
-    let className = '';
-    
-    switch (extension) {
-      case 'PDF':
-        variant = 'destructive';
-        className = 'bg-red-100 text-red-800';
-        break;
-      case 'DOC':
-      case 'DOCX':
-        variant = 'default';
-        className = 'bg-blue-100 text-blue-800';
-        break;
-      case 'XLS':
-      case 'XLSX':
-        variant = 'default';
-        className = 'bg-green-100 text-green-800';
-        break;
-      case 'PPT':
-      case 'PPTX':
-        variant = 'default';
-        className = 'bg-orange-100 text-orange-800';
-        break;
-      default:
-        variant = 'secondary';
-        className = 'bg-gray-100 text-gray-800';
-    }
-    
-    return (
-      <Badge variant={variant} className={`text-xs ${className}`}>
-        {extension}
-      </Badge>
-    );
-  }, []);
-
-  const renderContent = useMemo(() => {
+  const renderGridContent = () => {
     if (isLoading) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-3 w-full mb-2" />
-                <Skeleton className="h-3 w-2/3" />
-              </CardContent>
-            </Card>
-          ))}
+          {[...Array(8)].map((_, i) => <GenericCard.Skeleton theme="light" key={i} />)}
         </div>
       );
     }
-
-    if (filteredDocumentos.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchTerm ? 'No se encontraron documentos que coincidan con tu búsqueda.' : 'Comienza subiendo un nuevo documento.'}
-          </p>
-          {!searchTerm && (
-            <div className="mt-6">
-              <Button onClick={handleNewDocumento} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Documento
-              </Button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (viewMode === 'grid') {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredDocumentos.map(doc => (
-            <Card 
-              key={doc.id} 
-              className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
-              onClick={() => handleViewSingle(doc.id)}
-            >
-              <CardHeader className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center mb-2">
-                      {getExtensionBadge(doc.archivo)}
-                      <h3 className="font-semibold text-lg line-clamp-1">{doc.titulo}</h3>
-                    </div>
-                    <p className="text-sm opacity-90">Versión: {doc.version}</p>
-                  </div>
-                  <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDownload(doc)}
-                      className="h-8 w-8 p-0 hover:bg-teal-700"
-                    >
-                      <FileDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleEdit(doc)}
-                      className="h-8 w-8 p-0 hover:bg-teal-700"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(doc)}
-                      className="h-8 w-8 p-0 hover:bg-teal-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Archivo</p>
-                    <p className="font-medium line-clamp-1" title={doc.archivo}>{doc.archivo}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Fecha de creación</p>
-                    <p className="font-medium">{new Date(doc.fecha_creacion).toLocaleDateString()}</p>
-                  </div>
-                  {doc.descripcion && (
-                    <div>
-                      <p className="text-gray-500">Descripción</p>
-                      <p className="text-sm text-gray-700 line-clamp-2">{doc.descripcion}</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-4 flex items-center text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Eye className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Click para ver detalles</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      );
-    }
-
-    // Vista de tabla (lista)
+    if (filteredDocumentos.length === 0) return renderEmptyState();
     return (
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archivo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Versión</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredDocumentos.map(doc => (
-                  <tr 
-                    key={doc.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleViewSingle(doc.id)}
-                  >
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{doc.titulo}</div>
-                        {doc.descripcion && (
-                          <div className="text-sm text-gray-500 line-clamp-1">{doc.descripcion}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        {getExtensionBadge(doc.archivo)}
-                        <span className="ml-2 text-sm text-gray-900 line-clamp-1">{doc.archivo}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {doc.version}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(doc.fecha_creacion).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDownload(doc)}
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEdit(doc)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(doc)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredDocumentos.map(doc => (
+          <GenericCard
+            theme="light"
+            key={doc.id}
+            icon={FileText}
+            title={doc.titulo}
+            subtitle={`Versión: ${doc.version}`}
+            description={doc.descripcion}
+            tags={[`Creado: ${new Date(doc.fecha_creacion).toLocaleDateString()}`]}
+            onCardClick={() => handleViewSingle(doc.id)}
+            actions={[
+              { icon: Edit, onClick: (e) => { e.stopPropagation(); handleEdit(doc); }, tooltip: 'Editar' },
+              { icon: Trash2, onClick: (e) => { e.stopPropagation(); handleDelete(doc); }, tooltip: 'Eliminar' },
+              { icon: Download, onClick: (e) => { e.stopPropagation(); handleDownload(doc); }, tooltip: 'Descargar' },
+            ]}
+          />
+        ))}
+      </motion.div>
     );
-  }, [filteredDocumentos, viewMode, handleViewSingle, handleDownload, handleEdit, handleDelete]);
+  };
+
+  const renderListContent = () => {
+    if (isLoading) {
+      return <div className="text-center py-10">Cargando...</div>; // O un skeleton de tabla
+    }
+    if (filteredDocumentos.length === 0) return renderEmptyState();
+    return (
+      <motion.div layout className="overflow-x-auto">
+        <table className="min-w-full bg-white dark:bg-slate-900 rounded-lg shadow overflow-hidden">
+          <thead className="bg-gray-50 dark:bg-slate-800">
+            <tr>
+              <th className="p-4 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Título</th>
+              <th className="p-4 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Versión</th>
+              <th className="p-4 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Fecha Creación</th>
+              <th className="p-4 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+            {filteredDocumentos.map(doc => (
+              <motion.tr key={doc.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => handleViewSingle(doc.id)}>
+                <td className="p-4 whitespace-nowrap">{doc.titulo}</td>
+                <td className="p-4 whitespace-nowrap">{doc.version}</td>
+                <td className="p-4 whitespace-nowrap">{new Date(doc.fecha_creacion).toLocaleDateString()}</td>
+                <td className="p-4 whitespace-nowrap text-right">
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(doc); }}><Edit className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}><Download className="h-4 w-4" /></Button>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.div>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <div className="text-center py-10">
+      <FileText className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay documentos</h3>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        {searchTerm ? 'No se encontraron documentos que coincidan con tu búsqueda.' : 'Comienza creando un nuevo documento.'}
+      </p>
+    </div>
+  );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex-1 flex flex-col">
-        {/* Header Principal */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Gestión de Documentos</h1>
-              <p className="text-gray-600">Administra los documentos y archivos del sistema</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-              <Button onClick={handleNewDocumento} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Documento
-              </Button>
-            </div>
-          </div>
+    <div className="p-4 sm:p-6">
+      <ListingHeader
+        title="Gestión de Documentos"
+        subtitle="Administra los documentos y archivos del sistema"
+        searchTerm={searchTerm}
+        onSearchChange={(e) => setSearchTerm(e.target.value)}
+        onAddNew={handleNewDocumento}
+        addNewLabel="Nuevo Documento"
+        actionButtons={[
+          <Button key="export" variant="outline"><Upload className="mr-2 h-4 w-4" /> Exportar</Button>,
+          <Button key="filter" variant="outline"><Filter className="mr-2 h-4 w-4" /> Filtros</Button>
+        ]}
+      >
+        <div className="flex items-center space-x-1 border border-gray-200 dark:border-slate-700 rounded-lg p-1">
+          <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5" /></Button>
+          <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
         </div>
+      </ListingHeader>
 
-        {/* Barra de Búsqueda y Filtros */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-4 flex-1">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Buscar documentos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
-                Filtros
-              </Button>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant={viewMode === "grid" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setViewMode("grid")}
-              >
-                <Grid className="h-4 w-4 mr-1" />
-                Tarjetas
-              </Button>
-              <Button 
-                variant={viewMode === "list" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4 mr-1" />
-                Tabla
-              </Button>
-            </div>
-          </div>
-        </div>
+      <motion.div layout className="mt-6">
+        {viewMode === 'grid' ? renderGridContent() : renderListContent()}
+      </motion.div>
 
-        {/* Content Area */}
-        <div className="flex-1 p-6 overflow-auto">
-          {renderContent}
-        </div>
-      </div>
-
-      {/* Modal para crear/editar */}
       {isModalOpen && (
         <DocumentoModal
           isOpen={isModalOpen}
@@ -447,7 +208,6 @@ const DocumentosListing = () => {
         />
       )}
 
-      {/* Dialog de confirmación para eliminar */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -459,10 +219,7 @@ const DocumentosListing = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Sí, eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

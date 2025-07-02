@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AccionKanbanBoard } from '@/components/acciones/AccionKanbanBoard';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import HallazgoWorkflowManager from '@/components/hallazgos/HallazgoWorkflowManager';
 import { hallazgoWorkflow } from '@/config/hallazgoWorkflow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +24,8 @@ const HallazgoSinglePage = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('proceso');
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [isNewActionModalOpen, setIsNewActionModalOpen] = useState(false);
+  const [newAction, setNewAction] = useState({ titulo: '', descripcion: '' });
 
   const fetchHallazgoData = useCallback(async () => {
     setLoading(true);
@@ -55,6 +60,20 @@ const HallazgoSinglePage = () => {
     } catch (error) {
       toast.error('No se pudo actualizar el hallazgo.');
       console.error('Error updating hallazgo:', error);
+    }
+  };
+
+  const handleCreateAccion = async (e) => {
+    e.preventDefault();
+    try {
+      await accionesService.createAccion({ ...newAction, hallazgo_id: id });
+      toast.success('Acción creada correctamente.');
+      setIsNewActionModalOpen(false);
+      setNewAction({ titulo: '', descripcion: '' });
+      fetchHallazgoData(); // Recargar datos para mostrar la nueva acción
+    } catch (error) {
+      toast.error('No se pudo crear la acción.');
+      console.error('Error creating accion:', error);
     }
   };
 
@@ -150,13 +169,47 @@ const HallazgoSinglePage = () => {
         </TabsContent>
 
         <TabsContent value="acciones" className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Plan de Acciones Correctivas</h3>
+            <Button onClick={() => setIsNewActionModalOpen(true)}>Nueva Acción</Button>
+          </div>
           <AccionKanbanBoard
-            accionesIniciales={acciones}
-            hallazgoId={id}
-            onAccionUpdated={fetchHallazgoData}
+            acciones={acciones}
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isNewActionModalOpen} onOpenChange={setIsNewActionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Acción Correctiva</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateAccion} className="space-y-4">
+            <div>
+              <Label htmlFor="titulo">Título de la Acción</Label>
+              <Input
+                id="titulo"
+                value={newAction.titulo}
+                onChange={(e) => setNewAction({ ...newAction, titulo: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="descripcion">Descripción</Label>
+              <Textarea
+                id="descripcion"
+                value={newAction.descripcion}
+                onChange={(e) => setNewAction({ ...newAction, descripcion: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setIsNewActionModalOpen(false)}>Cancelar</Button>
+              <Button type="submit">Crear Acción</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

@@ -1,331 +1,243 @@
 // Script para inicializar la base de datos
-// Importa el cliente ya configurado desde tursoClient.js, que maneja las variables de entorno.
 import { tursoClient } from './lib/tursoClient.js';
 
 async function initDatabase() {
   try {
     console.log('Inicializando base de datos Turso...');
 
+    // Iniciar el proceso de borrado de tablas
     console.log('Iniciando el proceso de borrado de tablas...');
-    try {
-        // Desactivar las claves foráneas fuera de una transacción
-        console.log('Paso 1: Desactivando claves foráneas...');
-        await tursoClient.execute('PRAGMA foreign_keys = OFF;');
-        console.log('-> Claves foráneas desactivadas.');
+    await tursoClient.execute('PRAGMA foreign_keys = OFF;');
+    const tablesResult = await tursoClient.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != '_litestream_seq' AND name != '_litestream_lock' AND name != 'libsql_wasm_func_table';");
+    const tablesToDrop = tablesResult.rows.map(row => row.name);
 
-        // Ejecutar cada DROP como un comando separado
-        console.log('Paso 2: Eliminando tablas individualmente...');
-        const tablesToDrop = [
-            'evaluaciones_capacitaciones', 'personal', 'puestos', 'departamentos',
-            'indicadores', 'capacitaciones', 'procesos', 'usuarios', 'mejoras', 'noticias',
-            'tickets', 'encuestas_respuestas', 'encuestas_preguntas', 'encuestas' // Nuevas tablas
-        ];
-        for (const table of tablesToDrop) {
-            await tursoClient.execute(`DROP TABLE IF EXISTS ${table}`);
-            console.log(`-> Tabla ${table} eliminada.`);
-        }
-        console.log('-> Todas las tablas han sido eliminadas.');
-
-        // Reactivar las claves foráneas
-        console.log('Paso 3: Reactivando claves foráneas...');
-        await tursoClient.execute('PRAGMA foreign_keys = ON;');
-        console.log('-> Claves foráneas reactivadas.');
-        
-        console.log('✅ Proceso de borrado de tablas completado exitosamente.');
-    } catch (err) {
-        console.error('❌ Error durante el proceso de borrado de tablas.', err);
-        // Intentar reactivar las FKs incluso si algo falla
-        try {
-            await tursoClient.execute('PRAGMA foreign_keys = ON;');
-            console.log('-> Se intentó reactivar las claves foráneas por seguridad.');
-        } catch (reactivationError) {
-            console.error('!! No se pudieron reactivar las claves foráneas.', reactivationError);
-        }
-        throw err; // Re-lanzar el error original para detener el script
+    for (const table of tablesToDrop) {
+        await tursoClient.execute(`DROP TABLE IF EXISTS ${table}`);
+        console.log(`-> Tabla ${table} eliminada.`);
     }
+    await tursoClient.execute('PRAGMA foreign_keys = ON;');
+    console.log('✅ Proceso de borrado de tablas completado.');
 
-    // Crear tabla de usuarios
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS usuarios (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nombre TEXT NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          rol TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT
-        )
-      `
-    });
-    console.log('Tabla usuarios creada correctamente');
-    
-    // Crear tabla de noticias
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS noticias (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          titulo TEXT NOT NULL,
-          contenido TEXT NOT NULL,
-          autor TEXT NOT NULL,
-          fecha TEXT NOT NULL,
-          imagen TEXT
-        )
-      `
-    });
-    console.log('Tabla noticias creada correctamente');
-    
-    // Crear tabla de hallazgos (anteriormente 'mejoras')
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS hallazgos (
-          id TEXT PRIMARY KEY,
-          numeroHallazgo TEXT UNIQUE NOT NULL,
-          titulo TEXT NOT NULL,
-          descripcion TEXT,
-          estado TEXT NOT NULL,
-          origen TEXT,
-          categoria TEXT,
-          prioridad TEXT,
-          fechaRegistro TEXT NOT NULL,
-          fechaCierre TEXT,
-          proceso_id TEXT,
-          requisitoIncumplido TEXT,
-          accionInmediata TEXT,
-          responsable_id TEXT,
-          FOREIGN KEY (proceso_id) REFERENCES procesos(id),
-          FOREIGN KEY (responsable_id) REFERENCES personal(id)
-        )
-      `
-    });
-    console.log('Tabla hallazgos creada correctamente');
-    
-    // Crear tabla de procesos
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS procesos (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nombre TEXT NOT NULL,
-          codigo TEXT UNIQUE NOT NULL,
-          version TEXT NOT NULL,
-          responsable TEXT NOT NULL,
-          descripcion TEXT
-        )
-      `
-    });
-    console.log('Tabla procesos creada correctamente');
-    
-    // Crear tabla de indicadores
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS indicadores (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nombre TEXT NOT NULL,
-          descripcion TEXT NOT NULL,
-          formula TEXT NOT NULL,
-          unidad TEXT NOT NULL,
-          meta REAL,
-          proceso_id INTEGER,
-          FOREIGN KEY (proceso_id) REFERENCES procesos (id)
-        )
-      `
-    });
-    console.log('Tabla indicadores creada correctamente');
-    
-    // Crear tabla de capacitaciones
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS capacitaciones (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          solicitante TEXT,
-          titulo TEXT NOT NULL,
-          contenidos TEXT,
-          objetivos TEXT,
-          competencias TEXT,
-          duracion TEXT,
-          modalidad TEXT,
-          importancia TEXT,
-          instructores TEXT, 
-          personal_asociado TEXT, 
-          fecha_programada_inicio TEXT NOT NULL,
-          fecha_programada_fin TEXT,
-          fecha_realizacion_inicio TEXT,
-          fecha_realizacion_fin TEXT,
-          estado TEXT NOT NULL DEFAULT 'Programada', 
-          lugar TEXT,
-          materiales_url TEXT,
-          observaciones TEXT,
-          created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-          updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-        )
-      `
-    });
-    console.log('Tabla capacitaciones creada correctamente');
-    
-    // Crear tabla de evaluaciones_capacitaciones
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS evaluaciones_capacitaciones (
+    // Definiciones de las tablas
+    const tableDefinitions = [
+      `CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        rol TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS noticias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        contenido TEXT NOT NULL,
+        autor TEXT NOT NULL,
+        fecha TEXT NOT NULL,
+        imagen TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS normas (
+        id TEXT PRIMARY KEY,
+        codigo TEXT UNIQUE NOT NULL,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        observaciones TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS procesos (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        responsable TEXT,
+        descripcion TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS hallazgos (
+        id TEXT PRIMARY KEY,
+        numeroHallazgo TEXT UNIQUE NOT NULL,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        estado TEXT NOT NULL,
+        origen TEXT CHECK(origen IN ('auditoria_interna', 'auditoria_externa', 'reclamo_cliente', 'revision_direccion', 'analisis_datos', 'otro')),
+        tipo_hallazgo TEXT,
+        prioridad TEXT CHECK(prioridad IN ('baja', 'media', 'alta')),
+        fecha_deteccion TEXT NOT NULL,
+        fecha_cierre TEXT,
+        proceso_id TEXT NOT NULL,
+        requisito_incumplido TEXT,
+        orden INTEGER,
+        FOREIGN KEY (proceso_id) REFERENCES procesos(id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS acciones (
+        id TEXT PRIMARY KEY,
+        hallazgo_id TEXT NOT NULL,
+        numeroAccion TEXT UNIQUE NOT NULL,
+        estado TEXT NOT NULL CHECK(estado IN ('p1_planificacion_accion', 'e2_ejecucion_accion', 'v3_planificacion_verificacion', 'v4_ejecucion_verificacion', 'c5_cerrada')),
+        descripcion_accion TEXT,
+        responsable_accion TEXT,
+        fecha_plan_accion TEXT,
+        comentarios_ejecucion TEXT,
+        fecha_ejecucion_accion TEXT,
+        eficacia TEXT CHECK(eficacia IN ('Eficaz', 'No Eficaz', 'Pendiente')),
+        observaciones TEXT,
+        FOREIGN KEY (hallazgo_id) REFERENCES hallazgos(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS auditorias (
+        id TEXT PRIMARY KEY,
+        tipo_auditoria TEXT NOT NULL,
+        fecha_inicio TEXT NOT NULL,
+        fecha_fin TEXT,
+        alcance TEXT,
+        auditor_lider TEXT,
+        equipo_auditor TEXT,
+        objetivos TEXT,
+        estado TEXT NOT NULL,
+        informe_url TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS documentos (
+        id TEXT PRIMARY KEY,
+        codigo_documento TEXT UNIQUE NOT NULL,
+        nombre_documento TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        fecha_aprobacion TEXT,
+        proceso_id TEXT,
+        tipo_documento TEXT,
+        ubicacion TEXT,
+        estado TEXT,
+        FOREIGN KEY (proceso_id) REFERENCES procesos(id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS objetivos (
+        id TEXT PRIMARY KEY,
+        nombre_objetivo TEXT NOT NULL,
+        descripcion TEXT,
+        proceso_id TEXT,
+        indicador_asociado_id INTEGER,
+        meta TEXT,
+        responsable TEXT,
+        fecha_inicio TEXT,
+        fecha_fin TEXT,
+        FOREIGN KEY (proceso_id) REFERENCES procesos(id),
+        FOREIGN KEY (indicador_asociado_id) REFERENCES indicadores(id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS indicadores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        proceso_id INTEGER,
+        frecuencia_medicion TEXT,
+        meta REAL,
+        formula TEXT,
+        FOREIGN KEY (proceso_id) REFERENCES procesos(id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS comunicaciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asunto TEXT NOT NULL,
+        mensaje TEXT,
+        remitente TEXT,
+        destinatarios TEXT,
+        fecha_comunicacion TEXT NOT NULL,
+        canal TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS encuestas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        fecha_creacion TEXT NOT NULL,
+        fecha_cierre TEXT,
+        estado TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS eventos_calendario (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        start TEXT NOT NULL,
+        end TEXT,
+        allDay BOOLEAN,
+        description TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS capacitaciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        fecha_programada TEXT,
+        duracion_horas INTEGER,
+        instructor TEXT,
+        estado TEXT DEFAULT 'Programada'
+      );`,
+      `CREATE TABLE IF NOT EXISTS departamentos (
+        id TEXT PRIMARY KEY,
+        nombre TEXT UNIQUE NOT NULL,
+        descripcion TEXT,
+        responsable_id TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS puestos (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        departamento_id TEXT NOT NULL,
+        descripcion_responsabilidades TEXT,
+        requisitos_experiencia TEXT,
+        requisitos_formacion TEXT,
+        reporta_a_id TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS personal (
+        id TEXT PRIMARY KEY,
+        nombres TEXT NOT NULL,
+        apellidos TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        telefono TEXT,
+        documento_identidad TEXT UNIQUE,
+        fecha_nacimiento TEXT,
+        nacionalidad TEXT,
+        direccion TEXT,
+        telefono_emergencia TEXT,
+        fecha_contratacion TEXT,
+        numero_legajo TEXT UNIQUE,
+        estado TEXT DEFAULT 'Activo'
+      );`,
+       `CREATE TABLE IF NOT EXISTS evaluaciones_capacitaciones (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           capacitacion_id INTEGER NOT NULL,
-          evaluador_id INTEGER, 
-          participante_id INTEGER, 
-          fecha_evaluacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-          asistencia INTEGER DEFAULT 0, 
-          grado_participacion TEXT, 
-          comprension_contenidos INTEGER, 
-          aplicabilidad_conocimientos INTEGER, 
-          calificacion_instructor INTEGER, 
-          calificacion_materiales INTEGER, 
-          comentarios_generales TEXT,
-          eficacia_verificada INTEGER DEFAULT 0, 
-          eficacia_modo_verificacion TEXT,
-          eficacia_fecha_verificacion TEXT,
-          eficacia_responsable_verificacion TEXT,
-          eficacia_observaciones TEXT,
-          created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-          updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-          FOREIGN KEY (capacitacion_id) REFERENCES capacitaciones (id) ON DELETE CASCADE,
-          FOREIGN KEY (evaluador_id) REFERENCES usuarios (id) ON DELETE SET NULL,
-          FOREIGN KEY (participante_id) REFERENCES usuarios (id) ON DELETE SET NULL
-        )
-      `
-    });
-    console.log('Tabla evaluaciones_capacitaciones creada correctamente');
+          empleado_id INTEGER NOT NULL,
+          calificacion INTEGER,
+          comentarios TEXT,
+          fecha_evaluacion TEXT,
+          FOREIGN KEY (capacitacion_id) REFERENCES capacitaciones(id) ON DELETE CASCADE,
+          FOREIGN KEY (empleado_id) REFERENCES personal(id) ON DELETE CASCADE
+        );`
+    ];
 
-    // Crear tabla de departamentos
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS departamentos (
-          id TEXT PRIMARY KEY,
-          nombre TEXT NOT NULL UNIQUE,
-          descripcion TEXT,
-          objetivos TEXT, -- Campo añadido para los objetivos del departamento
-          responsableId TEXT,
-          fecha_creacion TEXT NOT NULL,
-          fecha_actualizacion TEXT
-        )
-      `
-    });
-    console.log('Tabla departamentos creada correctamente');
+    for (const tableDef of tableDefinitions) {
+      await tursoClient.execute(tableDef);
+      const tableName = tableDef.match(/TABLE IF NOT EXISTS (\w+)/)[1];
+      console.log(`Tabla ${tableName} creada correctamente`);
+    }
 
-    // Crear tabla de puestos
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS puestos (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          titulo_puesto TEXT NOT NULL UNIQUE,
-          codigo_puesto TEXT UNIQUE,
-          proposito_general TEXT,
-          principales_responsabilidades TEXT,
-          competencias_necesarias TEXT,
-          requisitos TEXT,
-          experiencia_requerida TEXT,
-          formacion_requerida TEXT,
-          estado_puesto TEXT DEFAULT 'Activo',
-          nivel TEXT,
-          conocimientos_especificos TEXT,
-          documento_descripcion_puesto_url TEXT,
-          fecha_creacion TEXT DEFAULT (datetime('now', 'localtime')),
-          fecha_actualizacion TEXT DEFAULT (datetime('now', 'localtime'))
-        )
-      `
-    });
-    console.log('Tabla puestos creada correctamente');
+    // Insertar procesos de ejemplo
+    const procesos = [
+      { id: 'proc-001', nombre: 'Gestión de Calidad', responsable: 'Juan Pérez', descripcion: 'Proceso de seguimiento y control de la calidad.' },
+      { id: 'proc-002', nombre: 'Producción', responsable: 'Ana Gómez', descripcion: 'Proceso de fabricación de productos.' },
+      { id: 'proc-003', nombre: 'Recursos Humanos', responsable: 'Carlos Ruiz', descripcion: 'Gestión del personal y talento humano.' },
+      { id: 'proc-004', nombre: 'Ventas y Marketing', responsable: 'Laura Méndez', descripcion: 'Estrategias de venta y promoción.' }
+    ];
 
-    // Crear tabla de personal
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS personal (
-          id TEXT PRIMARY KEY,
-          nombres TEXT NOT NULL,
-          apellidos TEXT NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          telefono TEXT,
-          documento_identidad TEXT UNIQUE,
-          fecha_nacimiento TEXT,
-          nacionalidad TEXT,
-          direccion TEXT,
-          telefono_emergencia TEXT,
-          fecha_contratacion TEXT,
-          numero_legajo TEXT UNIQUE,
-          estado TEXT DEFAULT 'Activo',
-          formacion_academica TEXT, -- JSON
-          experiencia_laboral TEXT, -- JSON
-          habilidades_idiomas TEXT, -- JSON
-          fecha_creacion TEXT DEFAULT (datetime('now', 'localtime')),
-          fecha_actualizacion TEXT DEFAULT (datetime('now', 'localtime'))
-        )
-      `
-    });
-    console.log('Tabla personal creada correctamente');
+    for (const proc of procesos) {
+      await tursoClient.execute({
+        sql: 'INSERT INTO procesos (id, nombre, responsable, descripcion) VALUES (?, ?, ?, ?)',
+        args: [proc.id, proc.nombre, proc.responsable, proc.descripcion]
+      });
+    }
+    console.log('-> 4 procesos de ejemplo insertados correctamente.');
 
-    // Crear tabla de tickets
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS tickets (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          titulo TEXT NOT NULL,
-          descripcion TEXT NOT NULL,
-          estado TEXT NOT NULL CHECK(estado IN ('Abierto', 'En Proceso', 'Resuelto', 'Cerrado')),
-          prioridad TEXT NOT NULL CHECK(prioridad IN ('Baja', 'Media', 'Alta', 'Urgente')),
-          solicitante TEXT,
-          asignado TEXT,
-          categoria TEXT,
-      comentarios TEXT DEFAULT '[]',
-      archivos TEXT DEFAULT '[]',
-          fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-          fechaCierre DATETIME
-        )
-      `
-    });
-    console.log('Tabla tickets creada correctamente');
+    // Insertar normas de ejemplo
+    const normas = [
+      { id: 'norma-001', codigo: 'ISO 9001:2015', titulo: 'Sistemas de gestión de la calidad', descripcion: 'Requisitos para un sistema de gestión de la calidad.', observaciones: 'Norma principal del SGC.' },
+      { id: 'norma-002', codigo: 'ISO 14001:2015', titulo: 'Sistemas de gestión ambiental', descripcion: 'Requisitos con orientación para su uso.', observaciones: 'Relacionada con la gestión ambiental.' }
+    ];
 
-    // Crear tabla de encuestas
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS encuestas (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          titulo TEXT NOT NULL,
-          descripcion TEXT,
-          fecha_creacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-          fecha_cierre TEXT,
-          estado TEXT NOT NULL DEFAULT 'Borrador' -- Borrador, Activa, Cerrada
-        )
-      `
-    });
-    console.log('Tabla encuestas creada correctamente');
+    for (const norma of normas) {
+      await tursoClient.execute({
+        sql: 'INSERT INTO normas (id, codigo, titulo, descripcion, observaciones) VALUES (?, ?, ?, ?, ?)',
+        args: [norma.id, norma.codigo, norma.titulo, norma.descripcion, norma.observaciones]
+      });
+    }
+    console.log('-> 2 normas de ejemplo insertadas correctamente.');
 
-    // Crear tabla de preguntas de encuestas
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS encuestas_preguntas (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          encuesta_id INTEGER NOT NULL,
-          texto_pregunta TEXT NOT NULL,
-          tipo_pregunta TEXT NOT NULL, -- 'texto_libre', 'opcion_multiple', 'escala_1_5'
-          opciones TEXT, -- JSON para opciones de opción múltiple
-          FOREIGN KEY (encuesta_id) REFERENCES encuestas (id) ON DELETE CASCADE
-        )
-      `
-    });
-    console.log('Tabla encuestas_preguntas creada correctamente');
-
-    // Crear tabla de respuestas de encuestas
-    await tursoClient.execute({
-      sql: `
-        CREATE TABLE IF NOT EXISTS encuestas_respuestas (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          pregunta_id INTEGER NOT NULL,
-          usuario_id INTEGER, -- Puede ser nulo para encuestas anónimas
-          respuesta TEXT NOT NULL,
-          fecha_respuesta TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-          FOREIGN KEY (pregunta_id) REFERENCES encuestas_preguntas (id) ON DELETE CASCADE,
-          FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL
-        )
-      `
-    });
-    console.log('Tabla encuestas_respuestas creada correctamente');
-    
     console.log('Base de datos inicializada completamente con nuevas tablas');
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);

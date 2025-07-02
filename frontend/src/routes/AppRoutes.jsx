@@ -21,6 +21,7 @@ const AuditoriasListing = lazy(() => import('@/components/auditorias/AuditoriasL
 const DepartamentosListing = lazy(() => import('@/components/rrhh/DepartamentosListing'));
 const PuestosListing = lazy(() => import('@/components/rrhh/PuestosListing'));
 const PersonalListing = lazy(() => import('@/components/personal/PersonalListing'));
+const PersonalSingle = lazy(() => import('@/components/personal/PersonalSingle'));
 const CapacitacionesListing = lazy(() => import('@/components/rrhh/CapacitacionesListing'));
 const EvaluacionesListing = lazy(() => import('@/components/rrhh/EvaluacionesListing'));
 const ProcesosListing = lazy(() => import('@/components/procesos/ProcesosListing'));
@@ -62,6 +63,7 @@ export default function AppRoutes() {
           <Route path="departamentos" element={<DepartamentosListing />} />
           <Route path="puestos" element={<PuestosListing />} />
           <Route path="personal" element={<PersonalListing />} />
+          <Route path="personal/:id" element={<PersonalSingle />} />
           <Route path="capacitaciones" element={<CapacitacionesListing />} />
           <Route path="evaluaciones" element={<EvaluacionesListing />} />
 

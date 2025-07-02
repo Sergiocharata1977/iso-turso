@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
+import { randomUUID } from 'crypto';
 
 // Helper function to convert BigInt to string in objects
 function convertBigIntToString(obj) {
@@ -25,7 +26,7 @@ router.get('/', async (req, res) => {
       sql: `
         SELECT *
         FROM hallazgos
-        ORDER BY orden ASC, fechaRegistro DESC NULLS LAST
+        ORDER BY orden ASC, fecha_deteccion DESC NULLS LAST
       `,
     });
     const convertedRows = convertBigIntToString(result.rows);
@@ -61,68 +62,59 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/mejoras - Crear un nuevo hallazgo
 router.post('/', async (req, res) => {
-  const { titulo, descripcion, origen, categoria, requisitoIncumplido, estado } = req.body;
+  const { titulo, descripcion, origen, tipo_hallazgo, prioridad, proceso_id, requisito_incumplido } = req.body;
 
-  if (!titulo || !descripcion || !origen || !categoria || !estado) {
-    return res.status(400).json({ error: 'Los campos titulo, descripcion, origen, categoria y estado son obligatorios' });
+  if (!titulo || !origen || !tipo_hallazgo || !prioridad || !proceso_id) {
+    return res.status(400).json({ error: 'Los campos titulo, origen, tipo_hallazgo, prioridad y proceso_id son obligatorios.' });
   }
 
   try {
-    console.log('🔍 Iniciando creación de hallazgo con datos:', { titulo, descripcion, origen, categoria, requisitoIncumplido, estado });
-    
-    // 1. Generate new numeroHallazgo
-    const allHallazgosResult = await tursoClient.execute('SELECT numeroHallazgo FROM hallazgos WHERE numeroHallazgo LIKE "H-%" ORDER BY numeroHallazgo DESC LIMIT 1');
-    let nextNumero = 'H-001';
-    if (allHallazgosResult.rows.length > 0 && allHallazgosResult.rows[0].numeroHallazgo) {
-      const lastNumero = allHallazgosResult.rows[0].numeroHallazgo;
-      const lastId = parseInt(lastNumero.split('-')[1], 10);
-      nextNumero = `H-${(lastId + 1).toString().padStart(3, '0')}`;
+    const id = randomUUID();
+    const estado = 'deteccion'; // Estado inicial 'Detección' compatible con Kanban
+    const fecha_deteccion = new Date().toISOString();
+
+    // Generar nuevo numeroHallazgo de forma robusta
+    const result = await tursoClient.execute("SELECT numeroHallazgo FROM hallazgos WHERE numeroHallazgo LIKE 'H-%' ORDER BY CAST(SUBSTR(numeroHallazgo, 3) AS INTEGER) DESC LIMIT 1");
+    let nextId = 1;
+    if (result.rows.length > 0) {
+        const lastNumero = result.rows[0].numeroHallazgo;
+        const lastId = parseInt(lastNumero.split('-')[1], 10);
+        if (!isNaN(lastId)) {
+            nextId = lastId + 1;
+        }
     }
-    console.log('📝 Número generado:', nextNumero);
+    const nextNumero = `H-${String(nextId).padStart(3, '0')}`;
 
-    // 2. Get new order value
-    const countResult = await tursoClient.execute('SELECT COUNT(*) as count FROM hallazgos');
-    const newOrder = countResult.rows.length > 0 ? countResult.rows[0].count : 0;
-
-    // 3. Insert new hallazgo
-    const result = await tursoClient.execute({
-      sql: `INSERT INTO hallazgos (numeroHallazgo, titulo, descripcion, origen, categoria, requisitoIncumplido, fechaRegistro, estado, orden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-      args: [nextNumero, titulo, descripcion, origen, categoria, requisitoIncumplido || null, new Date().toISOString(), estado, newOrder],
-    });
-
-    console.log('✅ Hallazgo insertado exitosamente, lastInsertRowid:', result.lastInsertRowid);
+    const sql = `
+      INSERT INTO hallazgos (
+        id, numeroHallazgo, titulo, descripcion, estado, origen, tipo_hallazgo, prioridad, 
+        fecha_deteccion, proceso_id, requisito_incumplido
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
     
-    // 4. Return the newly created hallazgo
+    const args = [
+      id, nextNumero, titulo, descripcion || null, estado, origen, tipo_hallazgo, prioridad, 
+      fecha_deteccion, proceso_id, requisito_incumplido || null
+    ];
+
+    await tursoClient.execute({ sql, args });
+
     const newHallazgoResult = await tursoClient.execute({
-        sql: 'SELECT * FROM hallazgos WHERE id = ?',
-        args: [result.lastInsertRowid],
+      sql: 'SELECT * FROM hallazgos WHERE id = ?',
+      args: [id],
     });
-    
-    console.log('📄 Resultado de consulta:', newHallazgoResult.rows);
-    
-    if (newHallazgoResult.rows && newHallazgoResult.rows.length > 0) {
+
+    if (newHallazgoResult.rows.length > 0) {
       const hallazgoData = convertBigIntToString(newHallazgoResult.rows[0]);
       res.status(201).json(hallazgoData);
     } else {
-      // Fallback: crear el objeto de respuesta manualmente
-      const responseData = {
-        id: result.lastInsertRowid,
-        numeroHallazgo: nextNumero,
-        titulo,
-        descripcion,
-        origen,
-        categoria,
-        requisitoIncumplido: requisitoIncumplido || null,
-        fechaRegistro: new Date().toISOString(),
-        estado,
-        orden: newOrder
-      };
-      const convertedResponse = convertBigIntToString(responseData);
-      console.log('📋 Enviando respuesta fallback convertida:', convertedResponse);
-      res.status(201).json(convertedResponse);
+      throw new Error('No se pudo recuperar el hallazgo después de la creación.');
     }
   } catch (error) {
     console.error('Error al crear el hallazgo:', error);
+    if (error.message.includes('CHECK constraint failed')) {
+      return res.status(400).json({ error: 'Valor inválido para tipo, origen o prioridad.' });
+    }
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -130,7 +122,15 @@ router.post('/', async (req, res) => {
 // PUT /api/mejoras/:id - Actualizar un hallazgo
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { ...fieldsToUpdate } = req.body;
+  let { ...fieldsToUpdate } = req.body;
+
+  // Mapear el campo del frontend al de la BBDD
+  if (fieldsToUpdate.descripcion_plan_accion) {
+    fieldsToUpdate.accion_inmediata = fieldsToUpdate.descripcion_plan_accion;
+    // No es necesario eliminarlo, el filtro de allowedFields se encargará
+  }
+
+  console.log(`[PUT /hallazgos/${id}] Received body:`, JSON.stringify(fieldsToUpdate, null, 2));
 
   if (Object.keys(fieldsToUpdate).length === 0) {
     return res.status(400).json({ error: 'No se proporcionaron campos para actualizar.' });
@@ -150,29 +150,43 @@ router.put('/:id', async (req, res) => {
       case 't2_cerrado':
         fieldsToUpdate.fecha_analisis_finalizado = timestamp;
         if (fieldsToUpdate.estado === 't2_cerrado') {
-            fieldsToUpdate.fechaCierre = timestamp;
+            fieldsToUpdate.fecha_cierre = timestamp;
         }
         break;
     }
   }
 
   const allowedFields = [
-    'titulo', 'descripcion', 'origen', 'categoria', 'requisitoIncumplido', 'fechaRegistro', 'fechaCierre', 'estado',
-    // Campos de FormPlanificacionAI
-    'descripcion_plan_accion', 'fecha_compromiso_plan_accion', 'responsable_plan_accion',
-    // Campos de FormEjecucionAI
-    'fecha_ejecucion', 'comentarios_ejecucion', 'responsable_ejecucion',
-    // Campos de FormAnalisisAccion
-    'decision', 'analisis_causa_raiz', 'descripcion_plan_accion_correctiva', 'responsable_implementacion_ac', 'fecha_compromiso_ac',
-    // Campos de FormVerificacionCierre
-    'eficacia_verificacion', 'comentarios_verificacion',
-    // Campos de timestamp (pueden ser redundantes si se manejan por estado, pero es más seguro incluirlos)
-    'fecha_planificacion_finalizada', 'fecha_ejecucion_finalizada', 'fecha_analisis_finalizado'
+    // Campos generales
+    'titulo', 'descripcion', 'estado', 'origen', 'tipo_hallazgo', 'prioridad',
+    'fecha_deteccion', 'fecha_cierre', 'proceso_id', 'requisito_incumplido',
+    'responsable_id',
+
+    // Campos de Flujo de Trabajo
+    'descripcion_plan_accion', // Campo del frontend para la acción inmediata
+    'accion_inmediata', // Planificación Acción Inmediata
+    'fecha_compromiso_plan_accion', // Planificación Acción Inmediata
+    'responsable_plan_accion', // Planificación Acción Inmediata
+    'analisis_causa_raiz', // Análisis de Causa
+    'decision', // Análisis de Causa
+    'descripcion_plan_accion_correctiva', // Análisis de Causa
+    'responsable_implementacion_ac', // Análisis de Causa
+    'fecha_compromiso_ac', // Análisis de Causa
+    'fecha_ejecucion', // Ejecución
+    'comentarios_ejecucion', // Ejecución
+    'responsable_ejecucion', // Ejecución
+    'eficacia_verificacion', // Verificación
+    'comentarios_verificacion', // Verificación
+    'fecha_planificacion_finalizada',
+    'fecha_ejecucion_finalizada',
+    'fecha_analisis_finalizado'
   ];
 
   const fields = Object.keys(fieldsToUpdate)
     .filter(key => allowedFields.includes(key));
   
+  console.log(`[PUT /hallazgos/${id}] Filtered fields to update:`, fields);
+
   if (fields.length === 0) {
       return res.status(400).json({ error: 'Ninguno de los campos proporcionados es actualizable.' });
   }
@@ -181,9 +195,13 @@ router.put('/:id', async (req, res) => {
   const sqlArgs = fields.map(key => fieldsToUpdate[key]);
   sqlArgs.push(id);
 
+  const sql = `UPDATE hallazgos SET ${sqlSetParts.join(', ')} WHERE id = ?`;
+  console.log(`[PUT /hallazgos/${id}] Executing SQL:`, sql);
+  console.log(`[PUT /hallazgos/${id}] With arguments:`, sqlArgs);
+
   try {
     await tursoClient.execute({
-      sql: `UPDATE hallazgos SET ${sqlSetParts.join(', ')} WHERE id = ?`,
+      sql,
       args: sqlArgs,
     });
 
@@ -194,7 +212,7 @@ router.put('/:id', async (req, res) => {
 
     res.json(updatedHallazgoResult.rows[0]);
   } catch (error) {
-    console.error(`Error al actualizar el hallazgo ${id}:`, error);
+    console.error(`[PUT /hallazgos/${id}] DATABASE ERROR:`, error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

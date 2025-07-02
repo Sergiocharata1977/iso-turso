@@ -21,31 +21,41 @@ console.log('[DEBUG] VITE_TURSO_AUTH_TOKEN (después de dotenv.config):', proces
 // La importación de tursoClient se moverá dentro de la función createPuestosTable
 
 async function createPuestosTable() {
-  // Importar tursoClient aquí, DESPUÉS de que dotenv haya configurado las variables
   const { tursoClient } = await import('../lib/tursoClient.js');
   try {
-    console.log("Creando tabla de puestos...");
+    console.log("Recreando la tabla de puestos con el esquema correcto...");
 
-    // Crear tabla de puestos si no existe
+    // Primero, eliminamos la tabla si existe para asegurar que el esquema nuevo se aplique
+    await tursoClient.execute(`DROP TABLE IF EXISTS puestos;`);
+    console.log("Tabla 'puestos' existente eliminada (si existía).");
+
+    // Crear tabla de puestos con el esquema correcto que espera la API
     await tursoClient.execute({
-      sql: `CREATE TABLE IF NOT EXISTS puestos (
-        id INTEGER PRIMARY KEY,
-        nombre TEXT NOT NULL,
-        departamento_id INTEGER, /* Cambiado de departamento TEXT */
-        descripcion TEXT,
-        nivel TEXT,
+      sql: `CREATE TABLE puestos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo_puesto TEXT NOT NULL,
+        codigo_puesto TEXT UNIQUE,
+        departamento_id INTEGER,
+        proposito_general TEXT,
+        principales_responsabilidades TEXT,
         requisitos TEXT,
-        responsabilidades TEXT,
+        formacion_requerida TEXT,
+        experiencia_requerida TEXT,
+        conocimientos_especificos TEXT,
+        competencias_necesarias TEXT,
+        nivel TEXT,
+        documento_descripcion_puesto_url TEXT,
+        estado_puesto TEXT DEFAULT 'Activo',
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (departamento_id) REFERENCES departamentos (id) ON DELETE SET NULL ON UPDATE CASCADE /* Añadida FK */
+        FOREIGN KEY (departamento_id) REFERENCES departamentos (id) ON DELETE SET NULL ON UPDATE CASCADE
       )`
     });
-    console.log("Tabla 'puestos' creada correctamente");
+    console.log("Tabla 'puestos' creada correctamente con el nuevo esquema.");
     
-    console.log("Proceso de creación de tabla puestos completado");
+    console.log("Proceso de creación de tabla puestos completado.");
   } catch (error) {
-    console.error("Error al crear tabla de puestos:", error);
+    console.error("Error al recrear la tabla de puestos:", error);
   }
 }
 

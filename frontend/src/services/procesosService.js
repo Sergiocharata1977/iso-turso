@@ -10,6 +10,11 @@ const procesosService = {
    * Obtiene todos los procesos
    * @returns {Promise<Array>} Lista de procesos
    */
+  // Alias para mantener compatibilidad con componentes antiguos
+  getAllProcesos: async () => {
+    return await apiService.get(BASE_URL);
+  },
+
   getProcesos: async () => {
     return await apiService.get(BASE_URL);
   },
