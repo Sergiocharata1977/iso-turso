@@ -24,9 +24,36 @@ async function initDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
         rol TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        updated_at TEXT
+        updated_at TEXT,
+        organization_id INTEGER
+      );`,
+      `CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        subject TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        priority TEXT CHECK(priority IN ('baja', 'media', 'alta')) DEFAULT 'media',
+        FOREIGN KEY (sender_id) REFERENCES usuarios(id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS message_recipients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER NOT NULL,
+        recipient_id INTEGER NOT NULL,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        read_at TEXT,
+        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+        FOREIGN KEY (recipient_id) REFERENCES usuarios(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS message_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER NOT NULL,
+        tag_type TEXT NOT NULL CHECK(tag_type IN ('department', 'process', 'person')),
+        tag_id TEXT NOT NULL,
+        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS noticias (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

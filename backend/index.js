@@ -1,8 +1,13 @@
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
 import { testConnection } from './lib/tursoClient.js';
 import errorHandler from './middleware/errorHandler.js';
+import setupDatabase from './scripts/setupDatabase.js';
+
+// Load environment variables explicitly
+dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000; 
@@ -34,10 +39,14 @@ import medicionesRouter from './routes/mediciones.routes.js';
 import ticketsRouter from './routes/tickets.routes.js';
 import productosRouter from './routes/productos.routes.js';
 import encuestasRouter from './routes/encuestas.routes.js';
+import direccionRoutes from './routes/direccion.routes.js';
+import authRoutes from './routes/authRoutes.js';
 import hallazgosRouter from './routes/mejoras.routes.js'; // Renombrado a hallazgos
 import tratamientosRouter from './routes/tratamientos.routes.js';
 import verificacionesRouter from './routes/verificaciones.routes.js';
 import accionesRouter from './routes/acciones.routes.js';
+import eventRoutes from './routes/eventRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
 
 
 
@@ -58,6 +67,10 @@ app.use('/api/mediciones', medicionesRouter);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/productos', productosRouter);
 app.use('/api/encuestas', encuestasRouter);
+app.use('/api', direccionRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Nuevas rutas para el módulo de Mejoras
 app.use('/api/hallazgos', hallazgosRouter);
@@ -71,10 +84,11 @@ app.use('/api/verificaciones', verificacionesRouter);
 // Función para iniciar el servidor de forma segura
 async function startServer() {
   try {
-    // 1. Conectar a la base de datos
+    // 1. Conectar a la base de datos y asegurar que las tablas existan
     await testConnection();
+    await setupDatabase();
 
-    // 2. Si la conexión es exitosa, iniciar el servidor
+    // 2. Si la conexión y configuración son exitosas, iniciar el servidor
     if (process.env.NODE_ENV !== 'test') {
       // Middleware de manejo de errores global (DEBE SER EL ÚLTIMO MIDDLEWARE)
 app.use(errorHandler);

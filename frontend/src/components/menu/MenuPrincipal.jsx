@@ -78,9 +78,9 @@ const MenuPrincipal = () => {
       title: 'Principal',
       items: [
         { id: 'tablero', label: 'Tablero Central', icon: BarChart2, to: '/tablero' },
+        { id: 'planificacion-revision', label: 'Planificación y Revisión', icon: ArrowUpCircle, to: '/planificacion-revision' },
         { id: 'calendario', label: 'Calendario', icon: Calendar, to: '/calendario' },
         { id: 'auditorias', label: 'Auditorías', icon: ClipboardList, to: '/auditorias' },
-        
       ]
     },
     {
@@ -115,13 +115,24 @@ const MenuPrincipal = () => {
         { id: 'objetivos', label: 'Objetivos', to: '/objetivos' },
         { id: 'indicadores', label: 'Indicadores', to: '/indicadores' },
         { id: 'comunicaciones', label: 'Comunicaciones', to: '/comunicaciones' },
+      ]
+    },
+    {
+      title: 'Atención al Cliente',
+      id: 'atencion-cliente',
+      collapsible: true,
+      items: [
         { id: 'encuestas', label: 'Encuestas', to: '/encuestas' },
+        { id: 'tickets', label: 'Tickets', to: '/tickets' },
       ]
     },
     {
       title: 'Administración',
+      collapsible: true,
+      id: 'administracion',
       items: [
-        { id: 'configuracion', label: 'Configuración', icon: Settings, to: '/configuracion' },
+        { id: 'usuarios', label: 'Usuarios', to: '/usuarios' },
+        { id: 'configuracion', label: 'Configuración', to: '/configuracion' },
       ]
     },
   ];
