@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
 import { randomUUID } from 'crypto';
+import { ensureTenant, secureQuery, requireRole } from '../middleware/tenantMiddleware.js';
 
 // Helper function to convert BigInt to string in objects
 function convertBigIntToString(obj) {
@@ -19,18 +20,21 @@ function convertBigIntToString(obj) {
 
 const router = Router();
 
+// Aplicar middleware de tenant a todas las rutas
+router.use(ensureTenant);
+
 // GET /api/mejoras - Listar todos los hallazgos
 router.get('/', async (req, res) => {
   try {
-    const result = await tursoClient.execute({
-      sql: `
-        SELECT *
-        FROM hallazgos
-        ORDER BY orden ASC, fecha_deteccion DESC NULLS LAST
-      `,
-    });
+    const result = await secureQuery(
+      `SELECT *
+       FROM hallazgos
+       WHERE organization_id = ?
+       ORDER BY orden ASC, fecha_deteccion DESC NULLS LAST`,
+      [req.user.organization_id]
+    );
     const convertedRows = convertBigIntToString(result.rows);
-    res.json(convertedRows);
+    res.json(Array.isArray(convertedRows) ? convertedRows : []);
   } catch (error) {
     console.error('Error al obtener hallazgos:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -41,14 +45,12 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await tursoClient.execute({
-      sql: `
-        SELECT *
-        FROM hallazgos
-        WHERE id = ?
-      `,
-      args: [id],
-    });
+    const result = await secureQuery(
+      `SELECT *
+       FROM hallazgos
+       WHERE id = ? AND organization_id = ?`,
+      [id, req.user.organization_id]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Hallazgo no encontrado.' });        
@@ -60,8 +62,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/mejoras - Crear un nuevo hallazgo
-router.post('/', async (req, res) => {
+// POST /api/mejoras - Crear un nuevo hallazgo (Solo managers y admins)
+router.post('/', requireRole('manager'), async (req, res) => {
   const { titulo, descripcion, origen, tipo_hallazgo, prioridad, proceso_id, requisito_incumplido } = req.body;
 
   if (!titulo || !origen || !tipo_hallazgo || !prioridad || !proceso_id) {
@@ -73,8 +75,11 @@ router.post('/', async (req, res) => {
     const estado = 'deteccion'; // Estado inicial 'Detección' compatible con Kanban
     const fecha_deteccion = new Date().toISOString();
 
-    // Generar nuevo numeroHallazgo de forma robusta
-    const result = await tursoClient.execute("SELECT numeroHallazgo FROM hallazgos WHERE numeroHallazgo LIKE 'H-%' ORDER BY CAST(SUBSTR(numeroHallazgo, 3) AS INTEGER) DESC LIMIT 1");
+    // Generar nuevo numeroHallazgo de forma robusta para la organización
+    const result = await secureQuery(
+      "SELECT numeroHallazgo FROM hallazgos WHERE numeroHallazgo LIKE 'H-%' AND organization_id = ? ORDER BY CAST(SUBSTR(numeroHallazgo, 3) AS INTEGER) DESC LIMIT 1",
+      [req.user.organization_id]
+    );
     let nextId = 1;
     if (result.rows.length > 0) {
         const lastNumero = result.rows[0].numeroHallazgo;
@@ -88,21 +93,21 @@ router.post('/', async (req, res) => {
     const sql = `
       INSERT INTO hallazgos (
         id, numeroHallazgo, titulo, descripcion, estado, origen, tipo_hallazgo, prioridad, 
-        fecha_deteccion, proceso_id, requisito_incumplido
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        fecha_deteccion, proceso_id, requisito_incumplido, organization_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const args = [
       id, nextNumero, titulo, descripcion || null, estado, origen, tipo_hallazgo, prioridad, 
-      fecha_deteccion, proceso_id, requisito_incumplido || null
+      fecha_deteccion, proceso_id, requisito_incumplido || null, req.user.organization_id
     ];
 
     await tursoClient.execute({ sql, args });
 
-    const newHallazgoResult = await tursoClient.execute({
-      sql: 'SELECT * FROM hallazgos WHERE id = ?',
-      args: [id],
-    });
+    const newHallazgoResult = await secureQuery(
+      'SELECT * FROM hallazgos WHERE id = ? AND organization_id = ?',
+      [id, req.user.organization_id]
+    );
 
     if (newHallazgoResult.rows.length > 0) {
       const hallazgoData = convertBigIntToString(newHallazgoResult.rows[0]);
@@ -119,8 +124,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/mejoras/:id - Actualizar un hallazgo
-router.put('/:id', async (req, res) => {
+// PUT /api/mejoras/:id - Actualizar un hallazgo (Solo managers y admins)
+router.put('/:id', requireRole('manager'), async (req, res) => {
   const { id } = req.params;
   let { ...fieldsToUpdate } = req.body;
 
@@ -194,8 +199,9 @@ router.put('/:id', async (req, res) => {
   const sqlSetParts = fields.map(key => `${key} = ?`);
   const sqlArgs = fields.map(key => fieldsToUpdate[key]);
   sqlArgs.push(id);
+  sqlArgs.push(req.user.organization_id);
 
-  const sql = `UPDATE hallazgos SET ${sqlSetParts.join(', ')} WHERE id = ?`;
+  const sql = `UPDATE hallazgos SET ${sqlSetParts.join(', ')} WHERE id = ? AND organization_id = ?`;
   console.log(`[PUT /hallazgos/${id}] Executing SQL:`, sql);
   console.log(`[PUT /hallazgos/${id}] With arguments:`, sqlArgs);
 
@@ -205,10 +211,10 @@ router.put('/:id', async (req, res) => {
       args: sqlArgs,
     });
 
-    const updatedHallazgoResult = await tursoClient.execute({
-        sql: 'SELECT * FROM hallazgos WHERE id = ?',
-        args: [id]
-    });
+    const updatedHallazgoResult = await secureQuery(
+      'SELECT * FROM hallazgos WHERE id = ? AND organization_id = ?',
+      [id, req.user.organization_id]
+    );
 
     res.json(updatedHallazgoResult.rows[0]);
   } catch (error) {
@@ -217,8 +223,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/mejoras/orden - Actualizar el orden de los hallazgos
-router.put('/orden', async (req, res) => {
+// PUT /api/mejoras/orden - Actualizar el orden de los hallazgos (Solo managers y admins)
+router.put('/orden', requireRole('manager'), async (req, res) => {
   const { orderedIds } = req.body;
 
   if (!Array.isArray(orderedIds)) {
@@ -227,8 +233,8 @@ router.put('/orden', async (req, res) => {
 
   try {
     const statements = orderedIds.map((id, index) => ({
-      sql: 'UPDATE hallazgos SET orden = ? WHERE id = ?',
-      args: [index, id],
+      sql: 'UPDATE hallazgos SET orden = ? WHERE id = ? AND organization_id = ?',
+      args: [index, id, req.user.organization_id],
     }));
 
     await tursoClient.batch(statements, 'write');
@@ -240,8 +246,8 @@ router.put('/orden', async (req, res) => {
   }
 });
 
-// PUT /api/mejoras/:id/estado - Actualizar solo el estado de un hallazgo
-router.put('/:id/estado', async (req, res) => {
+// PUT /api/mejoras/:id/estado - Actualizar solo el estado de un hallazgo (Solo managers y admins)
+router.put('/:id/estado', requireRole('manager'), async (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
 
@@ -251,18 +257,18 @@ router.put('/:id/estado', async (req, res) => {
 
   try {
     const result = await tursoClient.execute({
-      sql: 'UPDATE hallazgos SET estado = ? WHERE id = ?',
-      args: [estado, id],
+      sql: 'UPDATE hallazgos SET estado = ? WHERE id = ? AND organization_id = ?',
+      args: [estado, id, req.user.organization_id],
     });
 
     if (result.rowsAffected === 0) {
       return res.status(404).json({ error: 'Hallazgo no encontrado.' });
     }
 
-    const updatedHallazgoResult = await tursoClient.execute({
-      sql: 'SELECT * FROM hallazgos WHERE id = ?',
-      args: [id],
-    });
+    const updatedHallazgoResult = await secureQuery(
+      'SELECT * FROM hallazgos WHERE id = ? AND organization_id = ?',
+      [id, req.user.organization_id]
+    );
 
     res.status(200).json(updatedHallazgoResult.rows[0]);
   } catch (error) {
@@ -271,12 +277,15 @@ router.put('/:id/estado', async (req, res) => {
   }
 });
 
-// DELETE /api/mejoras/:id - Eliminar un hallazgo
-router.delete('/:id', async (req, res) => {
+// DELETE /api/mejoras/:id - Eliminar un hallazgo (Solo admins)
+router.delete('/:id', requireRole('admin'), async (req, res) => {
   const { id } = req.params;
   
   try {
-    const result = await tursoClient.execute({ sql: 'DELETE FROM hallazgos WHERE id = ?', args: [id] });
+    const result = await tursoClient.execute({ 
+      sql: 'DELETE FROM hallazgos WHERE id = ? AND organization_id = ?', 
+      args: [id, req.user.organization_id] 
+    });
 
     if (result.rowsAffected === 0) {
       return res.status(404).json({ error: 'Hallazgo no encontrado.' });

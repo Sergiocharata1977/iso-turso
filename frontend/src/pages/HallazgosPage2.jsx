@@ -27,7 +27,7 @@ const HallazgosPage2 = () => {
     try {
       setLoading(true);
       const data = await hallazgosService.getAllHallazgos();
-      setHallazgos(data);
+      setHallazgos(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'No se pudieron cargar los hallazgos.';
@@ -105,10 +105,10 @@ const HallazgosPage2 = () => {
   };
 
   const stats = {
-    total: hallazgos.length,
-    deteccion: hallazgos.filter(h => h.estado === 'deteccion').length,
-    tratamiento: hallazgos.filter(h => ['planificacion_ai', 'ejecucion_ai', 'analisis_plan_accion'].includes(h.estado)).length,
-    verificacion: hallazgos.filter(h => h.estado === 'verificacion_cierre').length,
+    total: Array.isArray(hallazgos) ? hallazgos.length : 0,
+    deteccion: Array.isArray(hallazgos) ? hallazgos.filter(h => h.estado === 'deteccion').length : 0,
+    tratamiento: Array.isArray(hallazgos) ? hallazgos.filter(h => ['planificacion_ai', 'ejecucion_ai', 'analisis_plan_accion'].includes(h.estado)).length : 0,
+    verificacion: Array.isArray(hallazgos) ? hallazgos.filter(h => h.estado === 'verificacion_cierre').length : 0,
   };
 
   // Función para renderizar la vista de lista (movida adentro del componente)
@@ -138,84 +138,86 @@ const HallazgosPage2 = () => {
   if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-            <h1 className="text-3xl font-bold">Sistema de Mejoras ISO 9001</h1>
-            <p className="text-muted-foreground">Gestión de hallazgos y acciones correctivas</p>
-        </div>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <FileText className="h-4 w-4 mr-2" />
-              Nuevo Hallazgo
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Nuevo Hallazgo</DialogTitle>
-            </DialogHeader>
-            <HallazgoForm onSubmit={handleFormSubmit} onCancel={() => setIsModalOpen(false)} />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <HallazgoStatCard title="Total Hallazgos" value={stats.total} icon={<FileText className="h-4 w-4 text-white/80" />} colorClass="bg-blue-500" />
-        <HallazgoStatCard title="En Detección" value={stats.deteccion} icon={<AlertTriangle className="h-4 w-4 text-white/80" />} colorClass="bg-orange-500" />
-        <HallazgoStatCard title="En Tratamiento" value={stats.tratamiento} icon={<Clock className="h-4 w-4 text-white/80" />} colorClass="bg-purple-500" />
-        <HallazgoStatCard title="En Verificación" value={stats.verificacion} icon={<CheckCircle className="h-4 w-4 text-white/80" />} colorClass="bg-green-500" />
-      </div>
-
-      <div className="pt-4">
-        <div className="flex justify-end mb-4">
-            <div className="flex items-center gap-2 p-1 rounded-lg bg-muted">
-                <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('list')}>
-                    <List className="h-4 w-4 mr-2"/>
-                    Lista
-                </Button>
-                <Button variant={view === 'kanban' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('kanban')}>
-                    <Trello className="h-4 w-4 mr-2"/>
-                    Kanban
-                </Button>
-                <Button variant={view === 'charts' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('charts')}>
-                    <BarChart className="h-4 w-4 mr-2"/>
-                    Gráficos
-                </Button>
-            </div>
+    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex justify-between items-start">
+          <div>
+              <h1 className="text-3xl font-bold">Sistema de Mejoras ISO 9001</h1>
+              <p className="text-muted-foreground">Gestión de hallazgos y acciones correctivas</p>
+          </div>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <FileText className="h-4 w-4 mr-2" />
+                Nuevo Hallazgo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Nuevo Hallazgo</DialogTitle>
+              </DialogHeader>
+              <HallazgoForm onSubmit={handleFormSubmit} onCancel={() => setIsModalOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {view === 'kanban' && (
-            <HallazgoKanbanBoard
-                hallazgos={hallazgos}
-                onCardClick={handleCardClick}
-                onViewDetailsClick={handleRowClick} // Conectado al nuevo botón
-                onHallazgoStateChange={handleHallazgoStateChange}
-            />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <HallazgoStatCard title="Total Hallazgos" value={stats.total} icon={<FileText className="h-4 w-4 text-white/80" />} colorClass="bg-blue-500" />
+          <HallazgoStatCard title="En Detección" value={stats.deteccion} icon={<AlertTriangle className="h-4 w-4 text-white/80" />} colorClass="bg-orange-500" />
+          <HallazgoStatCard title="En Tratamiento" value={stats.tratamiento} icon={<Clock className="h-4 w-4 text-white/80" />} colorClass="bg-purple-500" />
+          <HallazgoStatCard title="En Verificación" value={stats.verificacion} icon={<CheckCircle className="h-4 w-4 text-white/80" />} colorClass="bg-green-500" />
+        </div>
+
+        <div className="pt-4">
+          <div className="flex justify-end mb-4">
+              <div className="flex items-center gap-2 p-1 rounded-lg bg-muted">
+                  <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('list')}>
+                      <List className="h-4 w-4 mr-2"/>
+                      Lista
+                  </Button>
+                  <Button variant={view === 'kanban' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('kanban')}>
+                      <Trello className="h-4 w-4 mr-2"/>
+                      Kanban
+                  </Button>
+                  <Button variant={view === 'charts' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('charts')}>
+                      <BarChart className="h-4 w-4 mr-2"/>
+                      Gráficos
+                  </Button>
+              </div>
+          </div>
+
+          {view === 'kanban' && (
+              <HallazgoKanbanBoard
+                  hallazgos={hallazgos}
+                  onCardClick={handleCardClick}
+                  onViewDetailsClick={handleRowClick} // Conectado al nuevo botón
+                  onHallazgoStateChange={handleHallazgoStateChange}
+              />
+          )}
+          {view === 'list' && renderListView()}
+          {view === 'charts' && <DashboardView hallazgos={hallazgos} />}
+        </div>
+
+        {selectedHallazgo && (
+          <Dialog open={isWorkflowModalOpen} onOpenChange={setIsWorkflowModalOpen}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Flujo de Trabajo: {selectedHallazgo.numeroHallazgo}</DialogTitle>
+                <p className="text-sm text-muted-foreground">{selectedHallazgo.titulo}</p>
+              </DialogHeader>
+              <HallazgoWorkflowManager
+                hallazgo={selectedHallazgo}
+                onUpdate={handleWorkflowSubmit}
+                onCancel={() => {
+                  setIsWorkflowModalOpen(false);
+                  setSelectedHallazgo(null);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         )}
-        {view === 'list' && renderListView()}
-        {view === 'charts' && <DashboardView hallazgos={hallazgos} />}
+
       </div>
-
-      {selectedHallazgo && (
-        <Dialog open={isWorkflowModalOpen} onOpenChange={setIsWorkflowModalOpen}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Flujo de Trabajo: {selectedHallazgo.numeroHallazgo}</DialogTitle>
-              <p className="text-sm text-muted-foreground">{selectedHallazgo.titulo}</p>
-            </DialogHeader>
-            <HallazgoWorkflowManager
-              hallazgo={selectedHallazgo}
-              onUpdate={handleWorkflowSubmit}
-              onCancel={() => {
-                setIsWorkflowModalOpen(false);
-                setSelectedHallazgo(null);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-
     </div>
   );
 };

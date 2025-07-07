@@ -25,7 +25,7 @@ const PersonalListing = () => {
     try {
       setLoading(true);
       const data = await personalService.getAllPersonal();
-      setPersonal(data || []);
+      setPersonal(Array.isArray(data) ? data : []);
     } catch (error) {
       setError(error.message);
       toast({ variant: "destructive", title: "Error", description: "No se pudo cargar el personal." });
@@ -74,16 +74,16 @@ const PersonalListing = () => {
     }
   };
 
-  const filteredPersonal = personal.filter(person =>
-    `${person.nombres} ${person.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredPersonal = Array.isArray(personal) ? personal.filter(person =>
+    `${person.nombres || ''} ${person.apellidos || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (person.cargo && person.cargo.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  ) : [];
 
   if (loading) return <div className="text-center p-4 text-white">Cargando personal...</div>;
   if (error) return <div className="text-center p-4 text-red-500">Error: {error}</div>;
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <ListingHeader
         title="Gestión de Personal"
         subtitle="Administra los empleados de la organización"

@@ -1,169 +1,216 @@
-import { Router } from 'express';
+import express from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
-import crypto from 'crypto';
 
-const router = Router();
+const router = express.Router();
 
-// GET /api/personal - Obtener todo el personal
-router.get('/', async (req, res, next) => {
+// ===========================================
+// RUTAS ULTRA SIMPLES SIN RESTRICCIONES
+// ===========================================
+
+// Obtener TODO el personal de TODA la base de datos
+router.get('/', async (req, res) => {
   try {
+    console.log('🔓 Obteniendo TODO el personal sin restricciones');
+    
     const result = await tursoClient.execute({
-      sql: `SELECT *, (nombres || ' ' || apellidos) AS nombre_completo FROM personal ORDER BY apellidos, nombres`
+      sql: `SELECT p.*, o.name as organization_name 
+            FROM personal p 
+            LEFT JOIN organizations o ON p.organization_id = o.id 
+            ORDER BY p.id DESC`,
+      args: []
     });
-    res.json(result.rows);
+
+    console.log(`✅ Encontradas ${result.rows.length} personas en TODA la base`);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      message: `${result.rows.length} personas encontradas (TODAS las organizaciones)`
+    });
+    
   } catch (error) {
-    next(error);
+    console.error('Error obteniendo personal:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener personal',
+      error: error.message
+    });
   }
 });
 
-// GET /api/personal/:id - Obtener personal por ID
-router.get('/:id', async (req, res, next) => {
-  const { id } = req.params;
+// Obtener persona específica por ID
+router.get('/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    
+    console.log(`🔓 Obteniendo persona ${id} sin restricciones`);
+    
     const result = await tursoClient.execute({
-      sql: `SELECT *, (nombres || ' ' || apellidos) AS nombre_completo FROM personal WHERE id = ?`,
+      sql: `SELECT p.*, o.name as organization_name 
+            FROM personal p 
+            LEFT JOIN organizations o ON p.organization_id = o.id 
+            WHERE p.id = ?`,
       args: [id]
     });
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Personal no encontrado' });
+      return res.status(404).json({
+        success: false,
+        message: 'Persona no encontrada'
+      });
     }
-    // Parse JSON fields
-    const personal = result.rows[0];
-    personal.formacion_academica = JSON.parse(personal.formacion_academica || '[]');
-    personal.experiencia_laboral = JSON.parse(personal.experiencia_laboral || '[]');
-    personal.habilidades_idiomas = JSON.parse(personal.habilidades_idiomas || '[]');
-    res.json(personal);
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+    
   } catch (error) {
-    next(error);
+    console.error('Error obteniendo persona:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener persona',
+      error: error.message
+    });
   }
 });
 
-// POST /api/personal - Crear nuevo personal
-router.post('/', async (req, res, next) => {
-  const {
-    nombres,
-    apellidos,
-    email,
-    telefono,
-    documento_identidad,
-    fecha_nacimiento,
-    nacionalidad,
-    direccion,
-    telefono_emergencia,
-    fecha_contratacion,
-    numero_legajo,
-    estado = 'Activo',
-    formacion_academica = [],
-    experiencia_laboral = [],
-    habilidades_idiomas = []
-  } = req.body;
-
-  if (!nombres || !apellidos) {
-    return res.status(400).json({ error: 'Nombres y apellidos son obligatorios.' });
-  }
-  if (!email) {
-    return res.status(400).json({ error: 'El email es obligatorio.' });
-  }
-
+// Crear nueva persona
+router.post('/', async (req, res) => {
   try {
-    const emailCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM personal WHERE email = ?',
-      args: [email]
-    });
-    if (emailCheck.rows.length > 0) {
-      return res.status(409).json({ error: 'Ya existe personal con este email.' });
-    }
+    const { 
+      nombre, 
+      apellido, 
+      dni, 
+      email, 
+      telefono, 
+      puesto, 
+      departamento,
+      fecha_ingreso,
+      estado = 'activo',
+      observaciones
+    } = req.body;
 
-    const id = crypto.randomUUID();
+    console.log('🔓 Creando nueva persona sin restricciones');
+    
     const result = await tursoClient.execute({
       sql: `INSERT INTO personal (
-              id, nombres, apellidos, email, telefono, documento_identidad, fecha_nacimiento, 
-              nacionalidad, direccion, telefono_emergencia, fecha_contratacion, 
-              numero_legajo, estado, formacion_academica, experiencia_laboral, habilidades_idiomas
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;`,
+        nombre, apellido, dni, email, telefono, puesto, departamento,
+        fecha_ingreso, estado, observaciones, organization_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       args: [
-        id, nombres, apellidos, email, telefono, documento_identidad, fecha_nacimiento, 
-        nacionalidad, direccion, telefono_emergencia, fecha_contratacion, 
-        numero_legajo, estado,
-        JSON.stringify(formacion_academica),
-        JSON.stringify(experiencia_laboral),
-        JSON.stringify(habilidades_idiomas)
+        nombre, apellido, dni, email, telefono, puesto, departamento,
+        fecha_ingreso, estado, observaciones, req.user.organization_id
       ]
     });
 
-    res.status(201).json(result.rows[0]);
+    console.log(`✅ Persona creada con ID: ${result.lastInsertRowid}`);
+    
+    res.status(201).json({
+      success: true,
+      data: { id: result.lastInsertRowid, nombre, apellido },
+      message: 'Persona creada exitosamente'
+    });
+    
   } catch (error) {
-    next(error);
+    console.error('Error creando persona:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear persona',
+      error: error.message
+    });
   }
 });
 
-
-// PUT /api/personal/:id - Actualizar personal
-router.put('/:id', async (req, res, next) => {
-  const { id } = req.params;
-  const updateData = req.body;
-
-  if (Object.keys(updateData).length === 0) {
-    return res.status(400).json({ error: 'No se proporcionaron datos para actualizar.' });
-  }
-
+// Actualizar persona
+router.put('/:id', async (req, res) => {
   try {
-    const personalCheck = await tursoClient.execute({ sql: 'SELECT id FROM personal WHERE id = ?', args: [id] });
-    if (personalCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Personal no encontrado.' });
-    }
+    const { id } = req.params;
+    const { 
+      nombre, 
+      apellido, 
+      dni, 
+      email, 
+      telefono, 
+      puesto, 
+      departamento,
+      fecha_ingreso,
+      estado,
+      observaciones
+    } = req.body;
 
-    if (updateData.email) {
-      const emailCheck = await tursoClient.execute({ sql: 'SELECT id FROM personal WHERE email = ? AND id != ?', args: [updateData.email, id] });
-      if (emailCheck.rows.length > 0) {
-        return res.status(409).json({ error: 'Ya existe otro personal con este email.' });
-      }
-    }
-
-    const fields = [];
-    const values = [];
+    console.log(`🔓 Actualizando persona ${id} sin restricciones`);
     
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        fields.push(`${key} = ?`);
-        // Stringify JSON fields before saving
-        if (['formacion_academica', 'experiencia_laboral', 'habilidades_idiomas'].includes(key)) {
-          values.push(JSON.stringify(updateData[key]));
-        } else {
-          values.push(updateData[key]);
-        }
-      }
+    const result = await tursoClient.execute({
+      sql: `UPDATE personal SET 
+        nombre = ?, apellido = ?, dni = ?, email = ?, telefono = ?, 
+        puesto = ?, departamento = ?, fecha_ingreso = ?, estado = ?, 
+        observaciones = ?, updated_at = datetime('now')
+        WHERE id = ?`,
+      args: [
+        nombre, apellido, dni, email, telefono, puesto, departamento,
+        fecha_ingreso, estado, observaciones, id
+      ]
     });
 
-    if (fields.length === 0) {
-      return res.status(400).json({ error: 'No hay campos válidos para actualizar.' });
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Persona no encontrada'
+      });
     }
 
-    fields.push('fecha_actualizacion = CURRENT_TIMESTAMP');
-    const sqlUpdate = `UPDATE personal SET ${fields.join(', ')} WHERE id = ? RETURNING *;`;
-    values.push(id);
-
-    const result = await tursoClient.execute({ sql: sqlUpdate, args: values });
+    console.log(`✅ Persona ${id} actualizada`);
     
-    res.json(result.rows[0]);
+    res.json({
+      success: true,
+      message: 'Persona actualizada exitosamente'
+    });
+    
   } catch (error) {
-    next(error);
+    console.error('Error actualizando persona:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar persona',
+      error: error.message
+    });
   }
 });
 
-// DELETE /api/personal/:id - Eliminar personal
-router.delete('/:id', async (req, res, next) => {
-  const { id } = req.params;
+// Eliminar persona
+router.delete('/:id', async (req, res) => {
   try {
-    const existsCheck = await tursoClient.execute({ sql: 'SELECT id FROM personal WHERE id = ?', args: [id] });
-    if (existsCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Personal no encontrado.' });
+    const { id } = req.params;
+    
+    console.log(`🔓 Eliminando persona ${id} sin restricciones`);
+    
+    const result = await tursoClient.execute({
+      sql: `DELETE FROM personal WHERE id = ?`,
+      args: [id]
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Persona no encontrada'
+      });
     }
 
-    await tursoClient.execute({ sql: 'DELETE FROM personal WHERE id = ?', args: [id] });
-    res.status(200).json({ message: 'Personal eliminado exitosamente' });
+    console.log(`✅ Persona ${id} eliminada`);
+    
+    res.json({
+      success: true,
+      message: 'Persona eliminada exitosamente'
+    });
+    
   } catch (error) {
-    next(error);
+    console.error('Error eliminando persona:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar persona',
+      error: error.message
+    });
   }
 });
 

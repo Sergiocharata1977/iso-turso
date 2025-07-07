@@ -56,22 +56,24 @@ const HallazgoKanbanBoard = ({ hallazgos, onCardClick, onHallazgoStateChange }) 
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4" style={{ minWidth: `${columnConfig.length * 320}px` }}>
-          {columnConfig.map((column) => (
-            <HallazgoKanbanColumn
-              key={column.id}
-              id={column.id}
-              title={column.title}
-              hallazgos={items[column.id] || []}
-              onCardClick={onCardClick}
-              colorClasses={column.colorClasses}
-            />
-          ))}
+    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4" style={{ minWidth: `${columnConfig.length * 320}px` }}>
+            {columnConfig.map((column) => (
+              <HallazgoKanbanColumn
+                key={column.id}
+                id={column.id}
+                title={column.title}
+                hallazgos={items[column.id] || []}
+                onCardClick={onCardClick}
+                colorClasses={column.colorClasses}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-    </DndContext>
+      </DndContext>
+    </div>
   );
 };
 

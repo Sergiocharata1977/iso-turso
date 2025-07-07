@@ -5,6 +5,7 @@ import path from 'path';
 import { testConnection } from './lib/tursoClient.js';
 import errorHandler from './middleware/errorHandler.js';
 import setupDatabase from './scripts/setupDatabase.js';
+import simpleAuth from './middleware/simpleAuth.js';
 
 // Load environment variables explicitly
 dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
@@ -12,19 +13,17 @@ dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
 const app = express();
 const PORT = process.env.PORT || 5000; 
 
-// Middleware
+// Middleware básico
 app.use(cors()); 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true })); 
 
-
-
 // Rutas de la API
 app.get('/', (req, res) => {
-  res.send('API de ISOFlow3 funcionando.');
+  res.send('API de ISOFlow3 funcionando - MODO ULTRA SIMPLE');
 });
 
-
+// Importar rutas
 import departamentosRouter from './routes/departamentos.routes.js';
 import puestosRouter from './routes/puestos.routes.js';
 import procesosRouter from './routes/procesos.routes.js';
@@ -41,70 +40,75 @@ import productosRouter from './routes/productos.routes.js';
 import encuestasRouter from './routes/encuestas.routes.js';
 import direccionRoutes from './routes/direccion.routes.js';
 import authRoutes from './routes/authRoutes.js';
-import hallazgosRouter from './routes/mejoras.routes.js'; // Renombrado a hallazgos
+import hallazgosRouter from './routes/mejoras.routes.js';
 import tratamientosRouter from './routes/tratamientos.routes.js';
 import verificacionesRouter from './routes/verificaciones.routes.js';
 import accionesRouter from './routes/acciones.routes.js';
-import eventRoutes from './routes/eventRoutes.js';
-import messageRoutes from './routes/messageRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
 
+console.log('🔥 MODO ULTRA SIMPLE: Sin restricciones');
 
+// ===============================================
+// RUTAS PÚBLICAS (para login y registro)
+// ===============================================
+app.use('/api/auth', authRoutes);
 
+// ===============================================
+// MIDDLEWARE DE AUTENTICACIÓN
+// A partir de aquí, todas las rutas requerirán un token válido
+// ===============================================
+app.use('/api', simpleAuth);
 
-// Rutas de la API
+// ===============================================
+// RUTAS PROTEGIDAS
+// ===============================================
 
+app.use('/api/users', userRoutes);
 app.use('/api/departamentos', departamentosRouter);
 app.use('/api/puestos', puestosRouter);
+app.use('/api/personal', personalRouter);
 app.use('/api/procesos', procesosRouter);
 app.use('/api/documentos', documentosRouter);
-app.use('/api/personal', personalRouter);
-app.use('/api/objetivos-calidad', objetivosCalidadRouter);
 app.use('/api/normas', normasRouter);
-app.use('/api/capacitaciones', capacitacionesRouter);
-app.use('/api/evaluaciones-grupales', evaluacionesGrupalesRouter);
+app.use('/api/objetivos-calidad', objetivosCalidadRouter);
 app.use('/api/indicadores', indicadoresRouter);
 app.use('/api/mediciones', medicionesRouter);
+app.use('/api/hallazgos', hallazgosRouter);
+app.use('/api/acciones', accionesRouter);
+app.use('/api/capacitaciones', capacitacionesRouter);
+app.use('/api/evaluaciones-grupales', evaluacionesGrupalesRouter);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/productos', productosRouter);
 app.use('/api/encuestas', encuestasRouter);
-app.use('/api', direccionRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/messages', messageRoutes);
-
-// Nuevas rutas para el módulo de Mejoras
-app.use('/api/hallazgos', hallazgosRouter);
-app.use('/api/acciones', accionesRouter);
-
 app.use('/api/tratamientos', tratamientosRouter);
 app.use('/api/verificaciones', verificacionesRouter);
+app.use('/api', direccionRoutes);
+app.use('/api/audit', auditRoutes);
 
+console.log('✅ TODAS las rutas después de /api/auth están protegidas');
 
-
-// Función para iniciar el servidor de forma segura
-async function startServer() {
-  try {
-    // 1. Conectar a la base de datos y asegurar que las tablas existan
-    await testConnection();
-    await setupDatabase();
-
-    // 2. Si la conexión y configuración son exitosas, iniciar el servidor
-    if (process.env.NODE_ENV !== 'test') {
-      // Middleware de manejo de errores global (DEBE SER EL ÚLTIMO MIDDLEWARE)
+// Middleware de manejo de errores
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-        console.log(`🚀 Servidor backend listo y escuchando en http://localhost:${PORT}`);
-      });
-    }
-  } catch (error) {
-    console.error('❌ No se pudo iniciar el servidor. Error al conectar con la base de datos:', error);
-    process.exit(1); // Terminar el proceso si la base de datos no está disponible
-  }
-}
+const startServer = () => {
+  testConnection()
+    .then(setupDatabase)
+    .then(() => {
+      if (process.env.NODE_ENV !== 'test') {
+        app.listen(PORT, () => {
+          console.log(`🚀 Servidor ULTRA SIMPLE listo en http://localhost:${PORT}`);
+          console.log(`🔓 ACCESO TOTAL: Solo login requerido`);
+          console.log(`👀 TODOS ven TODOS los registros`);
+        });
+      }
+    })
+    .catch(error => {
+      console.error('❌ Error al iniciar servidor:', error);
+      process.exit(1);
+    });
+};
 
-// Arrancar el servidor
 startServer();
 
-// Exportar la aplicación para las pruebas
 export default app;

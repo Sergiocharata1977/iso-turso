@@ -13,19 +13,31 @@ const createAuthTables = async () => {
 
     // Crear tabla de usuarios si no existe
     await db.execute(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         organization_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
         role TEXT CHECK(role IN ('admin', 'manager', 'employee')) NOT NULL DEFAULT 'employee',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE
       );
     `);
 
-    console.log('-> Tablas de autenticación (organizations, users) verificadas.');
+    // Crear tabla de refresh tokens si no existe
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES usuarios (id) ON DELETE CASCADE
+      );
+    `);
+
+    console.log('-> Tablas de autenticación (organizations, usuarios, refresh_tokens) verificadas.');
 
   } catch (err) {
     console.error('Error verificando tablas de autenticación:', err.message);

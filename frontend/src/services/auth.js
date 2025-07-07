@@ -16,9 +16,9 @@ export const authService = {
     try {
       console.log('Intentando login con endpoint /auth/login');
       
-      // La base de datos muestra que podemos usar el email directamente como username
+      // Usar email y password directamente como espera el backend
       const response = await authApiClient.post('/login', { 
-        username: email, // El email funciona como username
+        email, 
         password 
       });
       
@@ -28,16 +28,22 @@ export const authService = {
         throw new Error('No se recibió respuesta del servidor');
       }
       
+      // La respuesta del backend es: { message, accessToken, refreshToken, user }
+      if (!response.accessToken || !response.user) {
+        throw new Error('Respuesta del servidor incompleta');
+      }
+      
       // Guardar información del usuario en localStorage
       const userData = {
-        id: response.usuario?.id,
-        name: response.usuario?.nombre || response.usuario?.name || email.split('@')[0],
-        email: response.usuario?.email || email,
-        role: response.usuario?.rol || 'user',
-        token: response.token
+        id: response.user.id,
+        name: response.user.name,
+        email: response.user.email,
+        role: response.user.role,
+        organization_id: response.user.organization_id,
+        token: response.accessToken,
+        refreshToken: response.refreshToken
       };
       
-      // También guardar el token por separado como lo espera apiService
       localStorage.setItem('user', JSON.stringify(userData));
       console.log('Login exitoso con endpoint /auth/login');
       
@@ -75,72 +81,58 @@ export const authService = {
   },
 
   /**
-   * Registra un nuevo usuario
-   * @param {string} email - Email del usuario
-   * @param {string} password - Contraseña del usuario
-   * @param {Object} userData - Datos adicionales del usuario
+   * Registra un nuevo usuario y organización
+   * @param {string} organizationName - Nombre de la organización
+   * @param {string} userName - Nombre del usuario
+   * @param {string} userEmail - Email del usuario
+   * @param {string} userPassword - Contraseña del usuario
    * @returns {Object} Datos del usuario registrado
    */
-  async register(email, password, userData) {
+  async register(organizationName, userName, userEmail, userPassword) {
     try {
-      console.log('Intentando registro con nuevo endpoint /auth/registro');
-      // Llamar al endpoint de registro en el nuevo backend
-      const response = await authApiClient.post('/registro', {
-        email,
-        username: email,
-        password,
-        nombre: userData.nombre || email.split('@')[0],
-        apellido: userData.apellido || ''
+      console.log('Intentando registro con endpoint /auth/register');
+      
+      // Llamar al endpoint de registro en el backend
+      const response = await authApiClient.post('/register', {
+        organizationName,
+        userName,
+        userEmail,
+        userPassword
       });
       
-      if (!response || !response.usuario) {
+      console.log('Respuesta del registro:', response);
+      
+      if (!response || !response.user) {
         throw new Error('Error al registrar el usuario');
       }
       
       // Si el registro es exitoso y devuelve un token, iniciar sesión automáticamente
-      if (response.token) {
+      if (response.accessToken) {
         const userData = {
-          id: response.usuario.id,
-          name: response.usuario.nombre,
-          email: response.usuario.email,
-          role: response.usuario.rol || 'user',
-          token: response.token
+          id: response.user.id,
+          name: response.user.name,
+          email: response.user.email,
+          role: response.user.role,
+          organization_id: response.user.organization_id,
+          token: response.accessToken,
+          refreshToken: response.refreshToken
         };
         
         localStorage.setItem('user', JSON.stringify(userData));
+        console.log('Registro exitoso y login automático');
         return userData;
       }
       
       return {
-        id: response.usuario.id,
-        name: response.usuario.nombre,
-        email: response.usuario.email,
-        role: response.usuario.rol
+        id: response.user.id,
+        name: response.user.name,
+        email: response.user.email,
+        role: response.user.role,
+        organization_id: response.user.organization_id
       };
     } catch (error) {
-      console.error('Error con nuevo endpoint de registro:', error);
-      console.log('Intentando registro con endpoint original como fallback');
-      
-      try {
-        const response = await apiService.post('/usuarios/register', {
-          email,
-          password,
-          nombre: userData.nombre || email.split('@')[0],
-          role: userData.role || 'user'
-        });
-        
-        if (!response.data) throw new Error('Error al registrar el usuario');
-        
-        return {
-          id: response.data.id,
-          name: response.data.nombre || response.data.name,
-          email: response.data.email,
-          role: response.data.role
-        };
-      } catch (fallbackError) {
-        console.error('Error en ambos métodos de registro:', fallbackError);
-        throw new Error('Error al registrar el usuario. Verifique los datos.');
-      }
+      console.error('Error con endpoint de registro:', error);
+      throw new Error('Error al registrar el usuario. Verifique los datos.');
     }
   },
 

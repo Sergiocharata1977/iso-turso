@@ -1,195 +1,216 @@
-import { Router } from 'express';
+import express from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
-import crypto from 'crypto';
 
-const router = Router();
+const router = express.Router();
 
-// GET - Obtener todas las normas/puntos normativos
+// ===========================================
+// RUTAS ULTRA SIMPLES SIN RESTRICCIONES
+// ===========================================
+
+// Obtener TODAS las normas de TODA la base de datos
 router.get('/', async (req, res) => {
   try {
-    console.log('[GET /api/normas] Obteniendo lista de normas');
+    console.log('🔓 Obteniendo TODAS las normas sin restricciones');
     
     const result = await tursoClient.execute({
-      sql: `SELECT * FROM normas ORDER BY codigo`
+      sql: `SELECT n.*, o.name as organization_name 
+            FROM normas n 
+            LEFT JOIN organizations o ON n.organization_id = o.id 
+            ORDER BY n.created_at DESC`,
+      args: []
+    });
+
+    console.log(`✅ Encontradas ${result.rows.length} normas en TODA la base`);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      message: `${result.rows.length} normas encontradas (TODAS las organizaciones)`
     });
     
-    console.log(`[GET /api/normas] ${result.rows.length} registros encontrados`);
-    res.json(result.rows);
   } catch (error) {
-    console.error('[GET /api/normas] Error:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error obteniendo normas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener normas',
+      error: error.message
+    });
   }
 });
 
-// GET - Obtener norma por ID
+// Obtener norma específica por ID
 router.get('/:id', async (req, res) => {
-  const { id } = req.params;
-  
   try {
-    console.log(`[GET /api/normas/${id}] Obteniendo norma`);
+    const { id } = req.params;
+    
+    console.log(`🔓 Obteniendo norma ${id} sin restricciones`);
     
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM normas WHERE id = ?',
+      sql: `SELECT n.*, o.name as organization_name 
+            FROM normas n 
+            LEFT JOIN organizations o ON n.organization_id = o.id 
+            WHERE n.id = ?`,
       args: [id]
     });
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Norma no encontrada' });
+      return res.status(404).json({
+        success: false,
+        message: 'Norma no encontrada'
+      });
     }
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
     
-    res.json(result.rows[0]);
   } catch (error) {
-    console.error(`[GET /api/normas/${id}] Error:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error obteniendo norma:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener norma',
+      error: error.message
+    });
   }
 });
 
-// POST - Crear nueva norma/punto normativo
+// Crear nueva norma
 router.post('/', async (req, res) => {
+  try {
   const { 
     codigo, 
     titulo, 
     descripcion, 
+      version, 
+      tipo, 
+      estado = 'activo', 
+      categoria,
+      responsable,
+      fecha_revision,
     observaciones
   } = req.body;
 
-  console.log('[POST /api/normas] Datos recibidos:', req.body);
-
-  // Validaciones
-  if (!codigo) {
-    return res.status(400).json({ error: 'El código es obligatorio.' });
-  }
-
-  if (!titulo) {
-    return res.status(400).json({ error: 'El título es obligatorio.' });
-  }
-
-  try {
-    // Verificar que el código no esté duplicado
-    const codeCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM normas WHERE codigo = ?',
-      args: [codigo]
-    });
-
-    if (codeCheck.rows.length > 0) {
-      return res.status(409).json({ error: 'Ya existe una norma con este código.' });
-    }
-
-    const id = crypto.randomUUID();
+    console.log('🔓 Creando nueva norma sin restricciones');
 
     const result = await tursoClient.execute({
       sql: `INSERT INTO normas (
-              id, codigo, titulo, descripcion, observaciones
-            ) VALUES (?, ?, ?, ?, ?)`,
+        codigo, titulo, descripcion, version, tipo, estado, categoria,
+        responsable, fecha_revision, observaciones, organization_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       args: [
-        id, codigo, titulo, descripcion, observaciones
+        codigo, titulo, descripcion, version, tipo, estado, categoria,
+        responsable, fecha_revision, observaciones, req.user.organization_id
       ]
     });
 
-    // Obtener el registro creado
-    const newNorma = await tursoClient.execute({
-      sql: 'SELECT * FROM normas WHERE id = ?',
-      args: [id]
+    console.log(`✅ Norma creada con ID: ${result.lastInsertRowid}`);
+    
+    res.status(201).json({
+      success: true,
+      data: { id: result.lastInsertRowid, codigo, titulo },
+      message: 'Norma creada exitosamente'
     });
-
-    console.log('[POST /api/normas] Norma creada exitosamente:', newNorma.rows[0]);
-    res.status(201).json(newNorma.rows[0]);
+    
   } catch (error) {
-    console.error('[POST /api/normas] Error:', error);
-    res.status(500).json({ error: 'Error interno del servidor al crear la norma.' });
+    console.error('Error creando norma:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear norma',
+      error: error.message
+    });
   }
 });
 
-// PUT - Actualizar norma
+// Actualizar norma
 router.put('/:id', async (req, res) => {
+  try {
   const { id } = req.params;
   const { 
     codigo, 
     titulo, 
     descripcion, 
+      version, 
+      tipo, 
+      estado, 
+      categoria,
+      responsable,
+      fecha_revision,
     observaciones
   } = req.body;
 
-  console.log(`[PUT /api/normas/${id}] Datos recibidos:`, req.body);
-
-  if (!codigo) {
-    return res.status(400).json({ error: 'El código es obligatorio.' });
-  }
-
-  if (!titulo) {
-    return res.status(400).json({ error: 'El título es obligatorio.' });
-  }
-
-  try {
-    // Verificar que la norma existe
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM normas WHERE id = ?',
-      args: [id]
-    });
-
-    if (existsCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Norma no encontrada.' });
-    }
-
-    // Verificar código único (excluyendo el registro actual)
-    const codeCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM normas WHERE codigo = ? AND id != ?',
-      args: [codigo, id]
-    });
-
-    if (codeCheck.rows.length > 0) {
-      return res.status(409).json({ error: 'Ya existe otra norma con este código.' });
-    }
-
-    await tursoClient.execute({
+    console.log(`🔓 Actualizando norma ${id} sin restricciones`);
+    
+    const result = await tursoClient.execute({
       sql: `UPDATE normas SET 
-            codigo = ?, titulo = ?, descripcion = ?, observaciones = ?
+        codigo = ?, titulo = ?, descripcion = ?, version = ?, tipo = ?, 
+        estado = ?, categoria = ?, responsable = ?, fecha_revision = ?, 
+        observaciones = ?, updated_at = datetime('now')
             WHERE id = ?`,
       args: [
-        codigo, titulo, descripcion, observaciones, id
+        codigo, titulo, descripcion, version, tipo, estado, categoria,
+        responsable, fecha_revision, observaciones, id
       ]
     });
 
-    // Obtener el registro actualizado
-    const result = await tursoClient.execute({
-      sql: 'SELECT * FROM normas WHERE id = ?',
-      args: [id]
-    });
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Norma no encontrada'
+      });
+    }
 
-    console.log(`[PUT /api/normas/${id}] Norma actualizada exitosamente`);
-    res.json(result.rows[0]);
+    console.log(`✅ Norma ${id} actualizada`);
+    
+    res.json({
+      success: true,
+      message: 'Norma actualizada exitosamente'
+    });
+    
   } catch (error) {
-    console.error(`[PUT /api/normas/${id}] Error:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error actualizando norma:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar norma',
+      error: error.message
+    });
   }
 });
 
-// DELETE - Eliminar norma
+// Eliminar norma
 router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-
   try {
-    console.log(`[DELETE /api/normas/${id}] Eliminando norma`);
+    const { id } = req.params;
+    
+    console.log(`🔓 Eliminando norma ${id} sin restricciones`);
 
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id, codigo, titulo FROM normas WHERE id = ?',
+    const result = await tursoClient.execute({
+      sql: `DELETE FROM normas WHERE id = ?`,
       args: [id]
     });
 
-    if (existsCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Norma no encontrada.' });
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Norma no encontrada'
+      });
     }
 
-    await tursoClient.execute({
-      sql: 'DELETE FROM normas WHERE id = ?',
-      args: [id]
+    console.log(`✅ Norma ${id} eliminada`);
+    
+    res.json({
+      success: true,
+      message: 'Norma eliminada exitosamente'
     });
-
-    console.log(`[DELETE /api/normas/${id}] Norma eliminada exitosamente`);
-    res.json({ message: 'Norma eliminada exitosamente' });
+    
   } catch (error) {
-    console.error(`[DELETE /api/normas/${id}] Error:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error eliminando norma:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar norma',
+      error: error.message
+    });
   }
 });
 

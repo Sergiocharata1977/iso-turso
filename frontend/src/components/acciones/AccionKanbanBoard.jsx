@@ -69,23 +69,25 @@ export function AccionKanbanBoard({ acciones, onStateChange, onCardClick }) {
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
-        <SortableContext items={columns.map(col => col.id)}>
-          {columns.map(col => (
-            <AccionKanbanColumn 
-              key={col.id} 
-              id={col.id} 
-              title={col.title} 
-              acciones={col.acciones} 
-              onCardClick={onCardClick}
-            />
-          ))}
-        </SortableContext>
-      </div>
-      <DragOverlay>
-        {activeAccion && <AccionKanbanCard accion={activeAccion} />}
-      </DragOverlay>
-    </DndContext>
+    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex gap-4 overflow-x-auto p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
+          <SortableContext items={columns.map(col => col.id)}>
+            {columns.map(col => (
+              <AccionKanbanColumn 
+                key={col.id} 
+                id={col.id} 
+                title={col.title} 
+                acciones={col.acciones} 
+                onCardClick={onCardClick}
+              />
+            ))}
+          </SortableContext>
+        </div>
+        <DragOverlay>
+          {activeAccion && <AccionKanbanCard accion={activeAccion} />}
+        </DragOverlay>
+      </DndContext>
+    </div>
   );
 }

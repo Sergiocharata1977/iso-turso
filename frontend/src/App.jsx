@@ -1,30 +1,18 @@
-import React, { lazy } from "react";
-import { BrowserRouter, Route } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "sonner";
-
-import { ThemeProvider } from "@/context/ThemeContext";
-
-import AppRoutes from "@/routes/AppRoutes";
-import { AssistantProvider } from "@/components/assistant/AssistantProvider";
-import AssistantButton from "@/components/assistant/AssistantButton";
-
-
+import React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
+import AppRoutes from './routes/AppRoutes';
+import './index.css';
 
 function App() {
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-        <AssistantProvider>
-              <div className="min-h-screen bg-background text-foreground">
-                <AppRoutes />
-                <AssistantButton />
-                <Toaster />
-                <SonnerToaster position="top-right" richColors closeButton />
-              </div>
-            </AssistantProvider>
-        </ThemeProvider>
-      </BrowserRouter>
+    <ThemeProvider>
+      <Router>
+        <div className="App">
+          <AppRoutes />
+        </div>
+      </Router>
+    </ThemeProvider>
   );
 }
 

@@ -1,4 +1,4 @@
-import React from "react";
+cimport React from "react";
 import { useTheme } from "@/context/ThemeContext";
 import ReactECharts from 'echarts-for-react';
 

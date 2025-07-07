@@ -1,106 +1,189 @@
+import axios from 'axios';
+import useAuthStore from '../store/authStore';
+
 // Servicio base para llamadas HTTP al backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Crear instancia de axios
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-
-class ApiService {
-  constructor() {
-    // Asegurarse de que no haya una barra al final de la URL base
-    this.baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-    this.token = null;
-  }
-
-  setAuthToken(token) {
-    this.token = token;
-  }
-
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+// Interceptor para agregar token a las peticiones
+apiClient.interceptors.request.use(
+  async (config) => {
+    const { getValidToken } = useAuthStore.getState();
+    const token = await getValidToken();
     
-        const config = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    };
-
-    if (this.token) {
-      config.headers['Authorization'] = `Bearer ${this.token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-    try {
-      console.log(`[API] ${config.method || 'GET'} ${url}`);
+// Interceptor para manejar respuestas y errores
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Si es un error 401 y no hemos intentado refrescar el token aún
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
       
-      const response = await fetch(url, config);
+      const { refreshAccessToken, logout } = useAuthStore.getState();
       
-      if (!response.ok) {
-        // Intenta obtener un mensaje de error del cuerpo JSON si está disponible
-        let errorData = {};
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          // El cuerpo del error no era JSON o estaba vacío
+      try {
+        const newToken = await refreshAccessToken();
+        
+        if (newToken) {
+          // Reintentar la petición original con el nuevo token
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return apiClient(originalRequest);
         }
-        // Usar errorData.message si existe (más común para errores estructurados), sino errorData.error, o un mensaje genérico
-        throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+      } catch (refreshError) {
+        console.error('Error al refrescar token:', refreshError);
+        logout();
+        return Promise.reject(refreshError);
       }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
-      // Si el estado es 204 (No Content), no hay cuerpo para parsear
-      if (response.status === 204) {
-        console.log(`[API] Response: Status 204 (No Content)`);
-        return null; // O podrías devolver un objeto como { success: true } o undefined
-      }
+export const apiService = {
+  // Métodos HTTP básicos
+  get: (url, config = {}) => apiClient.get(url, config),
+  post: (url, data, config = {}) => apiClient.post(url, data, config),
+  put: (url, data, config = {}) => apiClient.put(url, data, config),
+  delete: (url, config = {}) => apiClient.delete(url, config),
+  patch: (url, data, config = {}) => apiClient.patch(url, data, config),
 
-      // Para otros estados OK (ej. 200, 201), parsear el JSON
-      const data = await response.json();
-      console.log(`[API] Response:`, data);
-      return data;
+  // Método para configurar token manualmente (para compatibilidad)
+  setAuthToken: (token) => {
+    if (token) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete apiClient.defaults.headers.common['Authorization'];
+    }
+  },
+
+  // Método para hacer peticiones con manejo de errores
+  request: async (config) => {
+    try {
+      const response = await apiClient(config);
+      return response.data;
     } catch (error) {
-      console.error(`[API] Error in ${config.method || 'GET'} ${url}:`, error.message); // Mostrar error.message para claridad
+      // Manejar errores de red
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('La petición ha expirado. Por favor, inténtalo de nuevo.');
+      }
+      
+      // Manejar errores HTTP
+      if (error.response) {
+        const message = error.response.data?.message || error.response.data?.error || 'Error en el servidor';
+        throw new Error(message);
+      }
+      
+      // Manejar errores de red
+      if (error.request) {
+        throw new Error('No se pudo conectar con el servidor. Verifica tu conexión a internet.');
+      }
+      
       throw error;
     }
-  }
+  },
 
-  // GET request
-  async get(endpoint) {
-    return this.request(endpoint, { method: 'GET' });
-  }
+  // Métodos específicos para diferentes tipos de peticiones
+  fetchData: async (endpoint) => {
+    return apiService.request({ method: 'GET', url: endpoint });
+  },
 
-  // POST request
-  async post(endpoint, data) {
-    return this.request(endpoint, {
+  postData: async (endpoint, data) => {
+    return apiService.request({ method: 'POST', url: endpoint, data });
+  },
+
+  putData: async (endpoint, data) => {
+    return apiService.request({ method: 'PUT', url: endpoint, data });
+  },
+
+  deleteData: async (endpoint) => {
+    return apiService.request({ method: 'DELETE', url: endpoint });
+  },
+
+  // Método para subir archivos
+  uploadFile: async (endpoint, formData, onUploadProgress) => {
+    return apiService.request({
       method: 'POST',
-      body: JSON.stringify(data),
+      url: endpoint,
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress,
     });
+  },
+
+  // Método para descargar archivos
+  downloadFile: async (endpoint, filename) => {
+    try {
+      const response = await apiClient.get(endpoint, {
+        responseType: 'blob',
+      });
+      
+      // Crear URL para el blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      return response;
+    } catch (error) {
+      throw new Error('Error al descargar el archivo');
+    }
   }
+};
 
-  // PUT request
-  async put(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  // DELETE request
-  async delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
-  }
-}
-
-const masterApiService = new ApiService();
-
-export const apiService = masterApiService;
-
+// Función para crear cliente API específico para cada servicio - CORREGIDA
 export const createApiClient = (baseRoute) => {
-  if (!baseRoute.startsWith('/')) {
-    throw new Error('baseRoute must start with a slash (/)');
-  }
+  const buildUrl = (endpoint) => `${baseRoute}${endpoint}`;
+
   return {
-    get: (specificEndpoint = '') => masterApiService.get(`${baseRoute}${specificEndpoint}`),
-    post: (specificEndpoint = '', data) => masterApiService.post(`${baseRoute}${specificEndpoint}`, data),
-    put: (specificEndpoint = '', data) => masterApiService.put(`${baseRoute}${specificEndpoint}`, data),
-    delete: (specificEndpoint = '') => masterApiService.delete(`${baseRoute}${specificEndpoint}`),
+    get: async (endpoint = '', config = {}) => {
+      const response = await apiService.get(buildUrl(endpoint), config);
+      return response.data;
+    },
+    post: async (endpoint = '', data, config = {}) => {
+      const response = await apiService.post(buildUrl(endpoint), data, config);
+      return response.data;
+    },
+    put: async (endpoint = '', data, config = {}) => {
+      const response = await apiService.put(buildUrl(endpoint), data, config);
+      return response.data;
+    },
+    delete: async (endpoint = '', config = {}) => {
+      const response = await apiService.delete(buildUrl(endpoint), config);
+      return response.data;
+    },
+    patch: async (endpoint = '', data, config = {}) => {
+      const response = await apiService.patch(buildUrl(endpoint), data, config);
+      return response.data;
+    },
   };
 };
+
+export default apiService;

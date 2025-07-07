@@ -1,84 +1,137 @@
 // Servicio para el módulo de Normas - Backend API
-import { createApiClient } from './apiService.js';
+import apiService from './apiService';
 
-const apiClient = createApiClient('/normas');
+class NormasService {
+  constructor() {
+    this.baseUrl = '/api/normas';
+  }
 
-// Obtener todas las normas
-export async function getAllNormas() {
-  try {
-    return await apiClient.get('');
+  async getAll() {
+    try {
+      console.log('🔓 Obteniendo TODAS las normas sin restricciones...');
+      const response = await apiService.get(this.baseUrl);
+      
+      console.log('✅ Respuesta del servidor:', response);
+      
+      // Manejar tanto el formato antiguo como el nuevo
+      const data = response.data || response;
+      const normas = Array.isArray(data) ? data : (data.data || []);
+      
+      console.log(`✅ ${normas.length} normas cargadas`);
+      return {
+        success: true,
+        data: normas,
+        total: normas.length,
+        message: `${normas.length} normas encontradas`
+      };
   } catch (error) {
-    throw new Error(error.message || 'Error al obtener las normas');
+      console.error('❌ Error obteniendo normas:', error);
+      return {
+        success: false,
+        data: [],
+        total: 0,
+        message: 'Error al obtener normas: ' + error.message
+      };
   }
 }
 
-// Obtener una norma por ID
-export async function getNormaById(id) {
-  try {
-    return await apiClient.get(`/${id}`);
+  async getById(id) {
+    try {
+      console.log(`🔓 Obteniendo norma ${id}...`);
+      const response = await apiService.get(`${this.baseUrl}/${id}`);
+      
+      console.log('✅ Respuesta del servidor:', response);
+      return {
+        success: true,
+        data: response.data || response
+      };
   } catch (error) {
-    throw new Error(error.message || `Error al obtener la norma ${id}`);
+      console.error(`❌ Error obteniendo norma ${id}:`, error);
+      return {
+        success: false,
+        data: null,
+        message: 'Error al obtener norma: ' + error.message
+      };
   }
 }
 
-// Crear una nueva norma
-export async function createNorma(data) {
-  try {
-    return await apiClient.post('', data);
+  async create(normaData) {
+    try {
+      console.log('🔓 Creando nueva norma:', normaData);
+      const response = await apiService.post(this.baseUrl, normaData);
+      
+      console.log('✅ Norma creada:', response);
+      return {
+        success: true,
+        data: response.data || response,
+        message: 'Norma creada exitosamente'
+      };
   } catch (error) {
-    throw new Error(error.message || 'Error al crear la norma');
+      console.error('❌ Error creando norma:', error);
+      return {
+        success: false,
+        data: null,
+        message: 'Error al crear norma: ' + error.message
+      };
   }
 }
 
-// Actualizar una norma
-export async function updateNorma(id, data) {
-  try {
-    return await apiClient.put(`/${id}`, data);
+  async update(id, normaData) {
+    try {
+      console.log(`🔓 Actualizando norma ${id}:`, normaData);
+      const response = await apiService.put(`${this.baseUrl}/${id}`, normaData);
+      
+      console.log('✅ Norma actualizada:', response);
+      return {
+        success: true,
+        data: response.data || response,
+        message: 'Norma actualizada exitosamente'
+      };
   } catch (error) {
-    throw new Error(error.message || `Error al actualizar la norma ${id}`);
+      console.error(`❌ Error actualizando norma ${id}:`, error);
+      return {
+        success: false,
+        data: null,
+        message: 'Error al actualizar norma: ' + error.message
+      };
+    }
+  }
+
+  async delete(id) {
+  try {
+      console.log(`🔓 Eliminando norma ${id}...`);
+      const response = await apiService.delete(`${this.baseUrl}/${id}`);
+      
+      console.log('✅ Norma eliminada:', response);
+      return {
+        success: true,
+        message: 'Norma eliminada exitosamente'
+      };
+  } catch (error) {
+      console.error(`❌ Error eliminando norma ${id}:`, error);
+      return {
+        success: false,
+        message: 'Error al eliminar norma: ' + error.message
+      };
   }
 }
 
-// Eliminar una norma
-export async function deleteNorma(id) {
+  // Función para verificar el estado del servicio
+  async checkService() {
   try {
-    return await apiClient.delete(`/${id}`);
+      console.log('🔍 Verificando servicio de normas...');
+      const response = await this.getAll();
+      console.log('✅ Servicio de normas funcionando:', response);
+      return response;
   } catch (error) {
-    throw new Error(error.message || `Error al eliminar la norma ${id}`);
+      console.error('❌ Servicio de normas no disponible:', error);
+      return {
+        success: false,
+        data: [],
+        message: 'Servicio no disponible: ' + error.message
+      };
+    }
   }
 }
 
-// Buscar normas por código
-export async function getNormaByCodigo(codigo) {
-  try {
-    const normas = await getAllNormas();
-    return normas.find(norma => norma.codigo === codigo);
-  } catch (error) {
-    throw new Error(error.message || 'Error al obtener norma por código');
-  }
-}
-
-// Buscar normas por término
-export async function searchNormas(term) {
-  try {
-    const normas = await getAllNormas();
-    return normas.filter(norma => 
-      norma.titulo.toLowerCase().includes(term.toLowerCase()) || 
-      (norma.descripcion && norma.descripcion.toLowerCase().includes(term.toLowerCase())) ||
-      (norma.codigo && norma.codigo.toLowerCase().includes(term.toLowerCase())) ||
-      (norma.observaciones && norma.observaciones.toLowerCase().includes(term.toLowerCase()))
-    );
-  } catch (error) {
-    throw new Error(error.message || 'Error al buscar normas');
-  }
-}
-
-export default {
-  getAllNormas,
-  getNormaById,
-  createNorma,
-  updateNorma,
-  deleteNorma,
-  getNormaByCodigo,
-  searchNormas
-};
+export default new NormasService();

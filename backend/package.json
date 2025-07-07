@@ -16,11 +16,13 @@
     "insert-puestos-data": "node -r dotenv/config scripts/insertPuestosData.js",
     "insert-procesos-data": "node -r dotenv/config scripts/insertTestDataProcesos.js",
     "insert-auditorias-data": "node -r dotenv/config scripts/insertTestDataAuditorias.js",
-    "insert-documentos-data": "node -r dotenv/config scripts/insertTestDataDocumentos.js"
+    "insert-documentos-data": "node -r dotenv/config scripts/insertTestDataDocumentos.js",
+    "insert-test-user": "node -r dotenv/config scripts/insertTestUser.js"
   },
   "dependencies": {
     "@langchain/openai": "^0.5.11",
     "@libsql/client": "^0.15.4",
+    "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -28,6 +30,7 @@
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.3.27",
     "multer": "^2.0.1",
+    "node-fetch": "^3.3.2",
     "openai": "^5.1.0",
     "pdf-parse": "^1.1.1"
   },

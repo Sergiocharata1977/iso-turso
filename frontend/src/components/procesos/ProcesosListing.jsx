@@ -25,7 +25,7 @@ const ProcesosListing = () => {
     try {
       setLoading(true);
       const data = await procesosService.getAllProcesos();
-      setProcesos(data || []);
+      setProcesos(Array.isArray(data) ? data : []);
     } catch (error) {
       setError(error.message);
       toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar los procesos." });
@@ -77,15 +77,15 @@ const ProcesosListing = () => {
     }
   };
 
-  const filteredProcesos = procesos.filter(proceso =>
-    proceso.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProcesos = Array.isArray(procesos) ? procesos.filter(proceso =>
+    proceso.nombre && proceso.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
   if (loading) return <div className="text-center p-4 text-white">Cargando procesos...</div>;
   if (error) return <div className="text-center p-4 text-red-500">Error: {error}</div>;
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <ListingHeader
         title="Gestión de Procesos"
         subtitle="Administra los procesos de la organización"

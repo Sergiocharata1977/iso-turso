@@ -10,12 +10,14 @@ export const hallazgosService = {
   async getAllHallazgos() {
     try {
       const data = await apiClient.get('/');
-      console.log('🚀 DEBUG: Hallazgos obtenidos del API:', data);
-      console.log('🚀 DEBUG: Cantidad de hallazgos del API:', data?.length);
+      // Validación defensiva
+      const safeData = Array.isArray(data) ? data : [];
+      console.log('🚀 DEBUG: Hallazgos obtenidos del API:', safeData);
+      console.log('🚀 DEBUG: Cantidad de hallazgos del API:', safeData?.length);
       
       // Inspeccionar estructura de los primeros 3 hallazgos
       console.log('🔍 DEBUG: Estructura de los primeros 3 hallazgos:');
-      data?.slice(0, 3).forEach((h, i) => {
+      safeData?.slice(0, 3).forEach((h, i) => {
         console.log(`   Hallazgo ${i+1}:`, {
           id: h.id,
           numeroHallazgo: h.numeroHallazgo,
@@ -27,7 +29,7 @@ export const hallazgosService = {
         });
       });
       
-      return data;
+      return safeData;
     } catch (error) {
       console.error('Error al obtener los hallazgos:', error);
       throw new Error(error.message || 'Error al cargar los hallazgos');
