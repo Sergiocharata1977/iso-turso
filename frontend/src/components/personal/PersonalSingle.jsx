@@ -1,29 +1,45 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, User, Building, Award, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import personalService from '@/services/personalService';
 import { useToast } from "@/components/ui/use-toast";
 
-const PersonalSingle = () => {
+const PersonalSingle = ({ initialPerson = null }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [person, setPerson] = useState(null);
-  const [loading, setLoading] = useState(true);
+  
+  // Obtener datos del state si están disponibles
+  const personFromState = location.state?.person;
+  const initialData = initialPerson || personFromState;
+  
+  const [person, setPerson] = useState(initialData);
+  const [loading, setLoading] = useState(initialData ? false : true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (id) {
+    // Si ya tenemos los datos (vía props o state), no necesitamos volver a cargar.
+    if (initialData) return;
+
+    // Solo intentar cargar desde el backend si el ID no es temporal
+    if (id && !id.toString().startsWith('temp-')) {
       fetchPersonal();
+    } else if (id && id.toString().startsWith('temp-')) {
+      // Si es un ID temporal y no tenemos datos, mostrar error
+      setError('No se pueden cargar los datos de este registro temporal');
+      setLoading(false);
     }
   }, [id]);
 
   const fetchPersonal = async () => {
     try {
       setLoading(true);
+      console.log('Intentando cargar personal con ID:', id);
       const data = await personalService.getPersonalById(id);
       setPerson(data);
     } catch (error) {
+      console.error('Error fetching personal with id', id, ':', error);
       setError(error.message);
       toast({ variant: "destructive", title: "Error", description: "No se pudo cargar la información del personal." });
     } finally {
