@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 function PersonalModal({ isOpen, onClose, onSave, person }) {
+  const isEditMode = Boolean(person);
+
   const initialFormData = {
     nombres: "",
     apellidos: "",
@@ -105,16 +107,26 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (isEditMode) {
     const dataToSave = {
       ...formData,
       formacion_academica: JSON.stringify(formData.formacion_academica),
       experiencia_laboral: JSON.stringify(formData.experiencia_laboral),
       habilidades_idiomas: JSON.stringify(formData.habilidades_idiomas),
     };
-    delete dataToSave.formacion_academica;
-    delete dataToSave.experiencia_laboral;
-    delete dataToSave.habilidades_idiomas;
+      onSave(dataToSave);
+    } else {
+      // En modo creación, solo guardamos los datos principales.
+      const { 
+        formacion_academica, 
+        experiencia_laboral, 
+        habilidades_idiomas, 
+        ...dataToSave 
+      } = formData;
     onSave(dataToSave);
+    }
+
     onClose();
   };
 
@@ -132,6 +144,7 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
         
         <form onSubmit={handleSubmit} id="personal-form" className="space-y-6">
           <Tabs defaultValue="datos-principales" className="w-full">
+            {isEditMode ? (
             <TabsList className="grid w-full grid-cols-4 bg-slate-700">
               <TabsTrigger value="datos-principales" className="data-[state=active]:bg-slate-600 text-white">Datos Principales</TabsTrigger>
               <TabsTrigger value="competencias" className="data-[state=active]:bg-slate-600 text-white">Competencias</TabsTrigger>
@@ -139,6 +152,12 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
               <TabsTrigger value="experiencia" className="data-[state=active]:bg-slate-600 text-white">Experiencia</TabsTrigger>
               <TabsTrigger value="habilidades" className="data-[state=active]:bg-slate-600 text-white">Habilidades e Idiomas</TabsTrigger>
             </TabsList>
+            ) : (
+              <div className="border-b border-slate-700 pb-2 mb-4">
+                <h3 className="text-lg font-medium text-white">Complete los datos principales para crear el perfil.</h3>
+                <p className="text-sm text-slate-400">Podrá agregar formación, experiencia y más detalles después de la creación.</p>
+              </div>
+            )}
 
             <TabsContent value="datos-principales" className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -201,8 +220,8 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="estado" className="text-white flex items-center gap-2"><FileText className="h-4 w-4" /> Estado</Label>
-                    <Select id="estado" name="estado" value={formData.estado} onChange={handleSelectChange} required className={inputStyles}>
-                      <SelectTrigger className="flex items-center justify-between w-full">
+                    <Select value={formData.estado} onValueChange={(value) => handleSelectChange('estado', value)} required>
+                      <SelectTrigger className={`${inputStyles} flex items-center justify-between w-full`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -215,6 +234,8 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
               </div>
             </TabsContent>
 
+            {isEditMode && (
+              <>
             <TabsContent value="competencias" className="mt-6 space-y-6">
                 <div className="space-y-2">
                     <Label htmlFor="competencias" className="text-white flex items-center gap-2"><Award className="h-4 w-4" /> Competencias</Label>
@@ -302,7 +323,7 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-white">Habilidades e Idiomas</h3>
                 <Button type="button" onClick={addHabilidadIdioma} className="bg-slate-700 border border-slate-600 text-white hover:bg-slate-600">
-                  <Plus className="h-4 w-4 mr-2" /> Agregar Habilidad o Idioma
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Habilidad/Idioma
                 </Button>
               </div>
               {formData.habilidades_idiomas.map((habilidad, index) => (
@@ -312,26 +333,20 @@ function PersonalModal({ isOpen, onClose, onSave, person }) {
                     </Button>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><Award className="h-4 w-4"/> Habilidad o Idioma</Label>
-                      <Input value={habilidad.habilidad} onChange={(e) => updateHabilidadIdioma(index, 'habilidad', e.target.value)} required className={inputStyles} placeholder="Nombre de la habilidad o idioma"/>
+                          <Label className="flex items-center gap-2"><Award className="h-4 w-4"/> Habilidad/Idioma</Label>
+                          <Input value={habilidad.habilidad} onChange={(e) => updateHabilidadIdioma(index, 'habilidad', e.target.value)} required className={inputStyles} placeholder="Ej: Inglés, Liderazgo"/>
                     </div>
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><GraduationCap className="h-4 w-4"/> Nivel</Label>
-                      <Select id="nivel" name="nivel" value={habilidad.nivel} onChange={(e) => updateHabilidadIdioma(index, 'nivel', e.target.value)} required className={inputStyles}>
-                        <SelectTrigger className="flex items-center justify-between w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Básico">Básico</SelectItem>
-                          <SelectItem value="Intermedio">Intermedio</SelectItem>
-                          <SelectItem value="Avanzado">Avanzado</SelectItem>
-                        </SelectContent>
-                      </Select>
+                          <Label className="flex items-center gap-2"><Award className="h-4 w-4"/> Nivel</Label>
+                          <Input value={habilidad.nivel} onChange={(e) => updateHabilidadIdioma(index, 'nivel', e.target.value)} required className={inputStyles} placeholder="Ej: Avanzado, B2"/>
                     </div>
                   </div>
                 </div>
               ))}
             </TabsContent>
+              </>
+            )}
+
           </Tabs>
         </form>
 

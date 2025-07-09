@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import db from '../db.js';
+import { tursoClient } from '../lib/tursoClient.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_jwt_super_secreto';
 
@@ -19,7 +19,7 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     
     // Obtener usuario actual de la base de datos
-    const userResult = await db.execute({
+    const userResult = await tursoClient.execute({
       sql: `SELECT id, organization_id, name, email, role, is_active 
             FROM usuarios 
             WHERE id = ? AND is_active = 1`,
@@ -48,3 +48,4 @@ const authMiddleware = async (req, res, next) => {
 };
 
 export default authMiddleware;
+export { authMiddleware };

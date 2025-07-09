@@ -1,114 +1,120 @@
-import { createApiClient } from './apiService.js';
+import { createApiClient } from './apiService';
 
 const apiClient = createApiClient('/evaluaciones');
 
-/**
- * Servicio para gestionar evaluaciones de personal a través de la API backend
- */
 export const evaluacionesService = {
-  /**
-   * Obtiene todas las evaluaciones
-   * @returns {Promise<Array>} Lista de evaluaciones
-   */
-  async getAll() {
+  getAll: async (organizationId) => {
     try {
-      const response = await apiClient.get('');
+      const response = await apiClient.get('', {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
-      console.error('Error al obtener evaluaciones:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar las evaluaciones');
+      console.error('Error en evaluacionesService.getAll:', error);
+      throw error;
     }
   },
 
-  /**
-   * Obtiene una evaluación por su ID
-   * @param {string|number} id - ID de la evaluación
-   * @returns {Promise<Object>} Datos de la evaluación
-   */
-  async getById(id) {
+  getById: async (id, organizationId) => {
     try {
-      const response = await apiClient.get(`/${id}`);
+      const response = await apiClient.get(`/${id}`, {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
-      console.error(`Error al obtener evaluación con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar la evaluación');
+      console.error(`Error en evaluacionesService.getById ${id}:`, error);
+      throw error;
     }
   },
 
-  /**
-   * Crea una nueva evaluación
-   * @param {Object} evaluacion - Datos de la evaluación a crear
-   * @returns {Promise<Object>} Evaluación creada
-   */
-  async create(evaluacion) {
+  create: async (evaluacionData) => {
     try {
-      const response = await apiClient.post('', evaluacion);
-      return response;
+      const {
+        empleado_id,
+        evaluador_id,
+        fecha_evaluacion,
+        periodo,
+        resultados,
+        comentarios,
+        estado,
+        organization_id
+      } = evaluacionData;
+
+      if (!organization_id) {
+        throw new Error('Se requiere organization_id para crear una evaluación');
+    }
+
+      const response = await apiClient.post('', {
+        empleado_id,
+        evaluador_id,
+        fecha_evaluacion,
+        periodo,
+        resultados,
+        comentarios,
+        estado,
+        organization_id
+      });
+
+      return response.data;
     } catch (error) {
-      console.error('Error al crear evaluación:', error);
-      throw new Error(error.response?.data?.message || 'Error al crear la evaluación');
+      console.error('Error en evaluacionesService.create:', error);
+      if (error.response?.data) {
+        throw error.response.data;
+      }
+      throw error;
     }
   },
 
-  /**
-   * Actualiza una evaluación existente
-   * @param {string|number} id - ID de la evaluación a actualizar
-   * @param {Object} evaluacion - Datos actualizados de la evaluación
-   * @returns {Promise<Object>} Evaluación actualizada
-   */
-  async update(id, evaluacion) {
+  update: async (id, evaluacionData) => {
     try {
-      const response = await apiClient.put(`/${id}`, evaluacion);
-      return response;
+      const {
+        empleado_id,
+        evaluador_id,
+        fecha_evaluacion,
+        periodo,
+        resultados,
+        comentarios,
+        estado,
+        organization_id
+      } = evaluacionData;
+
+      if (!organization_id) {
+        throw new Error('Se requiere organization_id para actualizar una evaluación');
+    }
+
+      const response = await apiClient.put(`/${id}`, {
+        empleado_id,
+        evaluador_id,
+        fecha_evaluacion,
+        periodo,
+        resultados,
+        comentarios,
+        estado,
+        organization_id
+      });
+
+      return response.data;
     } catch (error) {
-      console.error(`Error al actualizar evaluación con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al actualizar la evaluación');
+      console.error(`Error en evaluacionesService.update ${id}:`, error);
+      if (error.response?.data) {
+        throw error.response.data;
+      }
+      throw error;
     }
   },
 
-  /**
-   * Elimina una evaluación
-   * @param {string|number} id - ID de la evaluación a eliminar
-   * @returns {Promise<Object>} Resultado de la eliminación
-   */
-  async delete(id) {
+  delete: async (id, organizationId) => {
     try {
-      const response = await apiClient.delete(`/${id}`);
+      const response = await apiClient.delete(`/${id}`, {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
-      console.error(`Error al eliminar evaluación con ID ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al eliminar la evaluación');
-    }
-  },
-
-  /**
-   * Obtiene todas las evaluaciones de un empleado específico
-   * @param {string|number} personalId - ID del empleado
-   * @returns {Promise<Array>} Lista de evaluaciones del empleado
-   */
-  async getByPersonalId(personalId) {
-    try {
-      const response = await apiClient.get(`/?personal_id=${personalId}`);
-      return response;
-    } catch (error) {
-      console.error(`Error al obtener evaluaciones del empleado ${personalId}:`, error);
-      throw new Error(error.response?.data?.message || 'Error al cargar las evaluaciones del empleado');
-    }
-  },
-
-  /**
-   * Obtiene la lista de personal para formularios
-   * @returns {Promise<Array>} Lista de personal
-   */
-  async getPersonal() {
-    try {
-      const response = await apiClient.get('/personal');
-      return response;
-    } catch (error) {
-      console.error('Error al obtener personal:', error);
-      throw new Error(error.response?.data?.message || 'Error al cargar el personal');
+      console.error(`Error en evaluacionesService.delete ${id}:`, error);
+      if (error.response?.data) {
+        throw error.response.data;
+      }
+      throw error;
     }
   }
 };
-
-export default evaluacionesService;

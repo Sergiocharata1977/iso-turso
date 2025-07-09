@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import tursoClient from '../db.js';
+import { tursoClient } from '../lib/tursoClient.js';
 import { randomUUID } from 'crypto';
 
 const router = Router();

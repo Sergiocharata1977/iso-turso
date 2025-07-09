@@ -7,7 +7,10 @@ const ENDPOINT = '/personal'; // Kept for reference if used elsewhere, though ap
 // Obtener todos los registros de personal
 export async function getAllPersonal() {
   try {
-    return await apiClient.get('');
+    const response = await apiClient.get('');
+    // El backend devuelve { success: true, data: [...], total: X, message: "..." }
+    // Necesitamos extraer solo el array de datos
+    return response.data || [];
   } catch (error) {
     console.error('Error al obtener personal:', error);
     throw error;

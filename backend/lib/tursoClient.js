@@ -12,9 +12,9 @@ const envPath = path.resolve(__dirname, '../.env');
 dotenv.config({ path: envPath });
 
 // Valida que las variables de entorno requeridas existan
-if (!process.env.DATABASE_URL || !process.env.TURSO_DB_TOKEN) {
+if (!process.env.DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
   console.error(
-    'Error Crítico: Las variables de entorno DATABASE_URL y/o TURSO_DB_TOKEN no están definidas en el archivo .env.'
+    'Error Crítico: Las variables de entorno DATABASE_URL y/o TURSO_AUTH_TOKEN no están definidas en el archivo .env.'
   );
   process.exit(1);
 }
@@ -22,7 +22,7 @@ if (!process.env.DATABASE_URL || !process.env.TURSO_DB_TOKEN) {
 // Crea y exporta el cliente de Turso
 export const tursoClient = createClient({
   url: process.env.DATABASE_URL,
-  authToken: process.env.TURSO_DB_TOKEN,
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 // Función para probar la conexión

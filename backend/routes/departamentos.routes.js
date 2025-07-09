@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
 import crypto from 'crypto';
+import ActivityLogService from '../services/activityLogService.js';
 
 const router = Router();
 
@@ -8,7 +9,7 @@ const router = Router();
 router.get('/', async (req, res, next) => {
   try {
     // TODO: Considerar un JOIN para obtener el nombre del responsable si es necesario en el listado
-    const result = await tursoClient.execute('SELECT * FROM departamentos ORDER BY nombre');
+    const result = await tursoClient.execute('SELECT * FROM departamentos ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (error) {
     next(error);
@@ -37,37 +38,64 @@ router.get('/:id', async (req, res, next) => {
 
 // POST /api/departamentos - Crear un nuevo departamento
 router.post('/', async (req, res, next) => {
-  const { nombre, descripcion, responsableId, objetivos } = req.body;
+  const { nombre, descripcion, objetivos, organization_id } = req.body;
+  const usuario = req.user || { id: null, nombre: 'Sistema' };
 
-  if (!nombre) {
-    const err = new Error('El campo "nombre" es obligatorio.');
+  if (!nombre || !organization_id) {
+    const err = new Error('Los campos "nombre" y "organization_id" son obligatorios.');
     err.statusCode = 400;
     return next(err);
   }
 
   try {
-    // Verificar si ya existe un departamento con el mismo nombre
+    // Verificar si ya existe un departamento con el mismo nombre en la misma organización
     const existing = await tursoClient.execute({
-      sql: 'SELECT id FROM departamentos WHERE nombre = ?',
-      args: [nombre],
+      sql: 'SELECT id FROM departamentos WHERE nombre = ? AND organization_id = ?',
+      args: [nombre, organization_id],
     });
 
     if (existing.rows.length > 0) {
-      const err = new Error('Ya existe un departamento con ese nombre.');
+      const err = new Error('Ya existe un departamento con ese nombre en la organización.');
       err.statusCode = 409; // Conflict
       return next(err);
     }
 
     const id = crypto.randomUUID();
-    const fecha_creacion = new Date().toISOString();
+    const now = new Date().toISOString();
 
-    const sql = `
-      INSERT INTO departamentos (id, nombre, descripcion, objetivos, responsableId, fecha_creacion, fecha_actualizacion)
+    // Primero verificar si las columnas de timestamp existen
+    const columnsInfo = await tursoClient.execute({
+      sql: 'PRAGMA table_info(departamentos)',
+      args: []
+    });
+
+    const hasTimestamps = columnsInfo.rows.some(col => col.name === 'created_at');
+
+    let sql, args;
+    if (hasTimestamps) {
+      sql = `
+        INSERT INTO departamentos (id, nombre, descripcion, objetivos, organization_id, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    const args = [id, nombre, descripcion || null, objetivos || null, responsableId || null, fecha_creacion, fecha_creacion];
+      args = [id, nombre, descripcion || null, objetivos || null, organization_id, now, now];
+    } else {
+      sql = `
+        INSERT INTO departamentos (id, nombre, descripcion, objetivos, organization_id)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      args = [id, nombre, descripcion || null, objetivos || null, organization_id];
+    }
 
     await tursoClient.execute({ sql, args });
+
+    // Registrar en la bitácora
+    await ActivityLogService.registrarCreacion(
+      'departamento',
+      id,
+      { nombre, descripcion, objetivos, organization_id },
+      usuario,
+      organization_id
+    );
 
     // Devolver el objeto recién creado
     const newDept = {
@@ -75,9 +103,8 @@ router.post('/', async (req, res, next) => {
       nombre,
       descripcion: descripcion || null,
       objetivos: objetivos || null,
-      responsableId: responsableId || null,
-      fecha_creacion,
-      fecha_actualizacion: fecha_creacion
+      organization_id,
+      ...(hasTimestamps && { created_at: now, updated_at: now })
     };
 
     res.status(201).json(newDept);
@@ -90,7 +117,8 @@ router.post('/', async (req, res, next) => {
 // PUT /api/departamentos/:id - Actualizar un departamento (dinámico)
 router.put('/:id', async (req, res, next) => {
   const { id } = req.params;
-  const { nombre, descripcion, responsableId, objetivos } = req.body;
+  const { nombre, descripcion, responsable, objetivos } = req.body;
+  const usuario = req.user || { id: null, nombre: 'Sistema' };
 
   try {
     // Si se proporciona un nombre, verificar que no entre en conflicto con otro departamento
@@ -106,6 +134,13 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
+    // Obtener datos anteriores para la bitácora
+    const prevResult = await tursoClient.execute({
+      sql: 'SELECT * FROM departamentos WHERE id = ?',
+      args: [id],
+    });
+    const prevData = prevResult.rows[0] || null;
+
     const fields = [];
     const args = [];
 
@@ -117,9 +152,9 @@ router.put('/:id', async (req, res, next) => {
       fields.push('descripcion = ?');
       args.push(descripcion === '' ? null : descripcion);
     }
-    if (responsableId !== undefined) {
-      fields.push('responsableId = ?');
-      args.push(responsableId === '' ? null : responsableId);
+    if (responsable !== undefined) {
+      fields.push('responsable = ?');
+      args.push(responsable === '' ? null : responsable);
     }
     if (objetivos !== undefined) {
       fields.push('objetivos = ?');
@@ -132,9 +167,18 @@ router.put('/:id', async (req, res, next) => {
       return next(err);
     }
 
-    // Actualizar la fecha de modificación
-    fields.push('fecha_actualizacion = ?');
+    // Verificar si existe la columna updated_at
+    const columnsInfo = await tursoClient.execute({
+      sql: 'PRAGMA table_info(departamentos)',
+      args: []
+    });
+
+    const hasUpdatedAt = columnsInfo.rows.some(col => col.name === 'updated_at');
+
+    if (hasUpdatedAt) {
+      fields.push('updated_at = ?');
     args.push(new Date().toISOString());
+    }
 
     args.push(id); // Argumento para el WHERE
 
@@ -153,8 +197,19 @@ router.put('/:id', async (req, res, next) => {
       sql: 'SELECT * FROM departamentos WHERE id = ?',
       args: [id],
     });
+    const updatedDept = updatedDeptResult.rows[0];
 
-    res.json(updatedDeptResult.rows[0]);
+    // Registrar en la bitácora
+    await ActivityLogService.registrarActualizacion(
+      'departamento',
+      id,
+      prevData,
+      updatedDept,
+      usuario,
+      updatedDept.organization_id
+    );
+
+    res.json(updatedDept);
 
   } catch (error) {
     next(error);
@@ -164,11 +219,12 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /api/departamentos/:id - Eliminar un departamento
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
+  const usuario = req.user || { id: null, nombre: 'Sistema' };
 
   try {
     // 1. Verificar si hay puestos asociados
     const puestosCheck = await tursoClient.execute({
-      sql: 'SELECT 1 FROM puestos WHERE departamentoId = ? LIMIT 1',
+      sql: 'SELECT 1 FROM puestos WHERE departamento_id = ? LIMIT 1',
       args: [id],
     });
 
@@ -180,7 +236,7 @@ router.delete('/:id', async (req, res, next) => {
 
     // 2. Verificar si hay personal asociado
     const personalCheck = await tursoClient.execute({
-      sql: 'SELECT 1 FROM personal WHERE departamentoId = ? LIMIT 1',
+      sql: 'SELECT 1 FROM personal WHERE departamento_id = ? LIMIT 1',
       args: [id],
     });
 
@@ -189,6 +245,13 @@ router.delete('/:id', async (req, res, next) => {
       err.statusCode = 409; // Conflict
       return next(err);
     }
+
+    // Obtener datos anteriores para la bitácora
+    const prevResult = await tursoClient.execute({
+      sql: 'SELECT * FROM departamentos WHERE id = ?',
+      args: [id],
+    });
+    const prevData = prevResult.rows[0] || null;
 
     // 3. Si no hay dependencias, proceder con la eliminación
     const result = await tursoClient.execute({
@@ -202,10 +265,18 @@ router.delete('/:id', async (req, res, next) => {
       return next(err);
     }
 
-    res.status(204).send(); // No Content
+    // Registrar en la bitácora
+    await ActivityLogService.registrarEliminacion(
+      'departamento',
+      id,
+      prevData,
+      usuario,
+      prevData?.organization_id || null
+    );
+
+    res.json({ message: 'Departamento eliminado exitosamente' });
 
   } catch (error) {
-    // Captura de errores generales, aunque las validaciones explícitas son preferibles
     next(error);
   }
 });

@@ -1,4 +1,4 @@
-import db from '../db.js';
+import { tursoClient } from '../lib/tursoClient.js';
 
 // @desc    Obtener todos los eventos de una organización
 // @route   GET /api/events

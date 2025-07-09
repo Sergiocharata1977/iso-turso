@@ -107,6 +107,8 @@ const MenuPrincipal = ({ closeDrawer, isMobile }) => {
       items: [
         { id: 'hallazgos', label: 'Hallazgos', to: '/hallazgos' },
         { id: 'acciones', label: 'Acciones', to: '/acciones' },
+        { id: 'tickets-tareas', label: 'Tickets Tareas Internas', to: '/tickets-tareas' },
+        { id: 'feedback', label: 'Feedback Clientes', to: '/feedback' },
       ]
     },
     {

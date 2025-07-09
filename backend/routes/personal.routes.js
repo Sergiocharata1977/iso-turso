@@ -1,5 +1,6 @@
 import express from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
+import { auditMiddleware, auditActions, resourceTypes } from '../middleware/auditMiddleware.js';
 
 const router = express.Router();
 
@@ -77,31 +78,68 @@ router.get('/:id', async (req, res) => {
 });
 
 // Crear nueva persona
-router.post('/', async (req, res) => {
+router.post('/', auditMiddleware(auditActions.CREATE, resourceTypes.PERSONAL), async (req, res) => {
   try {
-    const { 
-      nombre, 
-      apellido, 
-      dni, 
+    console.log('\n======= INICIO CREACIÓN PERSONAL =======');
+    console.log('📋 Datos recibidos (RAW):', JSON.stringify(req.body, null, 2));
+    console.log('👤 Usuario autenticado (RAW):', JSON.stringify(req.user, null, 2));
+    
+    const {
+      nombres, 
+      apellidos, 
+      documento_identidad, 
       email, 
       telefono, 
       puesto, 
       departamento,
-      fecha_ingreso,
-      estado = 'activo',
-      observaciones
+      fecha_contratacion,
+      estado = 'Activo',
+      direccion,
+      telefono_emergencia,
+      fecha_nacimiento,
+      nacionalidad,
+      numero_legajo
     } = req.body;
 
     console.log('🔓 Creando nueva persona sin restricciones');
+    console.log('📋 Datos procesados:', {
+      nombres, apellidos, documento_identidad, email, telefono,
+      direccion, telefono_emergencia, fecha_nacimiento, nacionalidad,
+      fecha_contratacion, numero_legajo, estado
+    });
+    
+    // Validar que el usuario tenga organization_id
+    if (!req.user?.organization_id) {
+      console.log('❌ Usuario sin organización asignada');
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario sin organización asignada'
+      });
+    }
+    
+    console.log('✅ Usuario válido con organización:', req.user.organization_id);
     
     const result = await tursoClient.execute({
       sql: `INSERT INTO personal (
-        nombre, apellido, dni, email, telefono, puesto, departamento,
-        fecha_ingreso, estado, observaciones, organization_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        nombres, apellidos, documento_identidad, email, telefono, 
+        direccion, telefono_emergencia, fecha_nacimiento, nacionalidad,
+        fecha_contratacion, numero_legajo, estado, 
+        organization_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       args: [
-        nombre, apellido, dni, email, telefono, puesto, departamento,
-        fecha_ingreso, estado, observaciones, req.user.organization_id
+        nombres || null, 
+        apellidos || null, 
+        documento_identidad || null, 
+        email || null, 
+        telefono || null,
+        direccion || null, 
+        telefono_emergencia || null, 
+        fecha_nacimiento || null, 
+        nacionalidad || null,
+        fecha_contratacion || null, 
+        numero_legajo || null, 
+        estado || 'Activo', 
+        req.user.organization_id
       ]
     });
 
@@ -109,12 +147,50 @@ router.post('/', async (req, res) => {
     
     res.status(201).json({
       success: true,
-      data: { id: result.lastInsertRowid, nombre, apellido },
+      data: { 
+        id: Number(result.lastInsertRowid), // Convertir BigInt a número
+        nombres, 
+        apellidos 
+      },
       message: 'Persona creada exitosamente'
     });
     
   } catch (error) {
     console.error('Error creando persona:', error);
+    
+    // Manejar errores específicos de restricciones UNIQUE
+    if (error.code === 'SQLITE_CONSTRAINT') {
+      if (error.message.includes('documento_identidad')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe una persona con este documento de identidad',
+          error: 'DUPLICATE_DOCUMENTO_IDENTIDAD'
+        });
+      }
+      if (error.message.includes('email')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe una persona con este email',
+          error: 'DUPLICATE_EMAIL'
+        });
+      }
+      if (error.message.includes('numero_legajo')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe una persona con este número de legajo',
+          error: 'DUPLICATE_NUMERO_LEGAJO'
+        });
+      }
+      
+      // Error genérico de restricción UNIQUE
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un registro con estos datos',
+        error: 'DUPLICATE_CONSTRAINT'
+      });
+    }
+    
+    // Error genérico
     res.status(500).json({
       success: false,
       message: 'Error al crear persona',
@@ -136,8 +212,7 @@ router.put('/:id', async (req, res) => {
       puesto, 
       departamento,
       fecha_ingreso,
-      estado,
-      observaciones
+      estado
     } = req.body;
 
     console.log(`🔓 Actualizando persona ${id} sin restricciones`);
@@ -146,11 +221,11 @@ router.put('/:id', async (req, res) => {
       sql: `UPDATE personal SET 
         nombre = ?, apellido = ?, dni = ?, email = ?, telefono = ?, 
         puesto = ?, departamento = ?, fecha_ingreso = ?, estado = ?, 
-        observaciones = ?, updated_at = datetime('now')
+        updated_at = datetime('now')
         WHERE id = ?`,
       args: [
         nombre, apellido, dni, email, telefono, puesto, departamento,
-        fecha_ingreso, estado, observaciones, id
+        fecha_ingreso, estado, id
       ]
     });
 

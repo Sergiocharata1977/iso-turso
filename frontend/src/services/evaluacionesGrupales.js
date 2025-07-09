@@ -1,16 +1,22 @@
+abckend
 import { createApiClient } from './apiService';
 
 const evaluacionesGrupalesApiClient = createApiClient('/evaluaciones-grupales');
 
 export const evaluacionesGrupalesService = {
   // Obtener todas las evaluaciones grupales
-  async getAll(filters = {}) {
+  async getAll(filters = {}, organizationId) {
     try {
+      if (!organizationId) {
+        throw new Error('Se requiere organization_id para obtener evaluaciones grupales');
+      }
+
       console.log('[DEBUG] Servicio - Iniciando getAll con filtros:', filters);
       const params = new URLSearchParams();
       if (filters.estado) params.append('estado', filters.estado);
+      params.append('organization_id', organizationId);
       
-      const url = params.toString() ? `?${params.toString()}` : '';
+      const url = `?${params.toString()}`;
       console.log('[DEBUG] Servicio - URL completa:', url);
       const response = await evaluacionesGrupalesApiClient.get(url);
       console.log('[DEBUG] Servicio - Respuesta completa:', response);
@@ -30,9 +36,15 @@ export const evaluacionesGrupalesService = {
   },
 
   // Obtener evaluación grupal por ID con empleados
-  async getById(id) {
+  async getById(id, organizationId) {
     try {
-      const response = await evaluacionesGrupalesApiClient.get(`/${id}`);
+      if (!organizationId) {
+        throw new Error('Se requiere organization_id para obtener una evaluación grupal');
+      }
+
+      const response = await evaluacionesGrupalesApiClient.get(`/${id}`, {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
       console.error('Error al obtener evaluación grupal:', error);
@@ -46,6 +58,10 @@ export const evaluacionesGrupalesService = {
   // Crear nueva evaluación grupal
   async create(evaluacionData) {
     try {
+      if (!evaluacionData.organization_id) {
+        throw new Error('Se requiere organization_id para crear una evaluación grupal');
+      }
+
       const response = await evaluacionesGrupalesApiClient.post('/', evaluacionData);
       return response;
     } catch (error) {
@@ -60,6 +76,10 @@ export const evaluacionesGrupalesService = {
   // Actualizar evaluación grupal
   async update(id, evaluacionData) {
     try {
+      if (!evaluacionData.organization_id) {
+        throw new Error('Se requiere organization_id para actualizar una evaluación grupal');
+      }
+
       const response = await evaluacionesGrupalesApiClient.put(`/${id}`, evaluacionData);
       return response;
     } catch (error) {
@@ -75,9 +95,15 @@ export const evaluacionesGrupalesService = {
   },
 
   // Eliminar evaluación grupal
-  async delete(id) {
+  async delete(id, organizationId) {
     try {
-      await evaluacionesGrupalesApiClient.delete(`/${id}`);
+      if (!organizationId) {
+        throw new Error('Se requiere organization_id para eliminar una evaluación grupal');
+      }
+
+      await evaluacionesGrupalesApiClient.delete(`/${id}`, {
+        params: { organization_id: organizationId }
+      });
       return true;
     } catch (error) {
       console.error('Error al eliminar evaluación grupal:', error);
@@ -89,9 +115,15 @@ export const evaluacionesGrupalesService = {
   },
 
   // Obtener competencias estándar
-  async getCompetenciasEstandar() {
+  async getCompetenciasEstandar(organizationId) {
     try {
-      const response = await evaluacionesGrupalesApiClient.get('/competencias/estandar');
+      if (!organizationId) {
+        throw new Error('Se requiere organization_id para obtener competencias estándar');
+      }
+
+      const response = await evaluacionesGrupalesApiClient.get('/competencias/estandar', {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
       console.error('Error al obtener competencias estándar:', error);

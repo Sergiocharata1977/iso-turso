@@ -1,7 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { tursoClient } from '../lib/tursoClient.js';
-import db from '../db.js';
 import { randomUUID } from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_jwt_super_secreto';

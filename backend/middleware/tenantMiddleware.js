@@ -1,4 +1,4 @@
-import db from '../db.js';
+import { tursoClient } from '../lib/tursoClient.js';
 
 /**
  * Middleware para asegurar que todas las operaciones estén limitadas a la organización del usuario

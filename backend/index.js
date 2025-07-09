@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { testConnection } from './lib/tursoClient.js';
 import errorHandler from './middleware/errorHandler.js';
-import setupDatabase from './scripts/setupDatabase.js';
+// import setupDatabase from './scripts/setupDatabase.js'; // Comentado temporalmente
 import simpleAuth from './middleware/simpleAuth.js';
 
 // Load environment variables explicitly
@@ -46,6 +46,7 @@ import verificacionesRouter from './routes/verificaciones.routes.js';
 import accionesRouter from './routes/acciones.routes.js';
 import userRoutes from './routes/userRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import actividadRoutes from './routes/actividad.routes.js';
 
 console.log('🔥 MODO ULTRA SIMPLE: Sin restricciones');
 
@@ -83,6 +84,7 @@ app.use('/api/productos', productosRouter);
 app.use('/api/encuestas', encuestasRouter);
 app.use('/api/tratamientos', tratamientosRouter);
 app.use('/api/verificaciones', verificacionesRouter);
+app.use('/api/actividad', actividadRoutes);
 app.use('/api', direccionRoutes);
 app.use('/api/audit', auditRoutes);
 
@@ -93,7 +95,7 @@ app.use(errorHandler);
 
 const startServer = () => {
   testConnection()
-    .then(setupDatabase)
+    // .then(setupDatabase) // Comentado temporalmente
     .then(() => {
       if (process.env.NODE_ENV !== 'test') {
         app.listen(PORT, () => {

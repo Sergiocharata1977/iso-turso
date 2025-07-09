@@ -3,9 +3,11 @@ import { createApiClient } from './apiService';
 const apiClient = createApiClient('/puestos');
 
 export const puestosService = {
-  getAll: async () => {
+  getAll: async (organizationId) => {
     try {
-      const response = await apiClient.get('');
+      const response = await apiClient.get('', {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
       console.error('Error en puestosService.getAll:', error);
@@ -13,9 +15,11 @@ export const puestosService = {
     }
   },
 
-  getById: async (id) => {
+  getById: async (id, organizationId) => {
     try {
-      const response = await apiClient.get(`/${id}`);
+      const response = await apiClient.get(`/${id}`, {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
       console.error(`Error en puestosService.getById ${id}:`, error);
@@ -25,29 +29,30 @@ export const puestosService = {
 
   create: async (puestoData) => {
     try {
-      // Asegurarse de que los campos numéricos que pueden ser string vacíos se envíen como null si es necesario
-      // o que el backend los maneje adecuadamente.
-      // Por ejemplo, si reporta_a_puesto_id es "", el backend podría necesitarlo como null.
-      const dataToSend = {
-        titulo_puesto: puestoData.titulo_puesto,
-        codigo_puesto: puestoData.codigo_puesto,
-        departamento_id: puestoData.departamento_id ? parseInt(puestoData.departamento_id, 10) : null,
-        reporta_a_puesto_id: puestoData.reporta_a_puesto_id ? parseInt(puestoData.reporta_a_puesto_id, 10) : null,
-        proposito_general: puestoData.proposito_general,
-        principales_responsabilidades: puestoData.principales_responsabilidades,
-        requisitos: puestoData.requisitos,
-        formacion_requerida: puestoData.formacion_requerida,
-        experiencia_requerida: puestoData.experiencia_requerida,
-        competencias_necesarias: puestoData.competencias_necesarias,
-        nivel: puestoData.nivel,
-        estado_puesto: puestoData.estado_puesto,
-      };
-      const response = await apiClient.post('', dataToSend);
-      return response;
+      const {
+        nombre,
+        descripcion,
+        requisitos_experiencia,
+        requisitos_formacion,
+        organization_id
+      } = puestoData;
+
+      if (!organization_id) {
+        throw new Error('Se requiere organization_id para crear un puesto');
+      }
+
+      const response = await apiClient.post('', {
+        nombre,
+        descripcion,
+        requisitos_experiencia,
+        requisitos_formacion,
+        organization_id
+      });
+
+      return response.data;
     } catch (error) {
       console.error('Error en puestosService.create:', error);
-      // Si el error tiene una respuesta del backend, la pasamos para un manejo más específico
-      if (error.response && error.response.data) {
+      if (error.response?.data) {
         throw error.response.data;
       }
       throw error;
@@ -56,41 +61,48 @@ export const puestosService = {
 
   update: async (id, puestoData) => {
     try {
-      const dataToSend = {
-        titulo_puesto: puestoData.titulo_puesto,
-        codigo_puesto: puestoData.codigo_puesto,
-        departamento_id: puestoData.departamento_id ? parseInt(puestoData.departamento_id, 10) : null,
-        reporta_a_puesto_id: puestoData.reporta_a_puesto_id ? parseInt(puestoData.reporta_a_puesto_id, 10) : null,
-        proposito_general: puestoData.proposito_general,
-        principales_responsabilidades: puestoData.principales_responsabilidades,
-        requisitos: puestoData.requisitos,
-        formacion_requerida: puestoData.formacion_requerida,
-        experiencia_requerida: puestoData.experiencia_requerida,
-        competencias_necesarias: puestoData.competencias_necesarias,
-        nivel: puestoData.nivel,
-        estado_puesto: puestoData.estado_puesto,
-      };
-      const response = await apiClient.put(`/${id}`, dataToSend);
-      return response;
+      const {
+        nombre,
+        descripcion,
+        requisitos_experiencia,
+        requisitos_formacion,
+        organization_id
+      } = puestoData;
+
+      if (!organization_id) {
+        throw new Error('Se requiere organization_id para actualizar un puesto');
+      }
+
+      const response = await apiClient.put(`/${id}`, {
+        nombre,
+        descripcion,
+        requisitos_experiencia,
+        requisitos_formacion,
+        organization_id
+      });
+
+      return response.data;
     } catch (error) {
       console.error(`Error en puestosService.update ${id}:`, error);
-      if (error.response && error.response.data) {
+      if (error.response?.data) {
         throw error.response.data;
       }
       throw error;
     }
   },
 
-  delete: async (id) => {
+  delete: async (id, organizationId) => {
     try {
-      const response = await apiClient.delete(`/${id}`);
+      const response = await apiClient.delete(`/${id}`, {
+        params: { organization_id: organizationId }
+      });
       return response;
     } catch (error) {
       console.error(`Error en puestosService.delete ${id}:`, error);
-      if (error.response && error.response.data) {
+      if (error.response?.data) {
         throw error.response.data;
       }
       throw error;
     }
-  },
+  }
 };

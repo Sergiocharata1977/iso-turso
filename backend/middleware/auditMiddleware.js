@@ -130,6 +130,7 @@ export const resourceTypes = {
   HALLAZGO: 'HALLAZGO',
   PROCESO: 'PROCESO',
   AUDITORIA: 'AUDITORIA',
+  PERSONAL: 'PERSONAL',
   SETTINGS: 'SETTINGS'
 };
 

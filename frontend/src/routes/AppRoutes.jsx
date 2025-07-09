@@ -34,12 +34,12 @@ const UsuariosSingle = lazy(() => import('../pages/UsuariosSingle'));
 const DocumentosListing = lazy(() => import('../components/documentos/DocumentosListing'));
 const DocumentoSingle = lazy(() => import('../components/documentos/DocumentoSingle'));
 const AuditoriasListing = lazy(() => import('../components/auditorias/AuditoriasListing'));
-const DepartamentosListing = lazy(() => import('../components/rrhh/DepartamentosListing'));
-const PuestosListing = lazy(() => import('../components/rrhh/PuestosListing'));
+const DepartamentosListing = lazy(() => import('../components/departamentos/DepartamentosListing'));
+const PuestosListing = lazy(() => import('../components/puestos/PuestosListing'));
 const PersonalListing = lazy(() => import('../components/personal/PersonalListing'));
 const PersonalSingle = lazy(() => import('../components/personal/PersonalSingle'));
-const CapacitacionesListing = lazy(() => import('../components/rrhh/CapacitacionesListing'));
-const EvaluacionesListing = lazy(() => import('../components/rrhh/EvaluacionesListing'));
+const CapacitacionesListing = lazy(() => import('../components/capacitaciones/CapacitacionesListing'));
+const EvaluacionesListing = lazy(() => import('../components/Evaluacionesdepersonal/EvaluacionesListing'));
 const ProcesosListing = lazy(() => import('../components/procesos/ProcesosListing'));
 const ProcesoSingle = lazy(() => import('../components/procesos/ProcesoSingle'));
 const NormasList = lazy(() => import('../components/normas/NormasList'));
@@ -52,6 +52,8 @@ const TicketsListing = lazy(() => import('../components/tickets/TicketsListing')
 const EncuestasListing = lazy(() => import('../components/encuestas/EncuestasListing'));
 const ResponderEncuesta = lazy(() => import('../components/encuestas/ResponderEncuesta'));
 const TestComponent = lazy(() => import('../components/TestComponent'));
+const TicketsTareasPage = lazy(() => import('../pages/TicketsTareasPage'));
+const FeedbackPage = lazy(() => import('../pages/FeedbackPage'));
 
 // Componente de carga
 const LoadingFallback = () => (
@@ -128,6 +130,10 @@ export default function AppRoutes() {
           <Route path="productos" element={<ProductosListing />} />
           <Route path="tickets" element={<TicketsListing />} />
           <Route path="encuestas" element={<EncuestasListing />} />
+          
+          {/* Mejoras y QA */}
+          <Route path="tickets-tareas" element={<TicketsTareasPage />} />
+          <Route path="feedback" element={<FeedbackPage />} />
 
           {/* Administración */}
           <Route path="usuarios" element={<UsersPage />} />
