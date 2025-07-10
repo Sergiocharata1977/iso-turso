@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { loginSchema } from '../schemas/authSchemas';
-import { useAuth } from '../context/AuthContext';
+import { loginSchema } from '../../schemas/authSchemas';
+import { useAuth } from '../../context/AuthContext';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);

@@ -11,11 +11,11 @@ import { AccionKanbanBoard } from '@/components/acciones/AccionKanbanBoard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import HallazgoWorkflowManager from '@/components/hallazgos/HallazgoWorkflowManager';
+import HallazgoWorkflowManager from './HallazgoWorkflowManager';
 import { hallazgoWorkflow } from '@/config/hallazgoWorkflow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-const HallazgoSinglePage = () => {
+const HallazgoSingle = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [hallazgo, setHallazgo] = useState(null);
@@ -113,7 +113,7 @@ const HallazgoSinglePage = () => {
             <h1 className="text-2xl font-bold text-gray-800">{hallazgo.titulo}</h1>
             <p className="text-sm text-gray-500 mt-1">ID: {hallazgo.numeroHallazgo}</p>
           </div>
-                    <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <Badge>{hallazgo.estado}</Badge>
           </div>
         </div>
@@ -200,18 +200,20 @@ const HallazgoSinglePage = () => {
                 id="descripcion"
                 value={newAction.descripcion}
                 onChange={(e) => setNewAction({ ...newAction, descripcion: e.target.value })}
+                required
               />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setIsNewActionModalOpen(false)}>Cancelar</Button>
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => setIsNewActionModalOpen(false)}>
+                Cancelar
+              </Button>
               <Button type="submit">Crear Acción</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };
 
-export default HallazgoSinglePage;
+export default HallazgoSingle; 

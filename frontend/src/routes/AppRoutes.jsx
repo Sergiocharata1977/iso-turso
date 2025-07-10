@@ -9,24 +9,22 @@ import ProtectedRoute from './ProtectedRoute';
 // --- Componentes para las rutas (Lazy Loaded) ---
 
 // Pages principales
-const NoticiasPage = lazy(() => import('../pages/NoticiasPage'));
-const DashboardPage = lazy(() => import('../pages/DashboardPage'));
-const CalendarPage = lazy(() => import('../pages/CalendarPage'));
+const DashboardPage = lazy(() => import('../pages/Dashboard/DashboardPage'));
+const CalendarPage = lazy(() => import('../pages/Calendar/CalendarPage'));
 const ComunicacionesPage = lazy(() => import('../pages/ComunicacionesPage'));
-const MejorasPage = lazy(() => import('../pages/MejorasPage'));
 const MedicionesPage = lazy(() => import('../pages/MedicionesPage'));
 const ConfiguracionPage = lazy(() => import('../pages/ConfiguracionPage'));
 const TratamientosPage = lazy(() => import('../pages/TratamientosPage'));
 const VerificacionesPage = lazy(() => import('../pages/VerificacionesPage'));
 
 // Pages existentes
-const AccionesPage2 = lazy(() => import('../pages/AccionesPage2'));
-const AccionSinglePage = lazy(() => import('../pages/AccionSinglePage'));
-const HallazgosPage2 = lazy(() => import('../pages/HallazgosPage2'));
-const HallazgoSinglePage = lazy(() => import('../pages/HallazgoSinglePage'));
+const AccionesPage2 = lazy(() => import('../pages/Acciones/AccionesPage2'));
+const AccionSingle = lazy(() => import('../components/acciones/AccionSingle'));
+const HallazgosPage2 = lazy(() => import('../pages/Hallazgos/HallazgosPage2'));
+const HallazgoSingle = lazy(() => import('../components/hallazgos/HallazgoSingle'));
 const PlanificacionDireccionPage = lazy(() => import('../pages/PlanificacionDireccionPage'));
-const LoginPage = lazy(() => import('../pages/LoginPage'));
-const RegisterPage = lazy(() => import('../pages/RegisterPage'));
+const LoginPage = lazy(() => import('../pages/Registroylogeo/LoginPage'));
+const RegisterPage = lazy(() => import('../pages/Registroylogeo/RegisterPage'));
 const UsersPage = lazy(() => import('../pages/UsersPage'));
 const UsuariosSingle = lazy(() => import('../pages/UsuariosSingle'));
 
@@ -53,7 +51,6 @@ const EncuestasListing = lazy(() => import('../components/encuestas/EncuestasLis
 const ResponderEncuesta = lazy(() => import('../components/encuestas/ResponderEncuesta'));
 const TestComponent = lazy(() => import('../components/TestComponent'));
 const TicketsTareasPage = lazy(() => import('../pages/TicketsTareasPage'));
-const FeedbackPage = lazy(() => import('../pages/FeedbackPage'));
 
 // Componente de carga
 const LoadingFallback = () => (
@@ -90,11 +87,9 @@ export default function AppRoutes() {
           }
         >
           {/* Páginas principales */}
-          <Route path="noticias" element={<NoticiasPage />} />
           <Route path="tablero" element={<DashboardPage />} />
           <Route path="calendario" element={<CalendarPage />} />
           <Route path="comunicaciones" element={<ComunicacionesPage />} />
-          <Route path="mejoras" element={<MejorasPage />} />
           <Route path="mediciones" element={<MedicionesPage />} />
           <Route path="configuracion" element={<ConfiguracionPage />} />
           <Route path="tratamientos" element={<TratamientosPage />} />
@@ -122,9 +117,9 @@ export default function AppRoutes() {
           <Route path="indicadores" element={<IndicadoresListing />} />
           <Route path="indicadores/:id" element={<IndicadorSingle />} />
           <Route path="acciones" element={<AccionesPage2 />} />
-          <Route path="acciones/:id" element={<AccionSinglePage />} />
+          <Route path="acciones/:id" element={<AccionSingle />} />
           <Route path="hallazgos" element={<HallazgosPage2 />} />
-          <Route path="hallazgos/:id" element={<HallazgoSinglePage />} />
+          <Route path="hallazgos/:id" element={<HallazgoSingle />} />
 
           {/* Otros módulos */}
           <Route path="productos" element={<ProductosListing />} />
@@ -133,7 +128,6 @@ export default function AppRoutes() {
           
           {/* Mejoras y QA */}
           <Route path="tickets-tareas" element={<TicketsTareasPage />} />
-          <Route path="feedback" element={<FeedbackPage />} />
 
           {/* Administración */}
           <Route path="usuarios" element={<UsersPage />} />

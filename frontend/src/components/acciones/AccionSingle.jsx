@@ -5,9 +5,9 @@ import accionesService from '@/services/accionesService';
 import { ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AccionWorkflowManager from '@/components/acciones/AccionWorkflowManager';
+import AccionWorkflowManager from './AccionWorkflowManager';
 
-const AccionSinglePage = () => {
+const AccionSingle = () => {
   const { id } = useParams();
   const [accion, setAccion] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -106,4 +106,4 @@ const AccionSinglePage = () => {
   );
 };
 
-export default AccionSinglePage;
+export default AccionSingle; 

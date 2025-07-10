@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus, AlertCircle, Building } from 'lucide-react';
 import { toast } from 'sonner';
-import { registerSchema } from '../schemas/authSchemas';
-import { authService } from '../services/authService';
+import { registerSchema } from '../../schemas/authSchemas';
+import { authService } from '../../services/authService';
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
