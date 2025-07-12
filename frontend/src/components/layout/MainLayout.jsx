@@ -1,60 +1,64 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import TopHeader from './TopHeader';
 import MenuPrincipal from '../menu/MenuPrincipal';
-import { Menu } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { Button } from '@/components/ui/button';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import useWindowSize from '@/hooks/useWindowSize';
 
 const MainLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { width } = useWindowSize();
+  const isMobile = width < 768;
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+  
+  const sidebarClass = cn(
+    "fixed top-0 left-0 h-full z-40 bg-slate-800 transition-transform duration-300 ease-in-out",
+    isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+    "w-64"
+  );
+
+  const mainContentClass = cn(
+    "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+    { "md:ml-64": isSidebarOpen && !isMobile },
+    { "ml-0": !isSidebarOpen || isMobile }
+  );
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar para desktop */}
-      <aside className="hidden lg:flex flex-col w-64 bg-white shadow-md h-full fixed left-0 top-0 z-30">
-        <MenuPrincipal />
+    <div className="flex min-h-screen bg-muted/40">
+      <aside className={sidebarClass}>
+        <MenuPrincipal closeDrawer={isMobile ? () => setIsSidebarOpen(false) : undefined} isMobile={isMobile} />
       </aside>
 
-      {/* Overlay para mobile */}
-      {sidebarOpen && (
+      {isMobile && isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+          className="fixed inset-0 bg-black/60 z-30" 
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
       )}
-
-      {/* Sidebar para mobile */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-md transform transition-transform duration-300 ease-in-out lg:hidden",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <MenuPrincipal 
-          closeDrawer={() => setSidebarOpen(false)} 
-          isMobile={true}
-        />
-      </div>
-
-      {/* Contenido principal */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64 min-h-screen">
-        {/* Header móvil */}
-        <div className="lg:hidden bg-white shadow-sm p-4 flex items-center justify-between sticky top-0 z-20">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <h1 className="text-lg font-semibold text-gray-900">
-            Sistema de Gestión de Calidad
-          </h1>
-        </div>
-
-        {/* Área de contenido */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <Outlet />
-          </div>
+      
+      <div className={mainContentClass}>
+        <TopHeader />
+        
+        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
+          <Outlet />
         </main>
       </div>
+
+      {isMobile && (
+         <Button
+            onClick={toggleSidebar}
+            variant="outline"
+            size="icon"
+            className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-background"
+          >
+            {isSidebarOpen ? <PanelLeftClose className="h-6 w-6" /> : <PanelLeftOpen className="h-6 w-6" />}
+          </Button>
+      )}
     </div>
   );
 };

@@ -1,59 +1,81 @@
 import React from 'react';
-import ThemeToggle from "../theme/ThemeToggle";
-import { Bell, Menu } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from '@/context/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { LogOut, User, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import ThemeToggle from '../theme/ThemeToggle';
+import { Badge } from '@/components/ui/badge';
 
-export default function TopHeader({ onMenuClick }) {
-  const { user } = useAuth();
+const TopHeader = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name.substring(0, 2);
+  };
 
   return (
-    <div className="fixed top-0 left-0 md:left-60 right-0 bg-white border-b border-slate-200 shadow-sm z-50 h-16">
-      <div className="flex items-center justify-between w-full px-4 md:px-6 py-3">
-        {/* Botón de menú hamburguesa para mobile */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onMenuClick}
-            className="md:hidden p-2 rounded-md hover:bg-slate-100 text-slate-600"
-            aria-label="Abrir menú"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="font-bold text-lg text-slate-900">
-            {user?.organization_name || "Los Señores del Agro"}
-          </div>
-        </div>
-        
-        {/* Buscador centrado */}
-        <div className="hidden md:flex flex-1 justify-center max-w-md mx-4">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-full px-4 py-2 rounded-md border border-slate-300 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-        
-        {/* Menú de usuario y notificaciones a la derecha */}
-        <div className="flex items-center gap-3">
-          {/* Icono de notificaciones */}
-          <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500">
-            <Bell className="w-5 h-5" />
-          </button>
-          
-          {/* Toggle de tema */}
-          <ThemeToggle />
-          
-          {/* Avatar y popover de usuario */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-            <div className="hidden md:block text-sm">
-              <div className="font-medium text-slate-900">{user?.name || "Usuario"}</div>
-              <div className="text-xs text-slate-500">{user?.role || "Usuario"}</div>
-            </div>
-          </div>
-        </div>
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+      <div className="flex-1">
+        {/* Placeholder for breadcrumbs or page title if needed */}
+        <h1 className="font-semibold text-lg">{user?.organization_name || 'Panel de Control'}</h1>
       </div>
-    </div>
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={user?.avatar_url} alt={user?.name} />
+                <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <div className="px-2 py-1">
+              <Badge variant="outline">{user?.role}</Badge>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/perfil')}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Perfil</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/configuracion')}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Configuración</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Cerrar sesión</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
   );
-}
+};
+
+export default TopHeader; 
