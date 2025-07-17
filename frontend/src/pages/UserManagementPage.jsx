@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit, Plus, Eye, EyeOff } from 'lucide-react';
+import { usuariosService } from '../services/usuarios';
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
@@ -60,19 +61,8 @@ const UserManagementPage = () => {
   // Cargar usuarios
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-      } else {
-        throw new Error('Error al cargar usuarios');
-      }
+      const response = await usuariosService.getAll();
+      setUsers(response.users || []);
     } catch (error) {
       toast({
         title: 'Error',
@@ -91,39 +81,32 @@ const UserManagementPage = () => {
   // Crear o actualizar usuario
   const onSubmit = async (data) => {
     try {
-      const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
-      const method = editingUser ? 'PUT' : 'POST';
-      
       // Si es edición y no se proporciona password, no enviarlo
       const payload = { ...data };
       if (editingUser && !payload.password) {
         delete payload.password;
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
+      if (editingUser) {
+        await usuariosService.update(editingUser.id, payload);
         toast({
           title: 'Éxito',
-          description: `Usuario ${editingUser ? 'actualizado' : 'creado'} exitosamente`,
+          description: 'Usuario actualizado exitosamente',
           variant: 'success'
         });
-        
-        setDialogOpen(false);
-        setEditingUser(null);
-        reset();
-        fetchUsers();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Error al procesar la solicitud');
+        await usuariosService.create(payload);
+        toast({
+          title: 'Éxito',
+          description: 'Usuario creado exitosamente',
+          variant: 'success'
+        });
       }
+      
+      setDialogOpen(false);
+      setEditingUser(null);
+      reset();
+      fetchUsers();
     } catch (error) {
       toast({
         title: 'Error',
@@ -140,23 +123,13 @@ const UserManagementPage = () => {
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      await usuariosService.delete(userId);
+      toast({
+        title: 'Éxito',
+        description: 'Usuario desactivado exitosamente',
+        variant: 'success'
       });
-
-      if (response.ok) {
-        toast({
-          title: 'Éxito',
-          description: 'Usuario desactivado exitosamente',
-          variant: 'success'
-        });
-        fetchUsers();
-      } else {
-        throw new Error('Error al desactivar usuario');
-      }
+      fetchUsers();
     } catch (error) {
       toast({
         title: 'Error',

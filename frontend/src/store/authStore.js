@@ -64,6 +64,7 @@ const useAuthStore = create(
         const { refreshToken } = get();
         
         if (!refreshToken) {
+          console.error('🔑 No hay refresh token disponible');
           get().logout();
           return null;
         }
@@ -89,6 +90,7 @@ const useAuthStore = create(
             user: data.user
           });
 
+          console.log('🔑 Token refrescado exitosamente');
           return data.accessToken;
         } catch (error) {
           console.error('Error refreshing token:', error);
@@ -132,25 +134,41 @@ const useAuthStore = create(
         return user?.role || null;
       },
 
-      // Función para obtener el token actual (con refresh automático si es necesario)
+      // Función para obtener el token actual (versión simplificada y más robusta)
       getValidToken: async () => {
-        const { accessToken, refreshAccessToken } = get();
+        const { accessToken, refreshToken, refreshAccessToken } = get();
+        
+        console.log('🔑 getValidToken - Estado:', {
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          tokenLength: accessToken ? accessToken.length : 0
+        });
         
         if (!accessToken) {
+          console.error('🔑 No hay access token disponible');
           return null;
         }
 
-        // Verificar si el token está cerca de expirar (opcional)
+        // Verificar si el token está cerca de expirar
         try {
           const payload = JSON.parse(atob(accessToken.split('.')[1]));
           const now = Date.now() / 1000;
           
-          // Si el token expira en menos de 5 minutos, refrescarlo
+          console.log('🔑 Token info:', {
+            expires: new Date(payload.exp * 1000).toISOString(),
+            now: new Date(now * 1000).toISOString(),
+            timeLeft: Math.floor((payload.exp - now) / 60) + ' minutes'
+          });
+          
+          // Si el token expira en menos de 5 minutos, intentar refrescarlo
           if (payload.exp - now < 300) {
-            return await refreshAccessToken();
+            console.log('🔑 Token cerca de expirar, refrescando...');
+            const newToken = await refreshAccessToken();
+            return newToken || accessToken; // Usar el token original si el refresh falla
           }
         } catch (error) {
-          console.error('Error parsing token:', error);
+          console.error('🔑 Error parsing token (usando token original):', error);
+          // Si no se puede parsear el token, usar el que tenemos
         }
 
         return accessToken;

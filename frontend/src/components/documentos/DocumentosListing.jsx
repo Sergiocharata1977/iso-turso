@@ -1,230 +1,201 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Trash2, Edit, FileText, Download, Filter, Upload, LayoutGrid, List } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import documentosService from '../../services/documentosService';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, FileText, Download, Eye, Edit, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import documentosService from '@/services/documentosService';
 import DocumentoModal from './DocumentoModal';
-import GenericCard from '@/components/ui/GenericCard';
-import ListingHeader from '../common/ListingHeader';
+import { useAuth } from '@/context/AuthContext';
 
 const DocumentosListing = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
   const [documentos, setDocumentos] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDocumento, setSelectedDocumento] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentoToDelete, setDocumentoToDelete] = useState(null);
-  const [viewMode, setViewMode] = useState('grid');
+  const { toast } = useToast();
+  const { user } = useAuth();
 
-  const fetchDocumentos = useCallback(async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    loadDocumentos();
+  }, []);
+
+  const loadDocumentos = async () => {
     try {
+      setLoading(true);
       const data = await documentosService.getDocumentos();
       setDocumentos(data || []);
     } catch (error) {
       console.error('Error al cargar documentos:', error);
-      toast({ variant: "destructive", title: "Error", description: "Error al cargar los documentos." });
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los documentos",
+        variant: "destructive"
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    fetchDocumentos();
-  }, [fetchDocumentos]);
-
-  const filteredDocumentos = useMemo(() => {
-    if (!searchTerm.trim()) return documentos;
-    const searchLower = searchTerm.toLowerCase();
-    return documentos.filter(doc => 
-      doc.titulo?.toLowerCase().includes(searchLower) ||
-      doc.descripcion?.toLowerCase().includes(searchLower) ||
-      doc.version?.toLowerCase().includes(searchLower)
-    );
-  }, [documentos, searchTerm]);
-
-  const handleViewSingle = useCallback((id) => navigate(`/documentos/${id}`), [navigate]);
-  const handleNewDocumento = () => {
+  const handleCreate = () => {
     setSelectedDocumento(null);
     setIsModalOpen(true);
   };
-  const handleEdit = useCallback((documento) => {
+
+  const handleEdit = (documento) => {
     setSelectedDocumento(documento);
     setIsModalOpen(true);
-  }, []);
-  const handleDelete = useCallback((documento) => {
-    setDocumentoToDelete(documento);
-    setDeleteDialogOpen(true);
-  }, []);
-
-  const handleDownload = useCallback(async (documento) => {
-    try {
-      await documentosService.downloadDocumento(documento.id);
-      toast({ title: "Descarga iniciada", description: `Descargando ${documento.archivo_nombre || 'documento'}` });
-    } catch (error) {
-      console.error('Error al descargar documento:', error);
-      toast({ variant: "destructive", title: "Error", description: "Error al descargar el documento" });
-    }
-  }, []);
-
-  const confirmDelete = useCallback(async () => {
-    if (!documentoToDelete) return;
-    try {
-      await documentosService.deleteDocumento(documentoToDelete.id);
-      setDocumentos(prev => prev.filter(d => d.id !== documentoToDelete.id));
-      toast({ title: "Éxito", description: "Documento eliminado correctamente" });
-    } catch (error) {
-      console.error('Error al eliminar documento:', error);
-      toast({ variant: "destructive", title: "Error", description: "Error al eliminar el documento" });
-    } finally {
-      setDeleteDialogOpen(false);
-      setDocumentoToDelete(null);
-    }
-  }, [documentoToDelete]);
-
-  const renderGridContent = () => {
-    if (isLoading) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => <GenericCard.Skeleton theme="light" key={i} />)}
-        </div>
-      );
-    }
-    if (filteredDocumentos.length === 0) return renderEmptyState();
-    return (
-      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredDocumentos.map(doc => (
-          <GenericCard
-            theme="light"
-            key={doc.id}
-            icon={FileText}
-            title={doc.titulo}
-            subtitle={`Versión: ${doc.version}`}
-            description={doc.descripcion}
-            tags={[`Creado: ${new Date(doc.fecha_creacion).toLocaleDateString()}`]}
-            onCardClick={() => handleViewSingle(doc.id)}
-            actions={[
-              { icon: Edit, onClick: (e) => { e.stopPropagation(); handleEdit(doc); }, tooltip: 'Editar' },
-              { icon: Trash2, onClick: (e) => { e.stopPropagation(); handleDelete(doc); }, tooltip: 'Eliminar' },
-              { icon: Download, onClick: (e) => { e.stopPropagation(); handleDownload(doc); }, tooltip: 'Descargar' },
-            ]}
-          />
-        ))}
-      </motion.div>
-    );
   };
 
-  const renderListContent = () => {
-    if (isLoading) {
-      return <div className="text-center py-10">Cargando...</div>; // O un skeleton de tabla
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Está seguro de eliminar este documento?')) {
+      try {
+        await documentosService.deleteDocumento(id);
+        toast({
+          title: "Éxito",
+          description: "Documento eliminado correctamente",
+        });
+        loadDocumentos();
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "No se pudo eliminar el documento",
+          variant: "destructive"
+        });
+      }
     }
-    if (filteredDocumentos.length === 0) return renderEmptyState();
-    return (
-      <motion.div layout className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-slate-900 rounded-lg shadow overflow-hidden">
-          <thead className="bg-gray-50 dark:bg-slate-800">
-            <tr>
-              <th className="p-4 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Título</th>
-              <th className="p-4 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Versión</th>
-              <th className="p-4 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Fecha Creación</th>
-              <th className="p-4 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-            {filteredDocumentos.map(doc => (
-              <motion.tr key={doc.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => handleViewSingle(doc.id)}>
-                <td className="p-4 whitespace-nowrap">{doc.titulo}</td>
-                <td className="p-4 whitespace-nowrap">{doc.version}</td>
-                <td className="p-4 whitespace-nowrap">{new Date(doc.fecha_creacion).toLocaleDateString()}</td>
-                <td className="p-4 whitespace-nowrap text-right">
-                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(doc); }}><Edit className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}><Trash2 className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}><Download className="h-4 w-4" /></Button>
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
-      </motion.div>
-    );
   };
 
-  const renderEmptyState = () => (
-    <div className="text-center py-10">
-      <FileText className="mx-auto h-12 w-12 text-gray-400" />
-      <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay documentos</h3>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {searchTerm ? 'No se encontraron documentos que coincidan con tu búsqueda.' : 'Comienza creando un nuevo documento.'}
-      </p>
-    </div>
+  const handleDownload = async (documento) => {
+    try {
+      await documentosService.downloadDocumento(documento.id, documento.archivo_nombre);
+      toast({
+        title: "Descarga iniciada",
+        description: `Descargando ${documento.archivo_nombre}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo descargar el documento",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const filteredDocumentos = documentos.filter(doc =>
+    doc.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="p-4 sm:p-6">
-      <ListingHeader
-        title="Gestión de Documentos"
-        subtitle="Administra los documentos y archivos del sistema"
-        searchTerm={searchTerm}
-        onSearchChange={(e) => setSearchTerm(e.target.value)}
-        onAddNew={handleNewDocumento}
-        addNewLabel="Nuevo Documento"
-        actionButtons={[
-          <Button key="export" variant="outline"><Upload className="mr-2 h-4 w-4" /> Exportar</Button>,
-          <Button key="filter" variant="outline"><Filter className="mr-2 h-4 w-4" /> Filtros</Button>
-        ]}
-      >
-        <div className="flex items-center space-x-1 border border-gray-200 dark:border-slate-700 rounded-lg p-1">
-          <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5" /></Button>
-          <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Documentos</h1>
+        <p className="text-gray-600">Gestión de documentos del sistema de calidad</p>
+      </div>
+
+      {/* Barra de herramientas */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Input
+              type="text"
+              placeholder="Buscar documentos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-      </ListingHeader>
+        <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Documento
+        </Button>
+      </div>
 
-      <motion.div layout className="mt-6">
-        {viewMode === 'grid' ? renderGridContent() : renderListContent()}
-      </motion.div>
-
-      {isModalOpen && (
-        <DocumentoModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={fetchDocumentos}
-          documento={selectedDocumento}
-        />
+      {/* Lista de documentos */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        </div>
+      ) : filteredDocumentos.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">
+              {searchTerm ? 'No se encontraron documentos con ese criterio' : 'No hay documentos registrados'}
+            </p>
+            {!searchTerm && (
+              <Button onClick={handleCreate} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar primer documento
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredDocumentos.map((documento) => (
+            <Card key={documento.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-emerald-600" />
+                    <div>
+                      <CardTitle className="text-lg">{documento.titulo}</CardTitle>
+                      <p className="text-sm text-gray-500">Versión {documento.version}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  {documento.descripcion || 'Sin descripción'}
+                </p>
+                <div className="text-xs text-gray-500 mb-4">
+                  <p>Archivo: {documento.archivo_nombre}</p>
+                  <p>Tamaño: {documento.tamaño ? `${(documento.tamaño / 1024 / 1024).toFixed(2)} MB` : 'N/A'}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownload(documento)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(documento)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(documento.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el documento{' '}
-              <span className="font-semibold">{documentoToDelete?.titulo}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sí, eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Modal para crear/editar */}
+      <DocumentoModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={loadDocumentos}
+        documento={selectedDocumento}
+      />
     </div>
   );
 };

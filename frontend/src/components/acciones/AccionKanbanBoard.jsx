@@ -24,6 +24,7 @@ export function AccionKanbanBoard({ acciones, onStateChange, onCardClick }) {
       id: estadoKey,
       title: accionWorkflow[estadoKey].title,
       acciones: groupedAcciones[estadoKey] || [],
+      colorClasses: accionWorkflow[estadoKey].colorClasses,
     }));
     setColumns(boardColumns);
   }, [acciones]);
@@ -69,9 +70,10 @@ export function AccionKanbanBoard({ acciones, onStateChange, onCardClick }) {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="flex flex-col flex-grow">
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 overflow-x-auto p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
+        <div className="flex-grow overflow-x-auto pb-4">
+          <div className="flex gap-4">
           <SortableContext items={columns.map(col => col.id)}>
             {columns.map(col => (
               <AccionKanbanColumn 
@@ -80,9 +82,11 @@ export function AccionKanbanBoard({ acciones, onStateChange, onCardClick }) {
                 title={col.title} 
                 acciones={col.acciones} 
                 onCardClick={onCardClick}
+                colorClasses={col.colorClasses}
               />
             ))}
           </SortableContext>
+          </div>
         </div>
         <DragOverlay>
           {activeAccion && <AccionKanbanCard accion={activeAccion} />}

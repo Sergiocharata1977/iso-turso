@@ -4,6 +4,12 @@ import { randomUUID } from 'crypto';
 // Función para registrar una acción en los logs de auditoría
 export const logAuditAction = async (userId, organizationId, action, resourceType, resourceId = null, details = null, req = null) => {
   try {
+    // Validar que los parámetros requeridos estén presentes
+    if (!userId || !organizationId) {
+      console.warn('[AUDIT] Saltando log - Usuario o organización no definidos');
+      return;
+    }
+
     const logId = randomUUID();
     const timestamp = new Date().toISOString();
     
@@ -35,8 +41,8 @@ export const auditMiddleware = (action, resourceType) => {
     // Interceptar la respuesta para registrar solo operaciones exitosas
     res.send = function(data) {
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        // Registrar la acción solo si fue exitosa
-        if (req.user) {
+        // Registrar la acción solo si fue exitosa y el usuario está completamente definido
+        if (req.user && req.user.id && req.user.organization_id) {
           const resourceId = req.params.id || req.body.id || null;
           const details = JSON.stringify({
             method: req.method,
@@ -54,6 +60,8 @@ export const auditMiddleware = (action, resourceType) => {
             details,
             req
           );
+        } else {
+          console.warn('[AUDIT] Saltando log - Usuario no completamente definido en send');
         }
       }
       
@@ -62,8 +70,8 @@ export const auditMiddleware = (action, resourceType) => {
     
     res.json = function(data) {
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        // Registrar la acción solo si fue exitosa
-        if (req.user) {
+        // Registrar la acción solo si fue exitosa y el usuario está completamente definido
+        if (req.user && req.user.id && req.user.organization_id) {
           const resourceId = req.params.id || req.body.id || data?.id || null;
           const details = JSON.stringify({
             method: req.method,
@@ -81,6 +89,8 @@ export const auditMiddleware = (action, resourceType) => {
             details,
             req
           );
+        } else {
+          console.warn('[AUDIT] Saltando log - Usuario no completamente definido en json');
         }
       }
       

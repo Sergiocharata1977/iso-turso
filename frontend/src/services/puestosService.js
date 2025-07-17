@@ -106,3 +106,6 @@ export const puestosService = {
     }
   }
 };
+
+// Export default para compatibilidad
+export default puestosService;

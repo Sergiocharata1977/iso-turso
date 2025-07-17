@@ -3,7 +3,7 @@ import apiService from './apiService';
 
 class NormasService {
   constructor() {
-    this.baseUrl = '/api/normas';
+    this.baseUrl = '/normas';
   }
 
   async getAll() {
@@ -34,6 +34,11 @@ class NormasService {
       };
   }
 }
+
+  // Alias para compatibilidad con frontend existente
+  async getAllNormas() {
+    return await this.getAll();
+  }
 
   async getById(id) {
     try {
@@ -131,6 +136,23 @@ class NormasService {
         message: 'Servicio no disponible: ' + error.message
       };
     }
+  }
+
+  // Métodos alias para compatibilidad con el frontend
+  async createNorma(normaData) {
+    return await this.create(normaData);
+  }
+
+  async updateNorma(id, normaData) {
+    return await this.update(id, normaData);
+  }
+
+  async deleteNorma(id) {
+    return await this.delete(id);
+  }
+
+  async getNormaById(id) {
+    return await this.getById(id);
   }
 }
 

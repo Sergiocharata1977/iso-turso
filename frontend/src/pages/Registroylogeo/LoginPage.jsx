@@ -5,13 +5,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { loginSchema } from '../../schemas/authSchemas';
-import { useAuth } from '../../context/AuthContext';
+import useAuthStore from '../../store/authStore';
+import { authService } from '../../services/authService';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login: loginToStore } = useAuthStore();
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const {
     register,
@@ -26,29 +26,60 @@ const LoginPage = () => {
   });
 
   const onSubmit = async (data) => {
-    setIsLoading(true);
     try {
-      console.log('🔐 LoginPage - Iniciando login con AuthContext...');
+      console.log('🔐 LoginPage - Iniciando login con authService...');
       
-      // Usar el método login del AuthContext
-      await login(data);
+      // Llamar directamente al servicio de autenticación
+      const response = await authService.login(data);
+      console.log('📦 LoginPage - Respuesta completa del servicio:', response);
       
-      console.log('✅ LoginPage - Login exitoso, redirigiendo...');
+      // Verificar la estructura de la respuesta
+      if (!response || !response.data) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+      
+      const { user, tokens } = response.data;
+      const { accessToken, refreshToken } = tokens;
+      
+      console.log('🔍 LoginPage - Datos extraídos:', {
+        hasUser: !!user,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        accessTokenLength: accessToken ? accessToken.length : 0
+      });
+      
+      if (!accessToken || !user) {
+        throw new Error('Respuesta del servidor incompleta');
+      }
+      
+      console.log('✅ LoginPage - Login service OK. Guardando en store...');
+      
+      // Guardar el estado en el store de Zustand
+      loginToStore(user, accessToken, refreshToken);
+      
+      // Verificar que se guardó correctamente
+      const storeState = useAuthStore.getState();
+      console.log('🏪 LoginPage - Estado del store después de login:', {
+        isAuthenticated: storeState.isAuthenticated,
+        hasAccessToken: !!storeState.accessToken,
+        hasUser: !!storeState.user
+      });
+      
       toast.success('¡Inicio de sesión exitoso!');
       
       // Pequeño delay para asegurar que el estado se actualice
       setTimeout(() => {
-        navigate('/tablero');
+        navigate('/departamentos');
       }, 100);
       
     } catch (error) {
       console.error('💥 LoginPage - Error en login:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error de conexión. Intenta nuevamente.';
       toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  const isLoading = isSubmitting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -131,7 +162,7 @@ const LoginPage = () => {
             <div>
               <button
                 type="submit"
-                disabled={isSubmitting || isLoading}
+                disabled={isLoading}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (

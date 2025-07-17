@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import indicadoresService from '@/services/indicadoresService';
+import objetivosCalidadService from '@/services/objetivosCalidadService';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Target, Calendar, User, Hash, FileText } from 'lucide-react';
@@ -22,8 +24,13 @@ export default function IndicadorSingle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [indicador, setIndicador] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [objetivos, setObjetivos] = useState([]);
+  const [showObjetivoSelect, setShowObjetivoSelect] = useState(false);
+  const [selectedObjetivo, setSelectedObjetivo] = useState(null);
+  const [isSavingObjetivo, setIsSavingObjetivo] = useState(false);
 
   useEffect(() => {
     const fetchIndicador = async () => {
@@ -54,9 +61,57 @@ export default function IndicadorSingle() {
 
     if (id) {
       fetchIndicador();
+      loadObjetivos();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Cargar objetivos de calidad reales
+  const loadObjetivos = async () => {
+    try {
+      const data = await objetivosCalidadService.getAll();
+      setObjetivos(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los objetivos de calidad",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Guardar objetivo de calidad seleccionado
+  const handleSaveObjetivo = async () => {
+    if (!selectedObjetivo) return;
+    setIsSavingObjetivo(true);
+    try {
+      await indicadoresService.update(indicador.id, {
+        ...indicador,
+        objetivo_calidad_id: selectedObjetivo,
+        organization_id: user.organization_id
+      });
+      toast({
+        title: "Objetivo asignado",
+        description: "La relación con el objetivo de calidad se ha guardado correctamente.",
+        variant: "success"
+      });
+      setShowObjetivoSelect(false);
+      // Actualizar el indicador local para mostrar el cambio
+      const objetivoSeleccionado = objetivos.find(o => o.id == selectedObjetivo);
+      setIndicador(prev => ({
+        ...prev,
+        objetivo_calidad_id: selectedObjetivo,
+        objetivo_calidad: objetivoSeleccionado
+      }));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo asignar el objetivo de calidad",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingObjetivo(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-teal-500"></div></div>;
@@ -85,41 +140,112 @@ export default function IndicadorSingle() {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
-          <Card className="border-l-4 border-teal-500">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold">{indicador.nombre}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300 text-base leading-relaxed">{indicador.descripcion}</p>
-            </CardContent>
-          </Card>
+        {/* Layout principal: contenido + relaciones */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Columna principal (contenido del indicador) */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-l-4 border-teal-500">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">{indicador.nombre}</CardTitle>
+                {/* Mostrar objetivo de calidad actual */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center text-gray-600">
+                    <Target className="w-4 h-4 mr-2" />
+                    <strong>Objetivo de Calidad:</strong>
+                    <span className="ml-2">{indicador.objetivo_calidad?.descripcion || 'No asignado'}</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 dark:text-gray-300 text-base leading-relaxed">{indicador.descripcion}</p>
+              </CardContent>
+            </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <InfoCard title="Meta del Indicador" icon={<Target className="h-5 w-5 text-teal-500" />}>
-              {indicador.meta}
-            </InfoCard>
-            <InfoCard title="Frecuencia" icon={<Calendar className="h-5 w-5 text-blue-500" />}>
-              {indicador.frecuencia}
-            </InfoCard>
-            <InfoCard title="Responsable" icon={<User className="h-5 w-5 text-orange-500" />}>
-              {indicador.responsable}
-            </InfoCard>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <InfoCard title="Meta del Indicador" icon={<Target className="h-5 w-5 text-teal-500" />}>
+                {indicador.meta}
+              </InfoCard>
+              <InfoCard title="Frecuencia" icon={<Calendar className="h-5 w-5 text-blue-500" />}>
+                {indicador.frecuencia}
+              </InfoCard>
+              <InfoCard title="Responsable" icon={<User className="h-5 w-5 text-orange-500" />}>
+                {indicador.responsable}
+              </InfoCard>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-500" />
+                  Fórmula de Cálculo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap">
+                  {indicador.formula}
+                </pre>
+              </CardContent>
+            </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-purple-500" />
-                Fórmula de Cálculo
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap">
-                {indicador.formula}
-              </pre>
-            </CardContent>
-          </Card>
+          {/* Columna de relaciones */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Relaciones
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-4">
+                  {/* Botón para asignar/cambiar objetivo de calidad */}
+                  {!showObjetivoSelect ? (
+                    <Button 
+                      className="btn-relacion-exclusive w-full" 
+                      onClick={() => { 
+                        setShowObjetivoSelect(true); 
+                        setSelectedObjetivo(indicador.objetivo_calidad_id || ''); 
+                      }}
+                    >
+                      {indicador.objetivo_calidad ? 'Cambiar Objetivo' : 'Asignar Objetivo'}
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <select 
+                        value={selectedObjetivo || ''} 
+                        onChange={(e) => setSelectedObjetivo(e.target.value)} 
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="" disabled>Seleccione un objetivo de calidad</option>
+                        {objetivos.map((o) => (
+                          <option key={o.id} value={o.id}>{o.descripcion}</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleSaveObjetivo} 
+                          disabled={!selectedObjetivo || isSavingObjetivo} 
+                          className="btn-relacion-exclusive flex-1"
+                        >
+                          {isSavingObjetivo ? 'Guardando...' : 'Guardar'}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowObjetivoSelect(false)} 
+                          disabled={isSavingObjetivo}
+                          className="flex-1"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Aquí se pueden agregar más relaciones en el futuro */}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>

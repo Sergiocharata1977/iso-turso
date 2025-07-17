@@ -56,9 +56,9 @@ const HallazgoKanbanBoard = ({ hallazgos, onCardClick, onHallazgoStateChange }) 
   };
 
   return (
-    <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="flex flex-col flex-grow p-4">
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="overflow-x-auto pb-4">
+        <div className="flex-grow overflow-x-auto pb-4">
           <div className="flex gap-4" style={{ minWidth: `${columnConfig.length * 320}px` }}>
             {columnConfig.map((column) => (
               <HallazgoKanbanColumn

@@ -67,5 +67,49 @@ export const capacitacionesService = {
       console.error(`❌ Error al eliminar capacitación ID ${id}:`, error);
       throw new Error('Error al eliminar la capacitación');
     }
+  },
+
+  // --- Evaluaciones de capacitación ---
+  async getEvaluaciones(capacitacionId) {
+    try {
+      return await apiClient.get(`/${capacitacionId}/evaluaciones`);
+    } catch (error) {
+      console.error('Error al obtener evaluaciones:', error);
+      throw new Error('Error al obtener evaluaciones');
+    }
+  },
+  async addEvaluacion(capacitacionId, evaluacion) {
+    try {
+      return await apiClient.post(`/${capacitacionId}/evaluaciones`, evaluacion);
+    } catch (error) {
+      console.error('Error al crear evaluación:', error);
+      throw new Error('Error al crear evaluación');
+    }
+  },
+  async updateEvaluacion(capacitacionId, evalId, evaluacion) {
+    try {
+      return await apiClient.put(`/${capacitacionId}/evaluaciones/${evalId}`, evaluacion);
+    } catch (error) {
+      console.error('Error al actualizar evaluación:', error);
+      throw new Error('Error al actualizar evaluación');
+    }
+  },
+  async deleteEvaluacion(capacitacionId, evalId) {
+    try {
+      return await apiClient.delete(`/${capacitacionId}/evaluaciones/${evalId}`);
+    } catch (error) {
+      console.error('Error al eliminar evaluación:', error);
+      throw new Error('Error al eliminar evaluación');
+    }
+  },
+
+  // --- Temas de capacitación ---
+  async getTemas(capacitacionId) {
+    try {
+      return await apiClient.get(`/${capacitacionId}/temas`);
+    } catch (error) {
+      console.error('Error al obtener temas:', error);
+      throw new Error('Error al obtener temas');
+    }
   }
 };

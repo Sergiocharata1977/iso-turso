@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { userService } from '../services/userService';
+import { usuariosService } from '../services/usuarios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,7 @@ const UsersPage = () => {
     try {
       setLoading(true);
       console.log('[DEBUG] Cargando usuarios...');
-      const response = await userService.getUsers();
+      const response = await usuariosService.getAll();
       console.log('[DEBUG] Respuesta de usuarios:', response);
       
       if (response && response.users) {
@@ -78,7 +78,7 @@ const UsersPage = () => {
       console.log('[DEBUG] Creando usuario:', formData);
       
       // Crear el usuario en el backend
-      const response = await userService.createUser(formData);
+      const response = await usuariosService.create(formData);
       console.log('[DEBUG] Usuario creado exitosamente:', response);
       
       // Actualización optimista: agregar el usuario a la lista inmediatamente
@@ -140,7 +140,7 @@ const UsersPage = () => {
       
       console.log('[DEBUG] Actualizando usuario:', selectedUser.id, updateData);
       
-      await userService.updateUser(selectedUser.id, updateData);
+      await usuariosService.update(selectedUser.id, updateData);
       
       // Actualización optimista
       setUsers(prevUsers => 
@@ -183,7 +183,7 @@ const UsersPage = () => {
       try {
         console.log('[DEBUG] Desactivando usuario:', userId);
         
-        await userService.deleteUser(userId);
+        await usuariosService.delete(userId);
         
         // Actualización optimista
         setUsers(prevUsers => 

@@ -68,12 +68,15 @@ const originalConsoleError = console.error;
 console.error = function(...args) {
   originalConsoleError.apply(console, args);
 
-  const errorString = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ').toLowerCase();
-
-  window.parent.postMessage({
-    type: 'horizons-console-error',
-    error: errorString
-  }, '*');
+  // Solo reportar errores críticos, no todos los console.error
+  const errorString = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+  
+  if (errorString.includes('Failed to fetch') || errorString.includes('Network Error') || errorString.includes('ChunkLoadError')) {
+    window.parent.postMessage({
+      type: 'horizons-console-error',
+      error: errorString
+    }, '*');
+  }
 };
 `;
 

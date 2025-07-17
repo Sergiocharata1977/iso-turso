@@ -7,6 +7,7 @@ import { Plus, Search, Download, Pencil, Trash2, SlidersHorizontal, BarChart3, T
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import UnifiedHeader from '@/components/common/UnifiedHeader';
 import IndicadorModal from './IndicadorModal';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import indicadoresService from '@/services/indicadoresService';
@@ -15,16 +16,16 @@ const IndicadorCard = React.memo(({ indicador, onEdit, onDelete, onNavigate }) =
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-lg hover:border-teal-500 transition-all duration-300 flex flex-col h-full group cursor-pointer"
+    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-lg hover:border-emerald-500 transition-all duration-300 flex flex-col h-full group cursor-pointer"
     onClick={onNavigate}
   >
     <CardHeader>
-      <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-teal-600 transition-colors duration-300 flex items-center justify-between">
+      <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 transition-colors duration-300 flex items-center justify-between">
         <span className="truncate">{indicador.nombre}</span>
         {indicador.tipo && (
           <Badge 
             variant={indicador.tipo === 'manual' ? 'default' : 'secondary'}
-            className={`ml-2 text-xs ${indicador.tipo === 'manual' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}
+            className={`ml-2 text-xs ${indicador.tipo === 'manual' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}
           >
             {indicador.tipo}
           </Badge>
@@ -34,16 +35,16 @@ const IndicadorCard = React.memo(({ indicador, onEdit, onDelete, onNavigate }) =
     <CardContent className="flex-grow space-y-3 text-sm text-gray-600 dark:text-gray-400">
       <p className="line-clamp-2">{indicador.descripcion}</p>
       <div className="flex items-center gap-2 pt-2">
-        <Target className="h-4 w-4 text-teal-500" />
+        <Target className="h-4 w-4 text-emerald-500" />
         <span>Meta: <span className="font-semibold text-gray-800 dark:text-gray-200">{indicador.meta}</span></span>
       </div>
       <div className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-blue-500" />
+        <Calendar className="h-4 w-4 text-emerald-500" />
         <span>Frecuencia: <span className="font-semibold text-gray-800 dark:text-gray-200">{indicador.frecuencia}</span></span>
       </div>
     </CardContent>
     <CardFooter className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-2">
-      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); onEdit(indicador); }}>
+      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); onEdit(indicador); }}>
         <Pencil className="h-4 w-4" />
       </Button>
       <Button variant="ghost" size="icon" className="text-gray-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); onDelete(indicador.id); }}>
@@ -59,6 +60,7 @@ export default function IndicadoresListing() {
   const [isLoading, setIsLoading] = useState(true);
   const [indicadores, setIndicadores] = useState([]);
   const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentIndicador, setCurrentIndicador] = useState(null);
   const [indicadorToDelete, setIndicadorToDelete] = useState(null);
@@ -140,42 +142,26 @@ export default function IndicadoresListing() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-slate-100">
-            Indicadores de Calidad
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gestiona y monitorea todos los indicadores clave de la organización, según ISO 9001.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={() => { setCurrentIndicador(null); setIsModalOpen(true); }} 
-            className="bg-teal-600 hover:bg-teal-700 text-white shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Indicador
-          </Button>
-        </div>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre, descripción o responsable..."
-            className="pl-10 w-full bg-background"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-        </div>
-      </div>
+      {/* Header unificado */}
+      <UnifiedHeader
+        title="Indicadores de Calidad"
+        description="Gestiona y monitorea todos los indicadores clave de la organización, según ISO 9001"
+        icon={BarChart3}
+        searchTerm={searchText}
+        onSearchChange={setSearchText}
+        onNew={() => { setCurrentIndicador(null); setIsModalOpen(true); }}
+        newButtonText="Nuevo Indicador"
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        totalCount={filteredIndicadores.length}
+        lastUpdated="hoy"
+        primaryColor="emerald"
+        showViewToggle={true}
+        showExport={false}
+      />
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div></div>
+        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div></div>
       ) : filteredIndicadores.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
@@ -199,27 +185,29 @@ export default function IndicadoresListing() {
         </div>
       )}
 
+      {/* Modal de Indicador */}
       <IndicadorModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setCurrentIndicador(null);
+        }}
         onSave={handleSave}
         indicador={currentIndicador}
       />
 
-      <AlertDialog open={!!indicadorToDelete} onOpenChange={(open) => !open && setIndicadorToDelete(null)}>
+      {/* Dialog de Confirmación para Eliminar */}
+      <AlertDialog open={!!indicadorToDelete} onOpenChange={() => setIndicadorToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro de que quieres eliminar este indicador?</AlertDialogTitle>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El indicador será eliminado permanentemente.
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el indicador y todos sus datos asociados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIndicadorToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => handleDelete(indicadorToDelete)}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete(indicadorToDelete)} className="bg-red-600 hover:bg-red-700">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

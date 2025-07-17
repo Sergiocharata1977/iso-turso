@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit, Trash2, User, Download, Filter, Grid, List, ArrowLeft, Mail, Phone, MapPin, Calendar, Building, Award, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Edit, Trash2, User, Download, Filter, Grid, List, ArrowLeft, Mail, Phone, MapPin, Calendar, Building, Award, CheckCircle, AlertCircle, Clock, Users, Eye, UserCheck } from 'lucide-react';
 import personalService from '@/services/personalService';
 import PersonalModal from './PersonalModal';
 import PersonalTableView from './PersonalTableView';
 import PersonalCard from './PersonalCard';
+import UnifiedHeader from '../common/UnifiedHeader';
+import UnifiedCard from '../common/UnifiedCard';
 import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const PersonalListing = () => {
   const [personal, setPersonal] = useState([]);
@@ -14,7 +19,7 @@ const PersonalListing = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // grid o list
+  const [viewMode, setViewMode] = useState('grid');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,13 +33,11 @@ const PersonalListing = () => {
       const data = await personalService.getAllPersonal();
       console.log('Datos recibidos del servicio:', data);
       
-      // Procesar los datos - solo incluir registros con ID válido
       const validPersonal = Array.isArray(data) ? data.map((person, index) => ({
         ...person,
         nombres: person.nombres || person.nombre || '',
         apellidos: person.apellidos || person.apellido || '',
         documento_identidad: person.documento_identidad || person.dni || '',
-        // Solo agregar ID temporal si realmente no tiene ID y es necesario para la UI
         displayId: person.id || `temp-${index}`,
         isTemporary: !person.id
       })).filter(person => person.id || person.isTemporary) : [];
@@ -58,13 +61,8 @@ const PersonalListing = () => {
     setSelectedPerson(null);
   };
 
-  // Navega al detalle del personal. Si el registro no tiene un ID real (ej. temporal),
-  // igualmente navegamos y pasamos la información por estado para que el detalle se muestre
-  // sin requerir otra llamada al backend.
   const handleCardClick = (person) => {
     if (!person) return;
-
-    // Si es un registro temporal, usar el displayId para la URL pero siempre pasar los datos
     const urlId = person.id || person.displayId;
     navigate(`/personal/${urlId}`, { state: { person } });
   };
@@ -83,7 +81,6 @@ const PersonalListing = () => {
     } catch (error) {
       console.error('Error saving person:', error);
       
-      // Manejar errores específicos del backend
       let errorMessage = "No se pudo guardar el registro.";
       
       if (error.response?.status === 400) {
@@ -129,10 +126,6 @@ const PersonalListing = () => {
     toast({ title: "Exportar", description: "Función de exportación en desarrollo." });
   };
 
-  const handleFilters = () => {
-    toast({ title: "Filtros", description: "Función de filtros en desarrollo." });
-  };
-
   const filteredPersonal = Array.isArray(personal) ? personal.filter(person =>
     `${person.nombres || ''} ${person.apellidos || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (person.puesto && person.puesto.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -163,14 +156,23 @@ const PersonalListing = () => {
   const getStatusIcon = (estado) => {
     switch (estado?.toLowerCase()) {
       case 'activo':
-        return <CheckCircle className="w-4 h-4" />;
+        return CheckCircle;
       case 'inactivo':
-        return <AlertCircle className="w-4 h-4" />;
+        return AlertCircle;
       case 'suspendido':
-        return <Clock className="w-4 h-4" />;
+        return Clock;
       default:
-        return <User className="w-4 h-4" />;
+        return User;
     }
+  };
+
+  const getStats = () => {
+    const total = personal.length;
+    const activos = personal.filter(p => p.estado?.toLowerCase() === 'activo').length;
+    const inactivos = personal.filter(p => p.estado?.toLowerCase() === 'inactivo').length;
+    const conPuesto = personal.filter(p => p.puesto).length;
+    
+    return { total, activos, inactivos, conPuesto };
   };
 
   if (loading) {
@@ -202,187 +204,164 @@ const PersonalListing = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Gestión de Personal</h1>
-              <p className="text-sm text-gray-600">Administra los empleados de la organización según ISO 9001</p>
-            </div>
-            <button
-              onClick={() => handleOpenModal()}
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-            >
-              + Nuevo Personal
-            </button>
-          </div>
-        </div>
-      </div>
+  const stats = getStats();
 
-      {/* Controls */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="Buscar personal..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Exportar
-            </button>
-            
-            <button
-              onClick={handleFilters}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Filtros
-            </button>
-            
-            <div className="flex border border-gray-300 rounded-md">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 ${viewMode === 'grid' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 ${viewMode === 'list' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        {viewMode === 'list' ? (
-          <PersonalTableView 
-            personal={filteredPersonal}
-            onEdit={handleOpenModal}
-            onDelete={handleDelete}
-          />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredPersonal.map(person => (
-              <div 
-                key={person.id || person.displayId} 
-                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleCardClick(person)}
-              >
-                <div className="p-6">
-                  {/* Avatar y Estado */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                      {person.imagen ? (
-                        <img 
-                          src={person.imagen} 
-                          alt={`${person.nombres} ${person.apellidos}`}
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                      ) : (
-                        getInitials(person.nombres, person.apellidos)
-                      )}
-                    </div>
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(person.estado)}`}>
-                      {getStatusIcon(person.estado)}
-                      <span className="ml-1">{person.estado || 'Activo'}</span>
-                    </div>
-                  </div>
-
-                  {/* Información Principal */}
-                  <div className="text-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {person.nombres} {person.apellidos}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {person.puesto || 'Cargo no especificado'}
-                    </p>
-                  </div>
-
-                  {/* Detalles */}
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center text-gray-600">
-                      <Building className="w-4 h-4 mr-2" />
-                      <span>{person.departamento || 'Sin departamento'}</span>
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <User className="w-4 h-4 mr-2" />
-                      <span>{person.documento_identidad || 'Sin documento'}</span>
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <Mail className="w-4 h-4 mr-2" />
-                      <span className="truncate">{person.email || 'Sin email'}</span>
-                    </div>
-                  </div>
-
-                  {/* Acciones */}
-                  <div className="flex justify-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleOpenModal(person); }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                      title="Editar"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(person); }}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                      title="Eliminar"
-                      disabled={person.isTemporary || person.id?.toString().startsWith('temp-')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+  const renderGridView = () => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm animate-pulse">
+              <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 h-20"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Estado vacío */}
-        {filteredPersonal.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <User className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay personal registrado</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Comienza agregando el primer empleado a la organización.
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={() => handleOpenModal()}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-              >
-                Agregar Personal
-              </button>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredPersonal.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground">No se encontró personal.</p>
+          <Button onClick={() => handleOpenModal()} className="mt-4">
+            <User className="h-4 w-4 mr-2" />
+            Agregar primera persona
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredPersonal.map((person) => {
+          const StatusIcon = getStatusIcon(person.estado);
+          const fields = [
+            ...(person.puesto ? [{ 
+              icon: Building, 
+              label: "Puesto", 
+              value: person.puesto 
+            }] : []),
+            ...(person.email ? [{ 
+              icon: Mail, 
+              label: "Email", 
+              value: person.email 
+            }] : []),
+            ...(person.telefono ? [{ 
+              icon: Phone, 
+              label: "Teléfono", 
+              value: person.telefono 
+            }] : []),
+            ...(person.documento_identidad ? [{ 
+              icon: User, 
+              label: "Documento", 
+              value: person.documento_identidad 
+            }] : [])
+          ];
+
+          return (
+            <UnifiedCard
+              key={person.displayId}
+              title={`${person.nombres} ${person.apellidos}`}
+              subtitle={person.numero_legajo}
+              description={person.puesto || 'Sin puesto asignado'}
+              status={person.estado || 'activo'}
+              fields={fields}
+              icon={Users}
+              primaryColor="emerald"
+              onView={() => handleCardClick(person)}
+              onEdit={() => handleOpenModal(person)}
+              onDelete={() => handleDelete(person)}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderListView = () => {
+    return (
+      <PersonalTableView
+        personal={filteredPersonal}
+        onEdit={handleOpenModal}
+        onDelete={handleDelete}
+        onView={handleCardClick}
+        loading={loading}
+      />
+    );
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      <UnifiedHeader
+        title="Gestión de Personal"
+        description="Administra los empleados de la organización según ISO 9001"
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onNew={() => handleOpenModal()}
+        onExport={handleExport}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        newButtonText="Nuevo Personal"
+        totalCount={personal.length}
+        lastUpdated="hoy"
+        icon={Users}
+        primaryColor="emerald"
+      />
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Activos</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activos}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inactivos</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.inactivos}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Con Puesto</CardTitle>
+            <Building className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.conPuesto}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Modal */}
-      {isModalOpen && (
-        <PersonalModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onSave={handleSave}
-          person={selectedPerson}
-        />
-      )}
+      {viewMode === 'grid' ? renderGridView() : renderListView()}
+
+      <PersonalModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        person={selectedPerson}
+        onSave={handleSave}
+      />
     </div>
   );
 };

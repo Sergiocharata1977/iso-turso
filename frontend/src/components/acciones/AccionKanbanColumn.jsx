@@ -3,30 +3,31 @@ import { SortableContext, useSortable } from '@dnd-kit/sortable';
 import { AccionKanbanCard } from './AccionKanbanCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export function AccionKanbanColumn({ id, title, acciones, onCardClick }) {
+export function AccionKanbanColumn({ id, title, acciones, onCardClick, colorClasses }) {
   const { setNodeRef } = useSortable({ id });
 
   return (
-    <div ref={setNodeRef} className="w-80 flex-shrink-0">
-      <Card className="bg-gray-50 dark:bg-gray-900/50 h-full flex flex-col">
-        <CardHeader className="p-4 border-b dark:border-gray-700">
-          <CardTitle className="flex items-center justify-between">
-            <span className="font-semibold text-base text-gray-800 dark:text-gray-200">{title}</span>
-            <span className="text-sm font-normal text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
-              {acciones.length}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 flex-grow min-h-[200px]">
-          <SortableContext items={acciones.map(a => a.id)}>
-            <div className="space-y-4">
-              {acciones.map((accion) => (
-                <AccionKanbanCard key={accion.id} accion={accion} onClick={onCardClick} />
-              ))}
-            </div>
-          </SortableContext>
-        </CardContent>
-      </Card>
+    <div ref={setNodeRef} className={`flex flex-col w-80 flex-shrink-0 rounded-lg ${colorClasses}`}>
+      <div className="p-4">
+        <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200">
+          {title}
+          <span className="ml-2 text-sm font-normal bg-black/10 dark:bg-white/10 rounded-full px-2 py-0.5">
+            {acciones.length}
+          </span>
+        </h3>
+      </div>
+      <div className="flex-grow p-4 space-y-4 overflow-y-auto bg-black/5 dark:bg-black/10">
+        <SortableContext items={acciones.map(a => a.id)}>
+            {acciones.map((accion) => (
+              <AccionKanbanCard key={accion.id} accion={accion} onClick={onCardClick} />
+            ))}
+            {acciones.length === 0 && (
+              <div className="flex items-center justify-center h-full text-center text-sm text-gray-500 dark:text-gray-400 py-4">
+                No hay acciones en este estado
+              </div>
+            )}
+        </SortableContext>
+      </div>
     </div>
   );
 }

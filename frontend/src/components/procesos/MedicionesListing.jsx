@@ -1,289 +1,383 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { 
-  Plus, 
-  Search, 
-  Download, 
-  Pencil, 
-  Trash2, 
-  LineChart,
-  ArrowLeft,
-  TrendingUp,
-  Calendar
-} from "lucide-react";
-import MedicionModal from "./MedicionModal";
-import { useParams, useNavigate } from "react-router-dom";
-import { medicionesService, indicadoresService } from "@/services";
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { Plus, Search, Download, Pencil, Trash2, SlidersHorizontal, TrendingUp, Calendar, User, Target, Activity } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import UnifiedHeader from '@/components/common/UnifiedHeader';
+import MedicionModal from './MedicionModal';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import medicionesService from '@/services/medicionesService';
 
-function MedicionesListing() {
-  const { id: indicadorId } = useParams();
-  const navigate = useNavigate();
+/**
+ * Card componente para mostrar cada medición individual
+ * Incluye información del indicador, valor, fecha y acciones
+ */
+const MedicionCard = React.memo(({ medicion, onEdit, onDelete }) => {
+  // Determinar si la medición cumple con la meta
+  const cumpleMeta = medicion.valor >= (medicion.meta || 0);
+  
+  // Formatear fecha para mostrar
+  const fechaFormateada = new Date(medicion.fecha_medicion).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit'
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-lg hover:border-emerald-500 transition-all duration-300 flex flex-col h-full group"
+    >
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 transition-colors duration-300 flex items-center justify-between">
+          <span className="truncate">{medicion.indicador_nombre || 'Sin indicador'}</span>
+          <Badge 
+            variant={cumpleMeta ? 'default' : 'secondary'}
+            className={`ml-2 text-xs ${cumpleMeta ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}
+          >
+            {cumpleMeta ? '✓ Cumple' : '✗ No cumple'}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-3 text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-emerald-500" />
+          <span>Valor: <span className="font-semibold text-gray-800 dark:text-gray-200">{medicion.valor}</span></span>
+          {medicion.meta && (
+            <span className="text-muted-foreground">
+              (Meta: {medicion.meta})
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-emerald-500" />
+          <span>Fecha: <span className="font-semibold text-gray-800 dark:text-gray-200">{fechaFormateada}</span></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-emerald-500" />
+          <span>Responsable: <span className="font-semibold text-gray-800 dark:text-gray-200">{medicion.responsable || 'No asignado'}</span></span>
+        </div>
+        {medicion.observaciones && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+            {medicion.observaciones}
+          </p>
+        )}
+      </CardContent>
+      <CardFooter className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-2">
+        <Button variant="ghost" size="icon" className="text-gray-500 hover:text-emerald-600" onClick={() => onEdit(medicion)}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="text-gray-500 hover:text-red-600" onClick={() => onDelete(medicion.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </CardFooter>
+    </motion.div>
+  );
+});
+
+/**
+ * Componente de lista para mostrar mediciones en formato de tabla
+ */
+const MedicionListItem = React.memo(({ medicion, onEdit, onDelete }) => {
+  const cumpleMeta = medicion.valor >= (medicion.meta || 0);
+  
+  const fechaFormateada = new Date(medicion.fecha_medicion).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit'
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-emerald-500 transition-all duration-300"
+    >
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+              <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{medicion.indicador_nombre || 'Sin indicador'}</h3>
+              <Badge 
+                variant={cumpleMeta ? 'default' : 'secondary'}
+                className={`ml-2 text-xs ${cumpleMeta ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}
+              >
+                {cumpleMeta ? '✓ Cumple' : '✗ No cumple'}
+              </Badge>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <Target className="h-4 w-4" />
+              <span>{medicion.valor}{medicion.meta && ` / ${medicion.meta}`}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <Calendar className="h-4 w-4" />
+              <span>{fechaFormateada}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <User className="h-4 w-4" />
+              <span>{medicion.responsable || 'No asignado'}</span>
+            </div>
+            
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-gray-500 hover:text-emerald-600"
+                onClick={() => onEdit(medicion)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-gray-500 hover:text-red-600"
+                onClick={() => onDelete(medicion.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {medicion.observaciones && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-1">
+            {medicion.observaciones}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+});
+
+/**
+ * Componente principal para el listado de mediciones
+ * Gestiona la visualización, búsqueda, creación, edición y eliminación de mediciones
+ */
+export default function MedicionesListing() {
   const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMedicion, setSelectedMedicion] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [mediciones, setMediciones] = useState([]);
-  const [indicador, setIndicador] = useState(null);
+  const navigate = useNavigate();
+  
+  // Estados principales
   const [isLoading, setIsLoading] = useState(true);
+  const [mediciones, setMediciones] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentMedicion, setCurrentMedicion] = useState(null);
+  const [medicionToDelete, setMedicionToDelete] = useState(null);
+
+  /**
+   * Carga todas las mediciones desde el servicio
+   */
+  const loadMediciones = async () => {
+    try {
+      setIsLoading(true);
+      const response = await medicionesService.getAll();
+      const data = response.data || [];
+      setMediciones(data);
+    } catch (error) {
+      toast({ 
+        title: 'Error', 
+        description: 'No se pudieron cargar las mediciones.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [indicadorData, medicionesData] = await Promise.all([
-          indicadoresService.getById(indicadorId),
-          medicionesService.getByIndicador(indicadorId),
-        ]);
+    loadMediciones();
+  }, []);
 
-        if (indicadorData) {
-          setIndicador(indicadorData);
-        } else {
-          toast({
-            title: "Indicador no encontrado",
-            description: `No se pudo encontrar el indicador con ID ${indicadorId}.`,
-            variant: "destructive",
-          });
-          navigate("/indicadores");
-          return;
-        }
-        setMediciones(medicionesData || []);
-      } catch (error) {
-        console.error("Error al cargar datos para el indicador:", error);
-        toast({
-          title: "Error al cargar datos",
-          description: error.message || "No se pudieron obtener los datos.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (indicadorId) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indicadorId]);
-
+  /**
+   * Maneja el guardado de mediciones (crear/editar)
+   */
   const handleSave = async (medicionData) => {
     try {
-      // El ID debe ser manejado por el backend, no generado en el frontend (Date.now() no es ideal para IDs persistentes)
-      // Si el backend asigna el ID, no es necesario pasarlo en la creación.
-      // Para actualización, el ID del selectedMedicion es el correcto.
-      const dataToSave = {
-        ...medicionData,
-        indicador_id: indicadorId, // Asegurar que el ID del indicador se envía
-        // indicador_titulo no debería ser parte del modelo de datos de medición, sino del indicador
-      };
+      const action = currentMedicion
+        ? medicionesService.update(currentMedicion.id, medicionData)
+        : medicionesService.create(medicionData);
 
-      if (selectedMedicion && selectedMedicion.id) {
-        await medicionesService.update(selectedMedicion.id, dataToSave);
-        toast({
-          title: "Medición actualizada",
-          description: "Los datos de la medición han sido actualizados exitosamente."
-        });
-      } else {
-        await medicionesService.create(dataToSave);
-        toast({
-          title: "Medición creada",
-          description: "Se ha agregado una nueva medición exitosamente."
-        });
-      }
+      const savedMedicion = await action;
+
+      toast({ 
+        title: `Medición ${currentMedicion ? 'actualizada' : 'creada'}`, 
+        description: `La medición se guardó correctamente.`,
+        className: 'bg-emerald-50 border-emerald-200 text-emerald-800'
+      });
+
+      await loadMediciones();
       setIsModalOpen(false);
-      setSelectedMedicion(null);
-      loadMediciones(); // Recargar mediciones para reflejar los cambios
+      setCurrentMedicion(null);
     } catch (error) {
-      console.error("Error al guardar medición:", error);
-      toast({
-        title: "Error al guardar",
-        description: error.message || "Ocurrió un error al guardar la medición.",
-        variant: "destructive"
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'No se pudo guardar la medición.', 
+        variant: 'destructive' 
       });
     }
   };
 
+  /**
+   * Maneja la eliminación de mediciones
+   */
+  const handleDelete = async (id) => {
+    try {
+      await medicionesService.delete(id);
+      toast({ 
+        title: 'Medición eliminada', 
+        description: 'La medición ha sido eliminada correctamente.',
+        className: 'bg-emerald-50 border-emerald-200 text-emerald-800'
+      });
+      await loadMediciones();
+      setMedicionToDelete(null);
+    } catch (error) {
+      toast({ 
+        title: 'Error', 
+        description: 'No se pudo eliminar la medición.', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  /**
+   * Abre el modal para editar una medición
+   */
   const handleEdit = (medicion) => {
-    setSelectedMedicion(medicion);
+    setCurrentMedicion(medicion);
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    try {
-      // Aquí podrías añadir una confirmación antes de borrar, ej. usando un diálogo
-      await medicionesService.delete(id);
-      toast({
-        title: "Medición eliminada",
-        description: "La medición ha sido eliminada exitosamente."
-      });
-      loadMediciones(); // Recargar mediciones para reflejar los cambios
-    } catch (error) {
-      console.error(`Error al eliminar medición con ID ${id}:`, error);
-      toast({
-        title: "Error al eliminar",
-        description: error.message || "Ocurrió un error al eliminar la medición.",
-        variant: "destructive"
-      });
-    }
+  /**
+   * Confirma la eliminación de una medición
+   */
+  const confirmDelete = (id) => {
+    setMedicionToDelete(id);
   };
 
-
-  const filteredMediciones = mediciones.filter(medicion =>
-    medicion.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (medicion.comentarios && medicion.comentarios.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  /**
+   * Filtrado de mediciones basado en texto de búsqueda
+   */
+  const filteredMediciones = useMemo(() => 
+    mediciones.filter(medicion =>
+      (medicion.indicador_nombre || '').toLowerCase().includes(searchText.toLowerCase()) ||
+      (medicion.responsable || '').toLowerCase().includes(searchText.toLowerCase()) ||
+      (medicion.observaciones || '').toLowerCase().includes(searchText.toLowerCase()) ||
+      medicion.valor.toString().includes(searchText)
+    ), [mediciones, searchText]);
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb y título */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
-          <div>
-            <h2 className="text-xl font-bold">Mediciones del Indicador</h2>
-            {indicador && <p className="text-muted-foreground">{indicador.nombre}</p>}
-          </div>
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* Header unificado */}
+      <UnifiedHeader
+        title="Mediciones de Indicadores"
+        description="Registra y monitorea las mediciones de todos los indicadores de calidad, según ISO 9001"
+        icon={Activity}
+        searchTerm={searchText}
+        onSearchChange={setSearchText}
+        onNew={() => { setCurrentMedicion(null); setIsModalOpen(true); }}
+        newButtonText="Nueva Medición"
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        totalCount={filteredMediciones.length}
+        lastUpdated="hoy"
+        primaryColor="emerald"
+        showViewToggle={true}
+        showExport={false}
+      />
 
-      {/* Toolbar */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar mediciones..."
-              className="pl-8 h-10 w-[300px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      {/* Content */}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={() => {}}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
-          <Button onClick={() => {
-            setSelectedMedicion(null);
-            setIsModalOpen(true);
-          }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Medición
+      ) : filteredMediciones.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+          <Activity className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">
+            No se encontraron mediciones
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Empieza registrando una nueva medición para un indicador.
+          </p>
+          <Button 
+            variant="outline" 
+            className="mt-4" 
+            onClick={() => { setCurrentMedicion(null); setIsModalOpen(true); }}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Crear Medición
           </Button>
         </div>
-      </div>
+      ) : (
+        <>
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredMediciones.map(medicion => (
+                <MedicionCard
+                  key={medicion.id}
+                  medicion={medicion}
+                  onEdit={handleEdit}
+                  onDelete={confirmDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredMediciones.map(medicion => (
+                <MedicionListItem
+                  key={medicion.id}
+                  medicion={medicion}
+                  onEdit={handleEdit}
+                  onDelete={confirmDelete}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
-      {/* Lista de Mediciones */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Cargando mediciones...</p>
-          </div>
-        ) : (
-          <>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted">
-                  <th className="text-left p-4">Título</th>
-                  <th className="text-left p-4">Fecha</th>
-                  <th className="text-left p-4">Medición</th>
-                  <th className="text-left p-4">Estado</th>
-                  <th className="text-left p-4">Comentarios</th>
-                  <th className="text-right p-4">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMediciones.map((medicion) => (
-                  <motion.tr
-                    key={medicion.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="border-b border-border"
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <LineChart className="h-5 w-5 text-primary" />
-                        <span className="font-medium">{medicion.titulo}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{medicion.fecha}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-2">
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        <span>{medicion.medicion}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        medicion.estado === "Conforme" 
-                          ? "bg-green-100 text-green-800"
-                          : medicion.estado === "No conforme"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}>
-                        {medicion.estado}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <p className="text-sm line-clamp-2">{medicion.comentarios}</p>
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(medicion)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(medicion.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredMediciones.length === 0 && (
-              <div className="text-center py-12">
-                <LineChart className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  No hay mediciones registradas para este indicador. Haz clic en "Nueva Medición" para comenzar.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
+      {/* Modal de Medición */}
       <MedicionModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedMedicion(null);
-        }}
+        onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
-        medicion={selectedMedicion}
-        indicadorId={indicadorId}
-        indicadorTitulo={indicador?.nombre}
+        medicion={currentMedicion}
       />
+
+      {/* Dialog de Confirmación de Eliminación */}
+      <AlertDialog open={!!medicionToDelete} onOpenChange={(open) => !open && setMedicionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro de que quieres eliminar esta medición?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La medición será eliminada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMedicionToDelete(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => handleDelete(medicionToDelete)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-}
-
-export default MedicionesListing;
+} 

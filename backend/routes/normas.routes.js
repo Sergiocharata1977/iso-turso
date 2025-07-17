@@ -7,26 +7,34 @@ const router = express.Router();
 // RUTAS ULTRA SIMPLES SIN RESTRICCIONES
 // ===========================================
 
-// Obtener TODAS las normas de TODA la base de datos
+// Obtener TODAS las normas de la organización del usuario
 router.get('/', async (req, res) => {
   try {
-    console.log('🔓 Obteniendo TODAS las normas sin restricciones');
+    const organization_id = req.user?.organization_id;
+
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+
+    console.log(`🔓 Obteniendo normas globales y para la organización ID: ${organization_id}`);
     
     const result = await tursoClient.execute({
-      sql: `SELECT n.*, o.name as organization_name 
-            FROM normas n 
-            LEFT JOIN organizations o ON n.organization_id = o.id 
-            ORDER BY n.created_at DESC`,
-      args: []
+      sql: `SELECT * FROM normas 
+            WHERE CAST(organization_id AS TEXT) = '0' OR CAST(organization_id AS TEXT) = ?
+            ORDER BY id ASC`,
+      args: [String(organization_id)]
     });
 
-    console.log(`✅ Encontradas ${result.rows.length} normas en TODA la base`);
+    console.log(`✅ Encontradas ${result.rows.length} normas para la organización ID: ${organization_id}`);
     
     res.json({
       success: true,
       data: result.rows,
       total: result.rows.length,
-      message: `${result.rows.length} normas encontradas (TODAS las organizaciones)`
+      message: `${result.rows.length} normas encontradas`
     });
     
   } catch (error) {
@@ -79,18 +87,18 @@ router.get('/:id', async (req, res) => {
 // Crear nueva norma
 router.post('/', async (req, res) => {
   try {
-  const { 
-    codigo, 
-    titulo, 
-    descripcion, 
+    const { 
+      codigo, 
+      titulo, 
+      descripcion, 
       version, 
       tipo, 
       estado = 'activo', 
       categoria,
       responsable,
       fecha_revision,
-    observaciones
-  } = req.body;
+      observaciones
+    } = req.body;
 
     console.log('🔓 Creando nueva norma sin restricciones');
 
@@ -101,7 +109,7 @@ router.post('/', async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       args: [
         codigo, titulo, descripcion, version, tipo, estado, categoria,
-        responsable, fecha_revision, observaciones, req.user.organization_id
+        responsable, fecha_revision, observaciones, req.user?.organization_id || 1
       ]
     });
 
@@ -126,19 +134,19 @@ router.post('/', async (req, res) => {
 // Actualizar norma
 router.put('/:id', async (req, res) => {
   try {
-  const { id } = req.params;
-  const { 
-    codigo, 
-    titulo, 
-    descripcion, 
+    const { id } = req.params;
+    const { 
+      codigo, 
+      titulo, 
+      descripcion, 
       version, 
       tipo, 
       estado, 
       categoria,
       responsable,
       fecha_revision,
-    observaciones
-  } = req.body;
+      observaciones
+    } = req.body;
 
     console.log(`🔓 Actualizando norma ${id} sin restricciones`);
     
@@ -147,7 +155,7 @@ router.put('/:id', async (req, res) => {
         codigo = ?, titulo = ?, descripcion = ?, version = ?, tipo = ?, 
         estado = ?, categoria = ?, responsable = ?, fecha_revision = ?, 
         observaciones = ?, updated_at = datetime('now')
-            WHERE id = ?`,
+        WHERE id = ?`,
       args: [
         codigo, titulo, descripcion, version, tipo, estado, categoria,
         responsable, fecha_revision, observaciones, id

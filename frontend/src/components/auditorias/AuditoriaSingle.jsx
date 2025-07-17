@@ -1,264 +1,407 @@
 
-import React from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from 'react';
 import { 
-  ArrowLeft,
-  ClipboardCheck,
-  Pencil,
-  Trash2,
-  Calendar,
-  Users,
+  ArrowLeft, 
+  Download, 
+  Edit, 
+  Calendar, 
+  User, 
   Target,
   FileText,
-  Star
-} from "lucide-react";
-import { jsPDF } from "jspdf";
-import 'jspdf-autotable';
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Plus,
+  Trash2
+} from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { auditoriasService } from '../../services/auditoriasService.js';
+import { Button } from '../ui/button.jsx';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card.jsx';
+import { Badge } from '../ui/badge.jsx';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.jsx';
 
-function AuditoriaSingle({ auditoria, onBack, onEdit, onDelete }) {
-  const getCalificacionColor = (calificacion) => {
-    switch (calificacion) {
-      case 'Malo':
-        return 'bg-red-100 text-red-800';
-      case 'Regular':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Bueno':
-        return 'bg-green-100 text-green-800';
-      case 'Muy Bueno':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+// ===============================================
+// COMPONENTE DE VISTA DETALLADA DE AUDITORÍA - SGC PRO
+// ===============================================
+
+const AuditoriaSingle = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [auditoria, setAuditoria] = useState(null);
+  const [aspectos, setAspectos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('planificacion');
+
+  useEffect(() => {
+    loadAuditoria();
+  }, [id]);
+
+  const loadAuditoria = async () => {
+    try {
+      setLoading(true);
+      const response = await auditoriasService.getById(id);
+      setAuditoria(response.data);
+      
+      // Cargar aspectos si existen
+      try {
+        const aspectosResponse = await auditoriasService.getAspectos(id);
+        setAspectos(aspectosResponse.data || []);
+      } catch (err) {
+        console.log('No se pudieron cargar los aspectos:', err);
+        setAspectos([]);
+      }
+    } catch (err) {
+      console.error('Error cargando auditoría:', err);
+      setError('Error al cargar la auditoría');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getEstadoColor = (estado) => {
-    switch (estado) {
-      case 'Planificada':
-        return 'bg-blue-100 text-blue-800';
-      case 'En Ejecución':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Terminada':
-        return 'bg-green-100 text-green-800';
-      case 'Controlada':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const handleDelete = async () => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar esta auditoría?')) {
+      try {
+        await auditoriasService.delete(id);
+        navigate('/auditorias');
+      } catch (err) {
+        console.error('Error eliminando auditoría:', err);
+        alert('Error al eliminar la auditoría');
+      }
     }
   };
 
-  const downloadPDF = () => {
-    const doc = new jsPDF();
-    
-    // Título
-    doc.setFontSize(20);
-    doc.text(`Auditoría ${auditoria.numero}`, 20, 20);
-    
-    // Información general
-    doc.setFontSize(12);
-    doc.text(`Fecha: ${new Date(auditoria.fecha_programada).toLocaleDateString()}`, 20, 35);
-    doc.text(`Responsable: ${auditoria.responsable}`, 20, 45);
-    doc.text(`Estado: ${auditoria.estado}`, 20, 55);
-    
-    // Objetivo
-    doc.text('Objetivo:', 20, 70);
-    const splitObjective = doc.splitTextToSize(auditoria.objetivo, 170);
-    doc.text(splitObjective, 20, 80);
-    
-    // Procesos evaluados
-    doc.text('Procesos Evaluados:', 20, 100);
-    const splitProcesos = doc.splitTextToSize(auditoria.procesos_evaluar, 170);
-    doc.text(splitProcesos, 20, 110);
-    
-    // Puntos evaluados
-    doc.text('Puntos Evaluados:', 20, 140);
-    
-    const tableData = auditoria.puntos.map(punto => [
-      punto.punto_norma,
-      punto.calificacion,
-      punto.comentarios
-    ]);
-    
-    doc.autoTable({
-      startY: 150,
-      head: [['Punto de la Norma', 'Calificación', 'Comentarios']],
-      body: tableData,
-    });
-    
-    // Comentarios finales
-    const finalCommentsY = doc.previousAutoTable.finalY + 20;
-    doc.text('Comentarios Finales:', 20, finalCommentsY);
-    const splitComments = doc.splitTextToSize(auditoria.comentarios_finales || '', 170);
-    doc.text(splitComments, 20, finalCommentsY + 10);
-    
-    doc.save(`auditoria_${auditoria.numero}.pdf`);
+  const getEstadoConfig = (estado) => {
+    const estados = auditoriasService.getEstados();
+    return estados.find(e => e.value === estado) || estados[0];
   };
+
+  const getConformidadConfig = (conformidad) => {
+    const conformidades = auditoriasService.getConformidades();
+    return conformidades.find(c => c.value === conformidad) || conformidades[0];
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'No definida';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES');
+  };
+
+  const handleDownloadPDF = () => {
+    // Implementar descarga de PDF
+    alert('Función de descarga de PDF en desarrollo');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-sgc-600">Cargando auditoría...</div>
+      </div>
+    );
+  }
+
+  if (error || !auditoria) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-red-600">{error || 'Auditoría no encontrada'}</div>
+      </div>
+    );
+  }
+
+  const estadoConfig = getEstadoConfig(auditoria.estado);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col h-full bg-gray-50"
-    >
-      <header className="bg-white shadow-sm p-4 border-b flex justify-between items-center">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/auditorias')}
+            className="text-sgc-600 hover:text-sgc-700"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver
           </Button>
+          
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Auditoría {auditoria.numero}</h1>
-            <p className="text-sm text-gray-500">Detalles y resultados de la auditoría.</p>
+            <h1 className="text-2xl font-bold text-sgc-800">
+              {auditoria.codigo}
+            </h1>
+            <p className="text-sgc-600">Single de Auditoría</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={downloadPDF}>
-            <FileText className="mr-2 h-4 w-4" />
-            PDF
+        
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            onClick={handleDownloadPDF}
+            className="border-sgc-300 text-sgc-700 hover:bg-sgc-50"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Descargar PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onEdit(auditoria)}>
-            <Pencil className="mr-2 h-4 w-4" />
+          
+          <Button
+            onClick={() => navigate(`/auditorias/${id}/editar`)}
+            className="bg-sgc-600 hover:bg-sgc-700 text-white"
+          >
+            <Edit className="w-4 h-4 mr-2" />
             Editar
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => {
-            onDelete(auditoria.id);
-            onBack(); // Go back after delete confirmation
-          }}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Eliminar
-          </Button>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white border rounded-lg p-6"
-            >
-              <div className="flex items-start space-x-4">
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <ClipboardCheck className="h-8 w-8 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-gray-800">{auditoria.numero}</h2>
-                  <p className="text-sm text-muted-foreground">Responsable: {auditoria.responsable}</p>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(auditoria.estado)}`}>
-                  {auditoria.estado}
-                </span>
-              </div>
-              <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{new Date(auditoria.fecha_programada).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>Equipo: {auditoria.equipo_auditor}</span>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white border rounded-lg p-6 space-y-4"
-            >
+      {/* Información de resumen */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-white border border-sgc-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <Calendar className="w-8 h-8 text-sgc-500" />
               <div>
-                <h3 className="text-lg font-semibold mb-2">Objetivo de la Auditoría</h3>
-                <p className="text-muted-foreground whitespace-pre-line">{auditoria.objetivo}</p>
+                <p className="text-sm text-sgc-600">Fecha Programada</p>
+                <p className="font-semibold text-sgc-800">
+                  {formatDate(auditoria.fecha_programada)}
+                </p>
               </div>
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-2">Procesos a Evaluar</h3>
-                <p className="text-muted-foreground whitespace-pre-line">{auditoria.procesos_evaluar}</p>
-              </div>
-            </motion.div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white border rounded-lg p-6"
-            >
-              <h3 className="text-lg font-semibold mb-4">Puntos Evaluados</h3>
+        <Card className="bg-white border border-sgc-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <User className="w-8 h-8 text-sgc-500" />
+              <div>
+                <p className="text-sm text-sgc-600">Responsable</p>
+                <p className="font-semibold text-sgc-800">
+                  {auditoria.responsable_nombre || 'No asignado'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border border-sgc-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <Target className="w-8 h-8 text-sgc-500" />
+              <div>
+                <p className="text-sm text-sgc-600">Estado</p>
+                <Badge 
+                  className={`mt-1 ${
+                    estadoConfig.value === 'planificada' ? 'bg-blue-100 text-blue-700' :
+                    estadoConfig.value === 'en_proceso' ? 'bg-yellow-100 text-yellow-700' :
+                    estadoConfig.value === 'completada' ? 'bg-green-100 text-green-700' :
+                    'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {estadoConfig.label}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pestañas de contenido */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 bg-white border border-sgc-200">
+          <TabsTrigger 
+            value="planificacion"
+            className="data-[state=active]:bg-sgc-600 data-[state=active]:text-white"
+          >
+            Planificación
+          </TabsTrigger>
+          <TabsTrigger 
+            value="procesos"
+            className="data-[state=active]:bg-sgc-600 data-[state=active]:text-white"
+          >
+            Procesos Auditados
+          </TabsTrigger>
+          <TabsTrigger 
+            value="historial"
+            className="data-[state=active]:bg-sgc-600 data-[state=active]:text-white"
+          >
+            Historial
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Pestaña Planificación */}
+        <TabsContent value="planificacion" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Información General */}
+            <Card className="bg-white border border-sgc-200">
+              <CardHeader>
+                <CardTitle className="flex items-center text-sgc-800">
+                  <FileText className="w-5 h-5 mr-2" />
+                  Información General
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-sgc-700">Área</label>
+                  <p className="text-sgc-800">{auditoria.area}</p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-sgc-700">Objetivos</label>
+                  <p className="text-sgc-800">{auditoria.objetivos || 'No definidos'}</p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-sgc-700">Fecha de Creación</label>
+                  <p className="text-sgc-800">{formatDate(auditoria.created_at)}</p>
+                </div>
+                
+                {auditoria.alcance && (
+                  <div>
+                    <label className="text-sm font-medium text-sgc-700">Alcance</label>
+                    <p className="text-sgc-800">{auditoria.alcance}</p>
+                  </div>
+                )}
+                
+                {auditoria.criterios && (
+                  <div>
+                    <label className="text-sm font-medium text-sgc-700">Criterios</label>
+                    <p className="text-sgc-800">{auditoria.criterios}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Aspectos a Auditar */}
+            <Card className="bg-white border border-sgc-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center text-sgc-800">
+                    <Target className="w-5 h-5 mr-2" />
+                    Aspectos Procesos que se van a Auditar
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/auditorias/${id}/aspectos/nuevo`)}
+                    className="bg-sgc-600 hover:bg-sgc-700 text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {aspectos.length > 0 ? (
+                  <div className="space-y-3">
+                    {aspectos.map((aspecto) => {
+                      const conformidadConfig = getConformidadConfig(aspecto.conformidad);
+                      return (
+                        <div key={aspecto.id} className="p-3 border border-sgc-200 rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sgc-800">{aspecto.proceso_nombre}</h4>
+                              <p className="text-sm text-sgc-600 mt-1">
+                                {aspecto.documentacion_referenciada}
+                              </p>
+                              {aspecto.auditor_nombre && (
+                                <p className="text-sm text-sgc-600 mt-1">
+                                  Auditor: {aspecto.auditor_nombre}
+                                </p>
+                              )}
+                            </div>
+                            <Badge 
+                              className={`ml-2 ${
+                                conformidadConfig.value === 'conforme' ? 'bg-green-100 text-green-700' :
+                                conformidadConfig.value === 'no_conforme' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}
+                            >
+                              {conformidadConfig.label}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-sgc-500">
+                    <Target className="w-12 h-12 mx-auto mb-3 text-sgc-300" />
+                    <p>No hay aspectos definidos</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/auditorias/${id}/aspectos/nuevo`)}
+                      className="mt-3"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar primer aspecto
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Pestaña Procesos Auditados */}
+        <TabsContent value="procesos" className="space-y-6">
+          <Card className="bg-white border border-sgc-200">
+            <CardHeader>
+              <CardTitle className="text-sgc-800">Ejecución de Auditoría</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {auditoria.estado === 'planificada' ? (
+                <div className="text-center py-8">
+                  <Clock className="w-12 h-12 mx-auto mb-3 text-sgc-300" />
+                  <p className="text-sgc-600">La auditoría aún no ha comenzado</p>
+                  <Button
+                    onClick={() => navigate(`/auditorias/${id}/ejecutar`)}
+                    className="mt-3 bg-sgc-600 hover:bg-sgc-700 text-white"
+                  >
+                    Iniciar Ejecución
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Aquí iría el contenido de ejecución */}
+                  <p className="text-sgc-600">Contenido de ejecución en desarrollo...</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pestaña Historial */}
+        <TabsContent value="historial" className="space-y-6">
+          <Card className="bg-white border border-sgc-200">
+            <CardHeader>
+              <CardTitle className="text-sgc-800">Historial de Cambios</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                {auditoria.puntos.map((punto, index) => (
-                  <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center space-x-3">
-                        <Target className="h-5 w-5 text-primary" />
-                        <h4 className="font-medium">Punto #{index + 1}: {punto.punto_norma}</h4>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${getCalificacionColor(punto.calificacion)}`}>
-                        {punto.calificacion}
-                      </span>
-                    </div>
-                    <div className="mt-2 pl-8">
-                      <p className="text-sm text-muted-foreground whitespace-pre-line">{punto.comentarios}</p>
+                <div className="flex items-center space-x-3 p-3 border border-sgc-200 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <div>
+                    <p className="font-medium text-sgc-800">Auditoría creada</p>
+                    <p className="text-sm text-sgc-600">{formatDate(auditoria.created_at)}</p>
+                  </div>
+                </div>
+                
+                {auditoria.updated_at && auditoria.updated_at !== auditoria.created_at && (
+                  <div className="flex items-center space-x-3 p-3 border border-sgc-200 rounded-lg">
+                    <Edit className="w-5 h-5 text-sgc-500" />
+                    <div>
+                      <p className="font-medium text-sgc-800">Auditoría actualizada</p>
+                      <p className="text-sm text-sgc-600">{formatDate(auditoria.updated_at)}</p>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
-            </motion.div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white border rounded-lg p-6"
-            >
-              <h3 className="text-lg font-semibold flex items-center mb-4">
-                <Star className="h-5 w-5 mr-2 text-yellow-500" />
-                Resumen de Calificaciones
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total de Puntos Evaluados</p>
-                  <p className="text-2xl font-bold">{auditoria.puntos.length}</p>
-                </div>
-                <div className="space-y-2 mt-2">
-                  {['Muy Bueno', 'Bueno', 'Regular', 'Malo'].map(cal => {
-                    const count = auditoria.puntos.filter(p => p.calificacion === cal).length;
-                    if (count === 0) return null;
-                    return (
-                      <div key={cal} className="flex justify-between items-center text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs ${getCalificacionColor(cal)}`}>
-                          {cal}
-                        </span>
-                        <span className="font-medium">{count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white border rounded-lg p-6"
-            >
-              <h3 className="text-lg font-semibold flex items-center mb-4">
-                <FileText className="h-5 w-5 mr-2" />
-                Comentarios Finales
-              </h3>
-              <p className="text-muted-foreground whitespace-pre-line text-sm">
-                {auditoria.comentarios_finales || "Sin comentarios finales."}
-              </p>
-            </motion.div>
-          </div>
-        </div>
-      </main>
-    </motion.div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
-}
+};
 
 export default AuditoriaSingle;

@@ -6,6 +6,9 @@ import { testConnection } from './lib/tursoClient.js';
 import errorHandler from './middleware/errorHandler.js';
 // import setupDatabase from './scripts/setupDatabase.js'; // Comentado temporalmente
 import simpleAuth from './middleware/simpleAuth.js';
+import competenciasRouter from './routes/competencias.routes.js';
+import evalcompeProgramacionRouter from './routes/evalcompe-programacion.routes.js';
+import evalcompeDetalleRouter from './routes/evalcompe-detalle.routes.js';
 
 // Load environment variables explicitly
 dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
@@ -45,7 +48,8 @@ import tratamientosRouter from './routes/tratamientos.routes.js';
 import verificacionesRouter from './routes/verificaciones.routes.js';
 import accionesRouter from './routes/acciones.routes.js';
 import userRoutes from './routes/userRoutes.js';
-import auditRoutes from './routes/auditRoutes.js';
+import auditoriasRoutes from './routes/auditorias.routes.js';
+// import auditoriaRoutes from './routes/auditorias.routes.js'; // ELIMINADO - Empezando desde cero
 import actividadRoutes from './routes/actividad.routes.js';
 
 console.log('🔥 MODO ULTRA SIMPLE: Sin restricciones');
@@ -77,6 +81,7 @@ app.use('/api/indicadores', indicadoresRouter);
 app.use('/api/mediciones', medicionesRouter);
 app.use('/api/hallazgos', hallazgosRouter);
 app.use('/api/acciones', accionesRouter);
+// app.use('/api/auditorias', auditoriaRoutes); // ELIMINADO - Empezando desde cero
 app.use('/api/capacitaciones', capacitacionesRouter);
 app.use('/api/evaluaciones-grupales', evaluacionesGrupalesRouter);
 app.use('/api/tickets', ticketsRouter);
@@ -85,8 +90,11 @@ app.use('/api/encuestas', encuestasRouter);
 app.use('/api/tratamientos', tratamientosRouter);
 app.use('/api/verificaciones', verificacionesRouter);
 app.use('/api/actividad', actividadRoutes);
+app.use('/api/competencias', competenciasRouter);
+app.use('/api/evalcompe-programacion', evalcompeProgramacionRouter);
+app.use('/api/evalcompe-detalle', evalcompeDetalleRouter);
 app.use('/api', direccionRoutes);
-app.use('/api/audit', auditRoutes);
+app.use('/api/auditorias', auditoriasRoutes);
 
 console.log('✅ TODAS las rutas después de /api/auth están protegidas');
 

@@ -41,12 +41,24 @@ const NormasList = () => {
     
     try {
       console.log('Cargando datos de normas...');
-      const data = await normasService.getAllNormas();
-      console.log('Datos de normas cargados:', data);
-      setNormas(data || []);
+      const response = await normasService.getAllNormas();
+      console.log('Datos de normas cargados:', response);
+      
+      if (response.success) {
+        setNormas(response.data || []);
+      } else {
+        setLocalError(response.message || 'Error al cargar los datos');
+        setNormas([]);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: response.message || "Error al cargar los datos"
+        });
+      }
     } catch (err) {
       console.error('Error al cargar datos:', err);
       setLocalError('Error al cargar los datos. Por favor, intenta de nuevo más tarde.');
+      setNormas([]);
       toast({
         variant: "destructive",
         title: "Error",
@@ -63,10 +75,13 @@ const NormasList = () => {
 
   // Memoizar las normas filtradas para evitar recálculos innecesarios
   const filteredNormas = useMemo(() => {
-    if (!searchTerm.trim()) return normas;
+    // Asegurar que normas es un array válido
+    const validNormas = Array.isArray(normas) ? normas : [];
+    
+    if (!searchTerm.trim()) return validNormas;
     
     const searchLower = searchTerm.toLowerCase();
-    return normas.filter(norma => 
+    return validNormas.filter(norma => 
       norma.codigo?.toLowerCase().includes(searchLower) ||
       norma.titulo?.toLowerCase().includes(searchLower) ||
       norma.descripcion?.toLowerCase().includes(searchLower) ||

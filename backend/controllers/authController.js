@@ -1,331 +1,409 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { tursoClient } from '../lib/tursoClient.js';
-import { randomUUID } from 'crypto';
+import { db } from '../lib/tursoClient.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_jwt_super_secreto';
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'tu_refresh_secret_key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
-
-// Registrar una nueva organización y su primer usuario (admin)
+// @desc    Registrar una nueva organización y su usuario admin
+// @route   POST /api/auth/register
+// @access  Public
 export const register = async (req, res) => {
-  const { organizationName, userName, userEmail, userPassword } = req.body;
-
-  if (!organizationName || !userName || !userEmail || !userPassword) {
-    return res.status(400).json({ message: 'Todos los campos son requeridos.' });
-  }
-
   try {
-    // 1. Verificar si la organización ya existe
-    let orgResult = await tursoClient.execute({ 
-      sql: 'SELECT id FROM organizations WHERE name = ?', 
-      args: [organizationName] 
+    const { 
+      organizationName, 
+      adminName, 
+      adminEmail, 
+      adminPassword,
+      organizationEmail = '',
+      organizationPhone = '',
+      plan = 'basic'
+    } = req.body;
+
+    // Validaciones básicas
+    if (!organizationName || !adminName || !adminEmail || !adminPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Todos los campos son requeridos' 
+      });
+    }
+
+    // Verificar si la organización ya existe
+    const existingOrg = await db.execute({
+      sql: 'SELECT id FROM organizations WHERE name = ?',
+      args: [organizationName]
     });
 
-    if (orgResult.rows.length > 0) {
-        return res.status(409).json({ message: 'Una organización con ese nombre ya existe.' });
+    if (existingOrg.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Ya existe una organización con ese nombre' 
+      });
     }
+
+    // Verificar si el email ya existe
+    const existingUser = await db.execute({
+      sql: 'SELECT id FROM usuarios WHERE email = ?',
+      args: [adminEmail]
+    });
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Ya existe un usuario con ese email' 
+      });
+    }
+
+    // Crear la organización
+    const orgResult = await db.execute({
+      sql: 'INSERT INTO organizations (name, email, phone, plan, created_at) VALUES (?, ?, ?, ?, datetime("now"))',
+      args: [organizationName, organizationEmail, organizationPhone, plan]
+    });
+
+    const organizationId = orgResult.lastInsertRowid;
+
+    // Crear features básicas para la organización
+    const basicFeatures = [
+      'users_management',
+      'documents_management', 
+      'processes_management',
+      'audits_management',
+      'reports_basic'
+    ];
     
-    // 2. Verificar si el email del usuario ya existe
-    const userResult = await tursoClient.execute({ 
-      sql: 'SELECT id FROM usuarios WHERE email = ?', 
-      args: [userEmail] 
-    });
-    if (userResult.rows.length > 0) {
-      return res.status(409).json({ message: 'Un usuario con ese email ya existe.' });
+    for (const feature of basicFeatures) {
+      await db.execute({
+        sql: 'INSERT INTO organization_features (organization_id, feature_name, is_enabled, created_at) VALUES (?, ?, 1, datetime("now"))',
+        args: [organizationId, feature]
+      });
     }
+    console.log(`✅ Created ${basicFeatures.length} basic features for organization`);
 
-    // 3. Crear la organización
-    const orgInsertResult = await tursoClient.execute({
-        sql: 'INSERT INTO organizations (name, created_at) VALUES (?, ?)',
-        args: [organizationName, new Date().toISOString()]
+    // Encriptar contraseña
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(adminPassword, salt);
+
+    // Crear el usuario admin
+    const userResult = await db.execute({
+      sql: 'INSERT INTO usuarios (name, email, password_hash, role, organization_id, created_at) VALUES (?, ?, ?, ?, ?, datetime("now"))',
+      args: [adminName, adminEmail, hashedPassword, 'admin', organizationId]
     });
-    const organizationId = orgInsertResult.lastInsertRowid;
 
-    // 4. Hashear la contraseña
-    const hashedPassword = await bcrypt.hash(userPassword, 10);
+    const userId = userResult.lastInsertRowid;
 
-    // 5. Crear el usuario como 'admin' de la nueva organización
-    const userInsertResult = await tursoClient.execute({
-      sql: 'INSERT INTO usuarios (name, email, password_hash, role, organization_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      args: [userName, userEmail, hashedPassword, 'admin', organizationId, new Date().toISOString()]
+    // Generar tokens
+    const accessToken = jwt.sign(
+      { userId, organizationId, role: 'admin' },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '1h' }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId, organizationId },
+      process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
+      { expiresIn: '7d' }
+    );
+
+    // Guardar refresh token
+    await db.execute({
+      sql: 'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, datetime("now", "+7 days"))',
+      args: [userId, refreshToken]
     });
-    const userId = userInsertResult.lastInsertRowid;
 
-    // 6. Generar tokens
-    const user = { 
-      id: Number(userId), 
-      name: userName, 
-      email: userEmail, 
-      role: 'admin', 
-      organization_id: Number(organizationId) 
-    };
-    const { accessToken, refreshToken } = generateTokens(user);
-
-    // 7. Guardar refresh token
-    await saveRefreshToken(userId, refreshToken);
-
-    res.status(201).json({ 
-      message: 'Organización y usuario administrador registrados con éxito.',
-      accessToken,
-      refreshToken,
-      user: {
-        id: Number(userId),
-        name: userName,
-        email: userEmail,
-        role: 'admin',
-        organization_id: Number(organizationId)
+    res.status(201).json({
+      success: true,
+      message: 'Organización y usuario admin creados exitosamente',
+      data: {
+        user: {
+          id: userId,
+          name: adminName,
+          email: adminEmail,
+          role: 'admin'
+        },
+        organization: {
+          id: organizationId,
+          name: organizationName,
+          email: organizationEmail,
+          phone: organizationPhone,
+          plan
+        },
+        tokens: {
+          accessToken,
+          refreshToken
+        }
       }
     });
 
   } catch (error) {
-    console.error('Error en el registro:', error);
-    res.status(500).json({ message: 'Error interno del servidor.' });
+    console.error('Error en registro:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
   }
 };
 
-// Iniciar sesión
+// @desc    Iniciar sesión
+// @route   POST /api/auth/login
+// @access  Public
 export const login = async (req, res) => {
-  console.log('🔐 Intento de login recibido:', { email: req.body.email, hasPassword: !!req.body.password });
-  
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    console.log('❌ Login fallido: campos faltantes');
-    return res.status(400).json({ message: 'Email y contraseña son requeridos.' });
-  }
-
+  console.log('\n--- 🚀 INICIANDO PROCESO DE LOGIN 🚀 ---');
   try {
-    console.log('🔍 Buscando usuario en BD:', email);
-    const result = await tursoClient.execute({
-      sql: `SELECT u.id, u.name, u.email, u.password_hash, u.role, u.organization_id, 
-             o.name as organization_name, o.plan, o.max_users
-             FROM usuarios u 
-             LEFT JOIN organizations o ON u.organization_id = o.id 
-             WHERE u.email = ?`,
+    const { email, password } = req.body;
+    console.log(`[1/6] 📥 Datos recibidos: Email=${email}`);
+
+    if (!email || !password) {
+      console.log('  [❌ ERROR] Email o contraseña no recibidos.');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email y contraseña son requeridos' 
+      });
+    }
+
+    console.log(`[2/6] 🤫 Verificando JWT_SECRET: ${process.env.JWT_SECRET ? '✅ Encontrado' : '❌ NO ENCONTRADO'}`);
+    
+    console.log('[3/6] 🔍 Buscando usuario en la base de datos...');
+    const userResult = await db.execute({
+      sql: `SELECT * FROM usuarios WHERE email = ?`,
       args: [email]
     });
 
-    console.log('📊 Resultado de búsqueda:', { found: result.rows.length > 0 });
-
-    if (result.rows.length === 0) {
-      console.log('❌ Usuario no encontrado:', email);
-      return res.status(401).json({ message: 'Credenciales inválidas.' }); // Usuario no encontrado
+    if (userResult.rows.length === 0) {
+      console.log('  [❌ ERROR] Usuario no encontrado en la base de datos.');
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Credenciales inválidas' 
+      });
     }
 
-    const userFromDb = result.rows[0];
-    console.log('👤 Usuario encontrado:', { 
-      id: userFromDb.id, 
-      name: userFromDb.name, 
-      email: userFromDb.email, 
-      role: userFromDb.role,
-      organization_plan: userFromDb.plan 
+    const user = userResult.rows[0];
+    console.log('  [✅ OK] Usuario encontrado:', { id: user.id, email: user.email, role: user.role, org_id: user.organization_id });
+    console.log('  [INFO] Hash almacenado:', user.password_hash);
+
+    console.log('[4/6] 🔐 Comparando contraseñas...');
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    console.log(`  [INFO] Resultado de la comparación: ${isPasswordValid ? '✅ Válida' : '❌ Inválida'}`);
+
+    if (!isPasswordValid) {
+      console.log('  [❌ ERROR] La contraseña no coincide.');
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Credenciales inválidas' 
+      });
+    }
+
+    console.log('[5/6] ✍️  Generando tokens JWT...');
+    const accessToken = jwt.sign(
+      { 
+        userId: user.id, 
+        organizationId: user.organization_id, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '1h' }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user.id, organizationId: user.organization_id },
+      process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
+      { expiresIn: '7d' }
+    );
+    console.log('  [✅ OK] Tokens generados.');
+
+    console.log('[6/6] 💾 Guardando refresh token...');
+    await db.execute({
+      sql: 'DELETE FROM refresh_tokens WHERE user_id = ?',
+      args: [user.id]
     });
+    await db.execute({
+      sql: 'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, datetime("now", "+7 days"))',
+      args: [user.id, refreshToken]
+    });
+    console.log('  [✅ OK] Refresh token guardado.');
 
-    console.log('🔒 Verificando contraseña...');
-    const isMatch = await bcrypt.compare(password, userFromDb.password_hash);
-    console.log('🔒 Resultado verificación:', { isMatch });
-
-    if (!isMatch) {
-      console.log('❌ Contraseña incorrecta para:', email);
-      return res.status(401).json({ message: 'Credenciales inválidas.' }); // Contraseña incorrecta
-    }
-
-    console.log('✅ Contraseña correcta, generando tokens...');
-    
-    // Convertir BigInts a Number antes de generar tokens
-    const user = {
-      ...userFromDb,
-      id: Number(userFromDb.id),
-      organization_id: Number(userFromDb.organization_id),
-      organization_plan: userFromDb.plan || 'basic',
-      organization_name: userFromDb.organization_name || 'Sin organización',
-      max_users: Number(userFromDb.max_users) || 10
-    };
-
-    console.log('🎫 Usuario para tokens:', user);
-
-    // Generar tokens
-    const { accessToken, refreshToken } = generateTokens(user);
-    console.log('🎫 Tokens generados exitosamente');
-
-    // Guardar refresh token
-    console.log('💾 Guardando refresh token...');
-    await saveRefreshToken(user.id, refreshToken);
-    console.log('💾 Refresh token guardado');
-
-    console.log('🎉 Login exitoso para:', email);
+    console.log('📤 Enviando respuesta al cliente...');
+    console.log('--- ✅ FIN PROCESO DE LOGIN ✅ ---\n');
     res.json({
+      success: true,
       message: 'Login exitoso',
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        organization_id: user.organization_id,
-        organization_plan: user.organization_plan,
-        organization_name: user.organization_name,
-        max_users: user.max_users
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        },
+        organization: {
+          id: user.organization_id
+        },
+        tokens: {
+          accessToken,
+          refreshToken
+        }
       }
     });
 
   } catch (error) {
-    console.error('💥 Error en el login:', error);
-    res.status(500).json({ message: 'Error interno del servidor.' });
+    console.error('❌ Error catastrófico en login:', error);
+    console.log('--- ❌ FIN PROCESO DE LOGIN CON ERROR ❌ ---\n');
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
   }
 };
 
-// Helper function to generate tokens
-const generateTokens = (user) => {
-  const accessToken = jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      role: user.role,
-      organization_id: user.organization_id 
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-
-  const refreshToken = jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email,
-      tokenId: randomUUID() 
-    },
-    REFRESH_TOKEN_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRES_IN }
-  );
-
-  return { accessToken, refreshToken };
-};
-
-// Helper function to save refresh token to database
-const saveRefreshToken = async (userId, refreshToken) => {
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
-  
-  await tursoClient.execute({
-    sql: `INSERT INTO refresh_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`,
-    args: [randomUUID(), userId, refreshToken, expiresAt.toISOString()]
-  });
-};
-
-// Helper function to revoke refresh token
-const revokeRefreshToken = async (token) => {
-  await tursoClient.execute({
-    sql: `DELETE FROM refresh_tokens WHERE token = ?`,
-    args: [token]
-  });
-};
-
-// Helper function to validate refresh token
-const validateRefreshToken = async (token) => {
-  const result = await tursoClient.execute({
-    sql: `SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime('now')`,
-    args: [token]
-  });
-  
-  return result.rows.length > 0 ? result.rows[0] : null;
-};
-
+// @desc    Renovar access token
+// @route   POST /api/auth/refresh
+// @access  Public
 export const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token requerido' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Refresh token es requerido' 
+      });
     }
 
-    // Validar refresh token en la base de datos
-    const tokenRecord = await validateRefreshToken(refreshToken);
-    if (!tokenRecord) {
-      return res.status(401).json({ message: 'Refresh token inválido o expirado' });
+    // Verificar refresh token
+    const decoded = jwt.verify(
+      refreshToken, 
+      process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
+    );
+
+    // Verificar que el token existe en la base de datos
+    const tokenResult = await db.execute({
+      sql: 'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime("now")',
+      args: [refreshToken]
+    });
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Refresh token inválido o expirado' 
+      });
     }
 
-    // Verificar JWT
-    let decoded;
-    try {
-      decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
-    } catch (error) {
-      // Revocar token inválido
-      await revokeRefreshToken(refreshToken);
-      return res.status(401).json({ message: 'Refresh token inválido' });
-    }
-
-    // Obtener usuario actualizado
-    const userResult = await tursoClient.execute({
+    // Obtener información del usuario
+    const userResult = await db.execute({
       sql: 'SELECT * FROM usuarios WHERE id = ?',
-      args: [decoded.id]
+      args: [decoded.userId]
     });
 
     if (userResult.rows.length === 0) {
-      await revokeRefreshToken(refreshToken);
-      return res.status(401).json({ message: 'Usuario no encontrado' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuario no encontrado' 
+      });
     }
 
     const user = userResult.rows[0];
 
-    // Generar nuevos tokens
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
-
-    // Revocar el refresh token anterior
-    await revokeRefreshToken(refreshToken);
-
-    // Guardar el nuevo refresh token
-    await saveRefreshToken(user.id, newRefreshToken);
+    // Generar nuevo access token
+    const newAccessToken = jwt.sign(
+      { 
+        userId: user.id, 
+        organizationId: user.organization_id, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '1h' }
+    );
 
     res.json({
-      accessToken,
-      refreshToken: newRefreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        organization_id: user.organization_id
+      success: true,
+      message: 'Token renovado exitosamente',
+      data: {
+        accessToken: newAccessToken
       }
     });
+
   } catch (error) {
     console.error('Error en refresh token:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    res.status(401).json({ 
+      success: false, 
+      message: 'Refresh token inválido' 
+    });
   }
 };
 
+// @desc    Cerrar sesión
+// @route   POST /api/auth/logout
+// @access  Public
 export const logout = async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
     if (refreshToken) {
-      // Revocar refresh token
-      await revokeRefreshToken(refreshToken);
+      // Eliminar refresh token de la base de datos
+      await db.execute({
+        sql: 'DELETE FROM refresh_tokens WHERE token = ?',
+        args: [refreshToken]
+      });
     }
 
-    res.json({ message: 'Logout exitoso' });
+    res.json({
+      success: true,
+      message: 'Logout exitoso'
+    });
+
   } catch (error) {
     console.error('Error en logout:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
   }
 };
 
+// @desc    Obtener perfil del usuario
+// @route   GET /api/auth/profile
+// @access  Private
 export const getProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
-    const result = await tursoClient.execute({
-      sql: 'SELECT id, name, email, role, organization_id, created_at FROM usuarios WHERE id = ?',
+    const userResult = await db.execute({
+      sql: `
+        SELECT u.*, o.name as organization_name, o.plan as organization_plan 
+        FROM usuarios u 
+        JOIN organizations o ON u.organization_id = o.id 
+        WHERE u.id = ?
+      `,
       args: [userId]
     });
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Usuario no encontrado' 
+      });
     }
 
-    res.json(result.rows[0]);
+    const user = userResult.rows[0];
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          created_at: user.created_at
+        },
+        organization: {
+          id: user.organization_id,
+          name: user.organization_name,
+          type: user.organization_type
+        }
+      }
+    });
+
   } catch (error) {
     console.error('Error al obtener perfil:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
   }
-};
+}; 

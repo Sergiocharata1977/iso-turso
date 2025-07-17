@@ -13,17 +13,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Target, User, Goal, AlertCircle, Calendar } from "lucide-react";
+import { Target, User, Goal, AlertCircle, Calendar, FileText, BarChart } from "lucide-react";
 
 function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
   const [formData, setFormData] = useState({
-    codigo: "",
+    nombre_objetivo: "",
     descripcion: "",
+    proceso_id: "",
+    indicador_asociado_id: "",
     meta: "",
     responsable: "",
     fecha_inicio: "",
-    fecha_fin: "",
-    estado: "activo"
+    fecha_fin: ""
   });
   
   const [error, setError] = useState("");
@@ -31,34 +32,36 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
   useEffect(() => {
     if (objetivo) {
       setFormData({
-        codigo: objetivo.codigo || "",
+        nombre_objetivo: objetivo.nombre_objetivo || "",
         descripcion: objetivo.descripcion || "",
+        proceso_id: objetivo.proceso_id || "",
+        indicador_asociado_id: objetivo.indicador_asociado_id || "",
         meta: objetivo.meta || "",
         responsable: objetivo.responsable || "",
-        fecha_inicio: objetivo.fecha_inicio || "",
-        fecha_fin: objetivo.fecha_fin || "",
-        estado: objetivo.estado || "activo"
+        fecha_inicio: objetivo.fecha_inicio ? formatDateForInput(objetivo.fecha_inicio) : "",
+        fecha_fin: objetivo.fecha_fin ? formatDateForInput(objetivo.fecha_fin) : ""
       });
     } else {
       setFormData({
-        codigo: "",
+        nombre_objetivo: "",
         descripcion: "",
+        proceso_id: "",
+        indicador_asociado_id: "",
         meta: "",
         responsable: "",
         fecha_inicio: "",
-        fecha_fin: "",
-        estado: "activo"
+        fecha_fin: ""
       });
     }
     setError("");
-  }, [objetivo]);
+  }, [objetivo, isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     // Validación básica
-    if (!formData.codigo || !formData.descripcion) {
-      setError("Los campos Código y Descripción son obligatorios");
+    if (!formData.nombre_objetivo || !formData.descripcion) {
+      setError("Los campos Nombre del Objetivo y Descripción son obligatorios");
       return;
     }
     
@@ -69,6 +72,7 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
       fecha_fin: formData.fecha_fin ? formatDateForAPI(formData.fecha_fin) : null
     };
     
+    console.log('💾 Guardando objetivo:', dataToSave);
     onSave(dataToSave);
   };
   
@@ -123,44 +127,24 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="codigo" className="text-slate-200 flex items-center gap-2">
-                  <Target className="h-4 w-4 text-teal-500" />
-                  Código <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="codigo"
-                  name="codigo"
-                  value={formData.codigo}
-                  onChange={handleChange}
-                  className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
-                  placeholder="OBJ-001"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="estado" className="text-slate-200 flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-teal-500" />
-                  Estado
-                </Label>
-                <Select 
-                  value={formData.estado} 
-                  onValueChange={(value) => setFormData({...formData, estado: value})}
-                >
-                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white focus:border-teal-500">
-                    <SelectValue placeholder="Seleccione un estado" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                    <SelectItem value="activo" className="focus:bg-slate-700">Activo</SelectItem>
-                    <SelectItem value="En progreso" className="focus:bg-slate-700">En progreso</SelectItem>
-                    <SelectItem value="Completado" className="focus:bg-slate-700">Completado</SelectItem>
-                    <SelectItem value="inactivo" className="focus:bg-slate-700">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            
+            {/* Nombre del Objetivo */}
+            <div className="space-y-2">
+              <Label htmlFor="nombre_objetivo" className="text-slate-200 flex items-center gap-2">
+                <Target className="h-4 w-4 text-teal-500" />
+                Nombre del Objetivo <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="nombre_objetivo"
+                name="nombre_objetivo"
+                value={formData.nombre_objetivo}
+                onChange={handleChange}
+                className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
+                placeholder="Ej: Mejorar satisfacción del cliente"
+              />
             </div>
             
+            {/* Descripción */}
             <div className="space-y-2">
               <Label htmlFor="descripcion" className="text-slate-200 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-teal-500" />
@@ -172,10 +156,44 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
                 value={formData.descripcion}
                 onChange={handleChange}
                 className="min-h-[100px] bg-slate-700 border-slate-600 text-white focus:border-teal-500 resize-none"
-                placeholder="Describa el objetivo de calidad"
+                placeholder="Describa detalladamente el objetivo de calidad"
               />
             </div>
+
+            {/* Proceso e Indicador */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="proceso_id" className="text-slate-200 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-500" />
+                  ID del Proceso
+                </Label>
+                <Input
+                  id="proceso_id"
+                  name="proceso_id"
+                  value={formData.proceso_id}
+                  onChange={handleChange}
+                  className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
+                  placeholder="proc-xxx (opcional)"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="indicador_asociado_id" className="text-slate-200 flex items-center gap-2">
+                  <BarChart className="h-4 w-4 text-green-500" />
+                  ID del Indicador
+                </Label>
+                <Input
+                  id="indicador_asociado_id"
+                  name="indicador_asociado_id"
+                  value={formData.indicador_asociado_id}
+                  onChange={handleChange}
+                  className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
+                  placeholder="ind-xxx (opcional)"
+                />
+              </div>
+            </div>
             
+            {/* Meta */}
             <div className="space-y-2">
               <Label htmlFor="meta" className="text-slate-200 flex items-center gap-2">
                 <Goal className="h-4 w-4 text-teal-500" />
@@ -187,10 +205,11 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
                 value={formData.meta}
                 onChange={handleChange}
                 className="min-h-[80px] bg-slate-700 border-slate-600 text-white focus:border-teal-500 resize-none"
-                placeholder="Describa la meta específica a alcanzar"
+                placeholder="Describa la meta específica a alcanzar (ej: 95% satisfacción)"
               />
             </div>
             
+            {/* Responsable */}
             <div className="space-y-2">
               <Label htmlFor="responsable" className="text-slate-200 flex items-center gap-2">
                 <User className="h-4 w-4 text-teal-500" />
@@ -202,21 +221,22 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
                 value={formData.responsable}
                 onChange={handleChange}
                 className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
-                placeholder="Departamento o persona responsable"
+                placeholder="Nombre del responsable"
               />
             </div>
             
+            {/* Fechas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fecha_inicio" className="text-slate-200 flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-teal-500" />
-                  Fecha de inicio
+                  Fecha de Inicio
                 </Label>
                 <Input
+                  type="date"
                   id="fecha_inicio"
                   name="fecha_inicio"
-                  type="date"
-                  value={formatDateForInput(formData.fecha_inicio)}
+                  value={formData.fecha_inicio}
                   onChange={handleChange}
                   className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
                 />
@@ -224,35 +244,35 @@ function ObjetivoModal({ isOpen, onClose, onSave, objetivo }) {
               
               <div className="space-y-2">
                 <Label htmlFor="fecha_fin" className="text-slate-200 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-teal-500" />
-                  Fecha de finalización
+                  <Calendar className="h-4 w-4 text-red-500" />
+                  Fecha de Finalización
                 </Label>
                 <Input
+                  type="date"
                   id="fecha_fin"
                   name="fecha_fin"
-                  type="date"
-                  value={formatDateForInput(formData.fecha_fin)}
+                  value={formData.fecha_fin}
                   onChange={handleChange}
                   className="bg-slate-700 border-slate-600 text-white focus:border-teal-500"
                 />
               </div>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
+          
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
               onClick={onClose}
-              className="bg-transparent border-slate-600 text-white hover:bg-slate-700"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               type="submit"
               className="bg-teal-600 hover:bg-teal-700 text-white"
             >
-              {objetivo ? "Guardar Cambios" : "Crear Objetivo"}
+              {objetivo ? "Actualizar Objetivo" : "Crear Objetivo"}
             </Button>
           </DialogFooter>
         </form>

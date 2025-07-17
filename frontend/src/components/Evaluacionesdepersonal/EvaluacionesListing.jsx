@@ -18,11 +18,16 @@ import {
   Calendar,
   Eye,
   User,
-  Filter
+  Filter,
+  Target,
+  Clock,
+  CheckCircle
 } from "lucide-react";
 import { evaluacionesService } from "@/services/evaluacionesService";
 import EvaluacionModal from "./EvaluacionModal";
 import EvaluacionSingle from "./EvaluacionSingle";
+import UnifiedHeader from "../common/UnifiedHeader";
+import UnifiedCard from "../common/UnifiedCard";
 import ConfirmDialog from '../ui/confirm-dialog';
 
 const EvaluacionesListing = () => {
@@ -139,7 +144,7 @@ const EvaluacionesListing = () => {
   const handleBackFromSingle = () => {
     setShowSingle(false);
     setSingleEvaluacionId(null);
-    fetchEvaluaciones(); // Refrescar en caso de cambios
+    fetchEvaluaciones();
   };
 
   const getEstadoBadgeColor = (estado) => {
@@ -170,10 +175,10 @@ const EvaluacionesListing = () => {
   };
 
   const renderStars = (puntaje) => {
-    if (!puntaje) return <span className="text-gray-400">Sin puntaje</span>;
+    if (!puntaje) return null;
     
     const stars = [];
-    const fullStars = Math.floor(puntaje / 20); // Convertir de 0-100 a 0-5 estrellas
+    const fullStars = Math.floor(puntaje / 20);
     
     for (let i = 0; i < 5; i++) {
       stars.push(
@@ -192,6 +197,15 @@ const EvaluacionesListing = () => {
     );
   };
 
+  const getStats = () => {
+    const total = evaluaciones.length;
+    const completadas = evaluaciones.filter(e => e.estado === 'completada').length;
+    const pendientes = evaluaciones.filter(e => e.estado === 'pendiente').length;
+    const promedio = evaluaciones.reduce((acc, e) => acc + (e.puntaje_total || 0), 0) / (evaluaciones.length || 1);
+    
+    return { total, completadas, pendientes, promedio };
+  };
+
   if (showSingle) {
     return (
       <EvaluacionSingle 
@@ -201,299 +215,276 @@ const EvaluacionesListing = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
-          </div>
+  const stats = getStats();
+
+  const renderGridView = () => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm animate-pulse">
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 h-20"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+              </div>
+            </div>
+          ))}
         </div>
+      );
+    }
+
+    if (filteredEvaluaciones.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <ClipboardCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground">No se encontraron evaluaciones.</p>
+          <Button onClick={handleCreate} className="mt-4">
+            <Plus className="h-4 w-4 mr-2" />
+            Crear primera evaluación
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredEvaluaciones.map((evaluacion) => {
+          const fields = [
+            ...(evaluacion.personal_nombre ? [{ 
+              icon: User, 
+              label: "Evaluado", 
+              value: `${evaluacion.personal_nombre} ${evaluacion.personal_apellido || ''}` 
+            }] : []),
+            ...(evaluacion.fecha_inicio ? [{ 
+              icon: Calendar, 
+              label: "Fecha", 
+              value: formatDate(evaluacion.fecha_inicio) 
+            }] : []),
+            ...(evaluacion.puntaje_total ? [{ 
+              icon: Star, 
+              label: "Puntaje", 
+              value: `${evaluacion.puntaje_total}/100` 
+            }] : [])
+          ];
+
+          return (
+            <UnifiedCard
+              key={evaluacion.id}
+              title={evaluacion.titulo}
+              description={evaluacion.descripcion}
+              status={evaluacion.estado}
+              fields={fields}
+              icon={ClipboardCheck}
+              primaryColor="purple"
+              onView={() => handleViewSingle(evaluacion)}
+              onEdit={() => handleEdit(evaluacion)}
+              onDelete={() => handleDeleteClick(evaluacion.id)}
+            />
+          );
+        })}
       </div>
     );
-  }
+  };
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header Principal */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Gestión de Evaluaciones</h1>
-              <p className="text-gray-600">Administra las evaluaciones de desempeño según ISO 9001</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-              <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Nueva Evaluación
-              </Button>
-            </div>
-          </div>
+  const renderListView = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
         </div>
+      );
+    }
 
-        {/* Barra de Búsqueda y Filtros */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-4 flex-1">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Buscar evaluaciones, empleados, títulos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-                <SelectTrigger className="w-48 border-gray-300">
-                  <SelectValue placeholder="Filtrar por estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="en_proceso">En Proceso</SelectItem>
-                  <SelectItem value="completada">Completada</SelectItem>
-                  <SelectItem value="cancelada">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant={viewMode === "grid" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setViewMode("grid")}
-              >
-                Tarjetas
-              </Button>
-              <Button 
-                variant={viewMode === "list" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setViewMode("list")}
-              >
-                Tabla
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 p-6 overflow-auto">
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-white border border-gray-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <ClipboardCheck className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total</p>
-                    <p className="text-xl font-semibold text-gray-900">{evaluaciones.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white border border-gray-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <ClipboardCheck className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Completadas</p>
-                    <p className="text-xl font-semibold text-gray-900">
-                      {evaluaciones.filter(e => e.estado === 'completada').length}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white border border-gray-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-yellow-100 p-2 rounded-lg">
-                    <ClipboardCheck className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Pendientes</p>
-                    <p className="text-xl font-semibold text-gray-900">
-                      {evaluaciones.filter(e => e.estado === 'pendiente').length}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white border border-gray-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-purple-100 p-2 rounded-lg">
-                    <Star className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Promedio</p>
-                    <p className="text-xl font-semibold text-gray-900">
-                      {evaluaciones.filter(e => e.puntaje).length > 0 
-                        ? Math.round(evaluaciones.filter(e => e.puntaje).reduce((acc, e) => acc + e.puntaje, 0) / evaluaciones.filter(e => e.puntaje).length)
-                        : 0
-                      }
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Lista de Evaluaciones */}
-          {filteredEvaluaciones.length === 0 ? (
-            <Card className="bg-white border border-gray-200 shadow-sm">
-              <CardContent className="p-12 text-center">
-                <ClipboardCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay evaluaciones</h3>
-                <p className="text-gray-600 mb-6">
-                  {searchTerm || estadoFilter 
-                    ? "No se encontraron evaluaciones con los filtros aplicados." 
-                    : "Comience creando su primera evaluación de personal."
-                  }
-                </p>
-                {!searchTerm && !estadoFilter && (
-                  <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Crear Primera Evaluación
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className={viewMode === "grid" 
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-              : "space-y-4"
-            }>
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Evaluación
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Evaluado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Puntaje
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Fecha
+                </th>
+                <th className="relative px-6 py-3">
+                  <span className="sr-only">Acciones</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredEvaluaciones.map((evaluacion) => (
-                <Card 
-                  key={evaluacion.id} 
-                  className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleViewSingle(evaluacion)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="bg-purple-100 p-2 rounded-lg flex-shrink-0">
-                          <ClipboardCheck className="h-5 w-5 text-purple-600" />
+                <tr key={evaluacion.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <ClipboardCheck className="h-5 w-5 text-purple-500 mr-3" />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {evaluacion.titulo}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-lg font-semibold text-gray-900 mb-1 line-clamp-1">
-                            {evaluacion.titulo}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600">
-                            EVAL-{evaluacion.id}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge className={getEstadoBadgeColor(evaluacion.estado)}>
-                        {evaluacion.estado}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-900">
-                          {evaluacion.personal_nombre} {evaluacion.personal_apellido}
-                        </span>
-                        {evaluacion.puesto && (
-                          <span className="text-sm text-gray-500">• {evaluacion.puesto}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
-                          {formatDate(evaluacion.fecha_evaluacion)}
-                        </span>
-                      </div>
-                      {evaluacion.puntaje && (
-                        <div className="flex items-center gap-2">
-                          <Star className="h-4 w-4 text-gray-500" />
-                          {renderStars(evaluacion.puntaje)}
-                        </div>
-                      )}
-                      {evaluacion.descripcion && (
-                        <p className="text-sm text-gray-600 line-clamp-2">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
                           {evaluacion.descripcion}
-                        </p>
-                      )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-2 pt-4 border-t border-gray-100 mt-4">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewSingle(evaluacion);
-                        }}
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
+                      {evaluacion.personal_nombre} {evaluacion.personal_apellido}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge className={getEstadoBadgeColor(evaluacion.estado)}>
+                      {evaluacion.estado}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {evaluacion.puntaje_total ? (
+                      <div className="flex items-center">
+                        {renderStars(evaluacion.puntaje_total)}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Sin puntaje</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(evaluacion.fecha_inicio)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewSingle(evaluacion)}
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver
+                        <Eye className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(evaluacion);
-                        }}
-                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(evaluacion)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteClick(evaluacion.id);
-                        }}
-                        className="border-red-300 text-red-700 hover:bg-red-50"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteClick(evaluacion.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </td>
+                </tr>
               ))}
-            </div>
-          )}
-
-          {/* Modal */}
-          <EvaluacionModal 
-            isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
-            onSave={handleSave}
-            evaluacion={selectedEvaluacion}
-          />
-          
-          {/* Diálogo de confirmación para eliminar */}
-          <ConfirmDialog
-            isOpen={isConfirmDialogOpen}
-            onClose={() => setIsConfirmDialogOpen(false)}
-            onConfirm={handleDelete}
-            title="Eliminar evaluación"
-            message="¿Estás seguro de que deseas eliminar esta evaluación? Esta acción no se puede deshacer."
-            confirmText="Eliminar"
-            cancelText="Cancelar"
-            isDestructive={true}
-          />
+            </tbody>
+          </table>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      <UnifiedHeader
+        title="Gestión de Evaluaciones"
+        description="Administra las evaluaciones de desempeño según ISO 9001"
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onNew={handleCreate}
+        onExport={handleExport}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        newButtonText="Nueva Evaluación"
+        totalCount={evaluaciones.length}
+        lastUpdated="hoy"
+        icon={ClipboardCheck}
+        primaryColor="purple"
+      />
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completadas</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.completadas}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendientes}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Promedio</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.promedio.toFixed(1)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Filtrar por estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="pendiente">Pendiente</SelectItem>
+            <SelectItem value="en_proceso">En Proceso</SelectItem>
+            <SelectItem value="completada">Completada</SelectItem>
+            <SelectItem value="cancelada">Cancelada</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {viewMode === 'grid' ? renderGridView() : renderListView()}
+
+      <EvaluacionModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        evaluacion={selectedEvaluacion}
+        onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        onClose={() => setIsConfirmDialogOpen(false)}
+        onConfirm={handleDelete}
+        title="Confirmar eliminación"
+        description="¿Estás seguro de que deseas eliminar esta evaluación? Esta acción no se puede deshacer."
+      />
     </div>
   );
 };

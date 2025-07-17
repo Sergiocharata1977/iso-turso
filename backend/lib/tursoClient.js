@@ -40,3 +40,5 @@ export async function testConnection() {
     throw error; 
   }
 }
+
+export { tursoClient as db };

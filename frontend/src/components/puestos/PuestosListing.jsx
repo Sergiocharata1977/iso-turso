@@ -9,16 +9,19 @@ import {
   LayoutGrid,
   List,
   Briefcase,
-  Filter
+  Filter,
+  Download,
+  Plus
 } from "lucide-react";
 import PuestoModal from "./PuestoModal";
 import PuestoSingle from "./PuestoSingle";
 import PuestoCard from './PuestoCard';
+import UnifiedHeader from "../common/UnifiedHeader";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { puestosService } from "@/services/puestosService";
-import ListingHeader from "../common/ListingHeader";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function PuestosListing() {
   const { toast } = useToast();
@@ -130,16 +133,44 @@ function PuestosListing() {
     setShowSingle(false);
   };
 
+  const handleExport = () => {
+    toast({
+      title: "Exportación",
+      description: "Función de exportación en desarrollo",
+    });
+  };
+
   const filteredPuestos = puestos.filter((puesto) =>
     (puesto.titulo_puesto?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (puesto.codigo_puesto?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
+  const getStats = () => {
+    const total = puestos.length;
+    const activos = puestos.filter(p => p.estado?.toLowerCase() === 'activo').length;
+    const inactivos = puestos.filter(p => p.estado?.toLowerCase() === 'inactivo').length;
+    const conPersonal = 0; // Se podría calcular si hay relación con personal
+    
+    return { total, activos, inactivos, conPersonal };
+  };
+
+  if (showSingle && currentPuesto) {
+    return (
+      <PuestoSingle 
+        puestoId={currentPuesto.id} 
+        onBack={handleBackToList} 
+        onEdit={handleEdit} 
+      />
+    );
+  }
+
+  const stats = getStats();
+
   const renderGridContent = () => {
     if (isLoading) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => <PuestoCard.Skeleton theme="light" key={i} />)}
+          {[...Array(8)].map((_, i) => <PuestoCard.Skeleton theme="light" primaryColor="emerald" key={i} />)}
         </div>
       );
     }
@@ -148,6 +179,10 @@ function PuestosListing() {
         <div className="text-center py-12">
           <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-muted-foreground">No se encontraron puestos.</p>
+          <Button onClick={handleNew} className="mt-4">
+            <Plus className="h-4 w-4 mr-2" />
+            Crear primer puesto
+          </Button>
         </div>
       );
     }
@@ -158,6 +193,7 @@ function PuestosListing() {
             key={puesto.id} 
             puesto={puesto} 
             theme="light"
+            primaryColor="emerald"
             onEdit={() => handleEdit(puesto)}
             onDelete={() => handleDelete(puesto.id)}
             onViewDetails={() => handleViewDetails(puesto)}
@@ -169,7 +205,11 @@ function PuestosListing() {
 
   const renderListContent = () => {
      if (isLoading) {
-      return <p>Cargando...</p>;
+      return (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        </div>
+      );
     }
     return (
       <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
@@ -191,7 +231,7 @@ function PuestosListing() {
               >
                 <td className="p-4 whitespace-nowrap">
                   <div className="flex items-center space-x-3">
-                    <Briefcase className="h-5 w-5 text-primary" />
+                    <Briefcase className="h-5 w-5 text-emerald-500" />
                     <div>
                       <p className="font-medium">{puesto.titulo_puesto}</p>
                       <p className="text-sm text-muted-foreground">{puesto.codigo_puesto}</p>
@@ -204,12 +244,17 @@ function PuestosListing() {
                   </span>
                 </td>
                 <td className="p-4 text-right">
-                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(puesto); }}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(puesto.id); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleViewDetails(puesto); }}>
+                      <Briefcase className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(puesto); }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(puesto.id); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </td>
               </motion.tr>
             ))}
@@ -226,46 +271,66 @@ function PuestosListing() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      {showSingle && currentPuesto ? (
-        <PuestoSingle 
-          puestoId={currentPuesto.id} 
-          onBack={handleBackToList} 
-          onEdit={handleEdit} 
-        />
-      ) : (
-        <>
-          <ListingHeader
-            title="Gestión de Puestos"
-            subtitle="Administra los puestos de trabajo según ISO 9001."
-            searchTerm={searchTerm}
-            onSearchChange={(e) => setSearchTerm(e.target.value)}
-            onAddNew={handleNew}
-            addNewLabel="Nuevo Puesto"
-          >
-            <Button variant="outline">
-              <Upload className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtros
-            </Button>
-            <div className="flex items-center space-x-1 border border-gray-200 dark:border-slate-700 rounded-lg p-1">
-              <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setViewMode("grid")}>
-                <LayoutGrid className="h-5 w-5" />
-              </Button>
-              <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" onClick={() => setViewMode("list")}>
-                <List className="h-5 w-5" />
-              </Button>
-            </div>
-          </ListingHeader>
+    <div className="p-6 space-y-6">
+      <UnifiedHeader
+        title="Gestión de Puestos"
+        description="Administra los puestos de trabajo según ISO 9001"
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onNew={handleNew}
+        onExport={handleExport}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        newButtonText="Nuevo Puesto"
+        totalCount={puestos.length}
+        lastUpdated="hoy"
+        icon={Briefcase}
+        primaryColor="emerald"
+      />
 
-          <motion.div layout className="mt-6">
-            {viewMode === 'grid' ? renderGridContent() : renderListContent()}
-          </motion.div>
-        </>
-      )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Activos</CardTitle>
+            <Briefcase className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activos}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inactivos</CardTitle>
+            <Briefcase className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.inactivos}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Con Personal</CardTitle>
+            <Briefcase className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.conPersonal}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <motion.div layout className="mt-6">
+        {viewMode === 'grid' ? renderGridContent() : renderListContent()}
+      </motion.div>
 
       <PuestoModal
         isOpen={isModalOpen}

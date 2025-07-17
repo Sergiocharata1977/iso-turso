@@ -40,7 +40,7 @@ import {
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { apiService } from '../services/apiService';
+import { usuariosService } from '../services/usuarios';
 
 const UsuariosSingle = () => {
   const navigate = useNavigate();
@@ -65,8 +65,8 @@ const UsuariosSingle = () => {
   const loadUsuarios = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get('/usuarios');
-      const usuariosData = response.data || [];
+      const response = await usuariosService.getAll();
+      const usuariosData = response.users || [];
       setUsuarios(usuariosData);
       
       // Calcular estadísticas
@@ -75,7 +75,7 @@ const UsuariosSingle = () => {
         admins: usuariosData.filter(u => u.role === 'admin').length,
         managers: usuariosData.filter(u => u.role === 'manager').length,
         employees: usuariosData.filter(u => u.role === 'employee').length,
-        active: usuariosData.filter(u => u.status === 'active').length
+        active: usuariosData.filter(u => u.is_active !== 0).length
       };
       setStats(newStats);
       
@@ -124,7 +124,7 @@ const UsuariosSingle = () => {
     if (!confirm('¿Estás seguro de que quieres eliminar este usuario?')) return;
     
     try {
-      await apiService.delete(`/usuarios/${userId}`);
+      await usuariosService.delete(userId);
       toast.success('Usuario eliminado exitosamente');
       loadUsuarios();
     } catch (error) {
@@ -144,7 +144,7 @@ const UsuariosSingle = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-      await apiService.post('/usuarios', newUser);
+      await usuariosService.create(newUser);
       toast.success('Usuario creado exitosamente');
       setIsCreateModalOpen(false);
       setNewUser({ name: '', email: '', password: '', role: 'employee' });
@@ -167,7 +167,7 @@ const UsuariosSingle = () => {
                 <Users className="h-8 w-8 text-blue-600" />
                 Gestión de Usuarios
               </h1>
-              <p className="text-gray-600 mt-1">Sistema de administración de usuarios SAAS</p>
+              <p className="text-gray-600 mt-1">Sistema de administración de usuarios multi-tenant</p>
             </div>
             
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -382,10 +382,10 @@ const UsuariosSingle = () => {
                     
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Estado:</span>
-                      <Badge className={usuario.status === 'active' ? 
+                      <Badge className={usuario.is_active !== 0 ? 
                         'bg-green-100 text-green-800 border-green-200' : 
                         'bg-red-100 text-red-800 border-red-200'}>
-                        {usuario.status === 'active' ? (
+                        {usuario.is_active !== 0 ? (
                           <>
                             <UserCheck className="h-3 w-3 mr-1" />
                             Activo

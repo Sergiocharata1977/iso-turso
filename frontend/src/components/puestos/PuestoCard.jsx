@@ -1,107 +1,151 @@
 import React from 'react';
-import { Users, Briefcase, Building2, GraduationCap, Clock, ChevronRight } from 'lucide-react';
+import { Users, Briefcase, Building2, GraduationCap, Clock, ChevronRight, Eye, Pencil, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-export default function PuestoCard({ puesto, onEdit, onDelete, onViewDetails, theme = "light" }) {
+export default function PuestoCard({ puesto, onEdit, onDelete, onViewDetails, theme = "light", primaryColor = "emerald" }) {
+  const getColorClasses = () => {
+    switch (primaryColor) {
+      case 'emerald':
+        return {
+          gradient: 'from-emerald-500 to-emerald-600',
+          hoverBorder: 'hover:border-emerald-500',
+          textHover: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-400',
+          badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+          badgeDot: 'bg-emerald-500',
+          iconHover: 'group-hover:text-emerald-500',
+          viewButton: 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+        };
+      case 'blue':
+        return {
+          gradient: 'from-blue-500 to-blue-600',
+          hoverBorder: 'hover:border-blue-500',
+          textHover: 'group-hover:text-blue-600 dark:group-hover:text-blue-400',
+          badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+          badgeDot: 'bg-blue-500',
+          iconHover: 'group-hover:text-blue-500',
+          viewButton: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+        };
+      default:
+        return {
+          gradient: 'from-emerald-500 to-emerald-600',
+          hoverBorder: 'hover:border-emerald-500',
+          textHover: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-400',
+          badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+          badgeDot: 'bg-emerald-500',
+          iconHover: 'group-hover:text-emerald-500',
+          viewButton: 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+        };
+    }
+  };
+
+  const colors = getColorClasses();
+
   return (
     <div 
       onClick={() => onViewDetails(puesto)}
       className={cn(
-        "group bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200",
+        "group bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300",
         "cursor-pointer border border-slate-200 dark:border-slate-700",
-        "transform hover:-translate-y-1"
+        "transform hover:-translate-y-1 overflow-hidden",
+        colors.hoverBorder
       )}
     >
-      {/* Encabezado */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              {puesto.titulo_puesto || puesto.nombre}
-            </h3>
-            <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-              <Building2 className="w-4 h-4 mr-1" />
-              <span>{puesto.departamento?.nombre || 'No especificado'}</span>
-            </div>
+      {/* Header con gradiente */}
+      <div className={`bg-gradient-to-r ${colors.gradient} p-4 text-white`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            <h3 className="font-bold text-lg truncate">{puesto.titulo_puesto || puesto.nombre}</h3>
           </div>
-          
-          {/* Estado con mejor diseño */}
-          <div className="flex items-center">
-            <span className={cn(
-              "px-2.5 py-1 rounded-full text-xs font-medium",
-              "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-              "flex items-center gap-1"
-            )}>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              {puesto.estado || 'Activo'}
+          {puesto.codigo_puesto && (
+            <div className="bg-white/20 text-white border-white/30 px-2 py-1 rounded text-xs font-medium">
+              {puesto.codigo_puesto}
+            </div>
+          )}
+        </div>
+        {puesto.departamento && (
+          <div className="flex items-center gap-1 mt-2 text-white/90">
+            <Building2 className="h-3 w-3" />
+            <span className="text-sm">{puesto.departamento.nombre}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Contenido */}
+      <div className="flex-grow p-4 space-y-3">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 min-h-[2.5rem]">
+          {puesto.descripcion || 'Sin descripción disponible'}
+        </p>
+        
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+            <span className="text-gray-600 dark:text-gray-400">
+              <span className="font-medium text-gray-800 dark:text-gray-200">0 empleados</span>
             </span>
           </div>
-        </div>
-
-        {/* Descripción con límite de líneas */}
-        <div className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-          <p className="line-clamp-2">{puesto.descripcion || 'Sin descripción'}</p>
-        </div>
-
-        {/* Métricas y KPIs */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-            <Users className="w-4 h-4 mr-2" />
-            <div>
-              <p className="font-medium">0</p>
-              <p className="text-xs">Empleados</p>
+          
+          {puesto.requisitos_experiencia && (
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-orange-500 flex-shrink-0" />
+              <span className="text-gray-600 dark:text-gray-400 line-clamp-1">
+                {puesto.requisitos_experiencia}
+              </span>
             </div>
-          </div>
-          <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-            <Clock className="w-4 h-4 mr-2" />
-            <div>
-              <p className="font-medium">Experiencia</p>
-              <p className="text-xs">{puesto.requisitos_experiencia ? '✓ Requerida' : '✗ No requerida'}</p>
+          )}
+
+          {puesto.requisitos_formacion && (
+            <div className="flex items-center gap-2 text-sm">
+              <GraduationCap className="h-4 w-4 text-purple-500 flex-shrink-0" />
+              <span className="text-gray-600 dark:text-gray-400 line-clamp-1">
+                {puesto.requisitos_formacion}
+              </span>
+            </div>
+          )}
+
+          {/* Stats mini */}
+          <div className="flex items-center gap-4 pt-2 text-xs text-gray-500">
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${colors.badgeDot}`}></div>
+              <span>{puesto.estado || 'Activo'}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Briefcase className="h-3 w-3" />
+              <span>Puesto</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Requisitos en una sección separada */}
-      <div className="border-t border-slate-100 dark:border-slate-700 p-6 pt-4 space-y-3">
-        <div className="flex items-start gap-2">
-          <Clock className="w-4 h-4 text-slate-400 mt-1" />
-          <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Experiencia</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {puesto.requisitos_experiencia || 'No especificada'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-2">
-          <GraduationCap className="w-4 h-4 text-slate-400 mt-1" />
-          <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Formación</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {puesto.requisitos_formacion || 'No especificada'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Acciones */}
-      <div className="border-t border-slate-100 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-b-lg">
-        <div className="flex justify-between items-center">
-          <div className="flex space-x-2">
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(puesto); }}
-              className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
-            >
-              Editar
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(puesto.id); }}
-              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-            >
-              Eliminar
-            </button>
-          </div>
-          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-500 group-hover:transform group-hover:translate-x-1 transition-all" />
+      {/* Footer con acciones */}
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className={colors.viewButton}
+          onClick={(e) => { e.stopPropagation(); onViewDetails(puesto); }}
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          Ver
+        </Button>
+        <div className="flex gap-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+            onClick={(e) => { e.stopPropagation(); onEdit(puesto); }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
+            onClick={(e) => { e.stopPropagation(); onDelete(puesto.id); }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
       </div>
     </div>
@@ -109,27 +153,25 @@ export default function PuestoCard({ puesto, onEdit, onDelete, onViewDetails, th
 }
 
 // Componente Skeleton para carga
-PuestoCard.Skeleton = function PuestoCardSkeleton() {
+PuestoCard.Skeleton = function PuestoCardSkeleton({ theme = "light", primaryColor = "emerald" }) {
+  const colors = primaryColor === 'emerald' ? 'from-emerald-500 to-emerald-600' : 'from-blue-500 to-blue-600';
+  
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 animate-pulse border border-slate-200 dark:border-slate-700">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm animate-pulse overflow-hidden">
+      <div className={`bg-gradient-to-r ${colors} p-4 h-20`}></div>
+      <div className="p-4 space-y-3">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+      </div>
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+          <div className="flex gap-1">
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
         </div>
-        <div className="w-16 h-6 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
-      </div>
-      <div className="space-y-3 mb-4">
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-5/6"></div>
-      </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded"></div>
-        <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded"></div>
-      </div>
-      <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-2">
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
       </div>
     </div>
   );

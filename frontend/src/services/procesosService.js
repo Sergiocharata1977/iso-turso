@@ -19,6 +19,11 @@ const procesosService = {
     return await apiService.get(BASE_URL);
   },
 
+  // Métodos con nombres cortos para nuevo ProcesosListing
+  getAll: async () => {
+    return await apiService.get(BASE_URL);
+  },
+
   /**
    * Obtiene un proceso por su ID
    * @param {string} id - ID del proceso
@@ -51,6 +56,19 @@ const procesosService = {
    * @returns {Promise<Object>} Respuesta de confirmación
    */
   deleteProceso: async (id) => {
+    return await apiService.delete(`${BASE_URL}/${id}`);
+  },
+
+  // Métodos con nombres cortos para nuevo ProcesosListing
+  create: async (procesoData) => {
+    return await apiService.post(BASE_URL, procesoData);
+  },
+
+  update: async (id, procesoData) => {
+    return await apiService.put(`${BASE_URL}/${id}`, procesoData);
+  },
+
+  delete: async (id) => {
     return await apiService.delete(`${BASE_URL}/${id}`);
   }
 };

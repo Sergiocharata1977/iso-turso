@@ -24,7 +24,7 @@ const simpleAuth = async (req, res, next) => {
              FROM usuarios u 
              LEFT JOIN organizations o ON u.organization_id = o.id 
              WHERE u.id = ?`,
-      args: [decoded.id]
+      args: [decoded.userId]
     });
 
     if (userResult.rows.length === 0) {

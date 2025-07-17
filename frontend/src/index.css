@@ -1,6 +1,73 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===============================================
+   SISTEMA DE DISEÑO SGC PRO - VARIABLES CSS
+   =============================================== */
+
+:root {
+  /* Colores Verde SGC Pro */
+  --sgc-50: #f0fdf4;
+  --sgc-100: #dcfce7;
+  --sgc-200: #bbf7d0;
+  --sgc-300: #86efac;
+  --sgc-400: #4ade80;
+  --sgc-500: #22c55e;
+  --sgc-600: #16a34a;
+  --sgc-700: #15803d;
+  --sgc-800: #166534;
+  --sgc-900: #14532d;
+
+  /* Colores de Estado */
+  --status-planned: #3b82f6;
+  --status-progress: #f59e0b;
+  --status-completed: #16a34a;
+  --status-cancelled: #ef4444;
+
+  /* Colores de Conformidad ISO */
+  --conforme: #16a34a;
+  --no-conforme: #ef4444;
+  --observacion: #f59e0b;
+}
+
+/* Clases utilitarias para SGC Pro */
+.bg-sgc-50 { background-color: var(--sgc-50); }
+.bg-sgc-100 { background-color: var(--sgc-100); }
+.bg-sgc-200 { background-color: var(--sgc-200); }
+.bg-sgc-300 { background-color: var(--sgc-300); }
+.bg-sgc-400 { background-color: var(--sgc-400); }
+.bg-sgc-500 { background-color: var(--sgc-500); }
+.bg-sgc-600 { background-color: var(--sgc-600); }
+.bg-sgc-700 { background-color: var(--sgc-700); }
+.bg-sgc-800 { background-color: var(--sgc-800); }
+.bg-sgc-900 { background-color: var(--sgc-900); }
+
+.text-sgc-50 { color: var(--sgc-50); }
+.text-sgc-100 { color: var(--sgc-100); }
+.text-sgc-200 { color: var(--sgc-200); }
+.text-sgc-300 { color: var(--sgc-300); }
+.text-sgc-400 { color: var(--sgc-400); }
+.text-sgc-500 { color: var(--sgc-500); }
+.text-sgc-600 { color: var(--sgc-600); }
+.text-sgc-700 { color: var(--sgc-700); }
+.text-sgc-800 { color: var(--sgc-800); }
+.text-sgc-900 { color: var(--sgc-900); }
+
+.border-sgc-200 { border-color: var(--sgc-200); }
+.border-sgc-300 { border-color: var(--sgc-300); }
+.border-sgc-500 { border-color: var(--sgc-500); }
+
+/* Estados de auditoría */
+.bg-status-planned { background-color: var(--status-planned); }
+.bg-status-progress { background-color: var(--status-progress); }
+.bg-status-completed { background-color: var(--status-completed); }
+.bg-status-cancelled { background-color: var(--status-cancelled); }
+
+/* Conformidad ISO */
+.bg-conforme { background-color: var(--conforme); }
+.bg-no-conforme { background-color: var(--no-conforme); }
+.bg-observacion { background-color: var(--observacion); }
  
 @layer base {
   :root {

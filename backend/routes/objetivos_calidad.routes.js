@@ -1,205 +1,213 @@
-import { Router } from 'express';
+import express from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
-import crypto from 'crypto';
 
-const router = Router();
+const router = express.Router();
 
-// GET /api/objetivos-calidad - Listar todos los objetivos de calidad
-router.get('/', async (req, res, next) => {
+// Obtener todos los objetivos
+router.get('/', async (req, res) => {
   try {
+    console.log('🎯 GET /objetivos - Obteniendo objetivos...');
+    const organizationId = req.user?.organization_id || 1;
+    
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM objetivos_calidad ORDER BY fecha_creacion DESC'
+      sql: 'SELECT * FROM objetivos WHERE organization_id = ?',
+      args: [organizationId]
     });
+    
+    console.log(`✅ Objetivos obtenidos: ${result.rows.length}`);
     res.json(result.rows);
   } catch (error) {
-    next(error);
+    console.error('❌ Error al obtener objetivos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// GET /api/objetivos-calidad/:id - Obtener un objetivo de calidad por ID
-router.get('/:id', async (req, res, next) => {
-  const { id } = req.params;
+// Obtener objetivo por ID
+router.get('/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    const organizationId = req.user?.organization_id || 1;
+    
+    console.log(`🎯 GET /objetivos/${id} - Obteniendo objetivo específico...`);
+    
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM objetivos_calidad WHERE id = ?',
-      args: [id]
+      sql: 'SELECT * FROM objetivos WHERE id = ? AND organization_id = ?',
+      args: [id, organizationId]
     });
-
+    
     if (result.rows.length === 0) {
-      const err = new Error('Objetivo de calidad no encontrado');
-      err.statusCode = 404;
-      return next(err);
+      return res.status(404).json({ error: 'Objetivo no encontrado' });
     }
+    
+    console.log(`✅ Objetivo obtenido: ${id}`);
     res.json(result.rows[0]);
   } catch (error) {
-    next(error);
+    console.error('❌ Error al obtener objetivo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// POST /api/objetivos-calidad - Crear un nuevo objetivo de calidad
-router.post('/', async (req, res, next) => {
-  const { 
-    codigo, 
-    descripcion, 
-    meta, 
-    responsable, 
-    fecha_inicio, 
-    fecha_fin, 
-    estado 
-  } = req.body;
-
-  if (!codigo || !descripcion) {
-    const err = new Error('Los campos "codigo" y "descripcion" son obligatorios.');
-    err.statusCode = 400;
-    return next(err);
-  }
-
+// Crear nuevo objetivo
+router.post('/', async (req, res) => {
   try {
-    const existingObjetivo = await tursoClient.execute({
-      sql: 'SELECT id FROM objetivos_calidad WHERE codigo = ?',
-      args: [codigo]
-    });
+    console.log('🎯 POST /objetivos - Creando nuevo objetivo...');
+    console.log('Datos recibidos:', req.body);
+    
+    const organizationId = req.user?.organization_id || 1;
+    const {
+      nombre_objetivo,
+      descripcion,
+      proceso_id,
+      indicador_asociado_id,
+      meta,
+      responsable,
+      fecha_inicio,
+      fecha_fin
+    } = req.body;
 
-    if (existingObjetivo.rows.length > 0) {
-      const err = new Error('Ya existe un objetivo de calidad con ese código.');
-      err.statusCode = 400;
-      return next(err);
+    // Validaciones
+    if (!nombre_objetivo) {
+      return res.status(400).json({ error: 'El nombre del objetivo es requerido' });
     }
 
-    const id = crypto.randomUUID();
-    const fechaCreacion = new Date().toISOString();
+    // Generar ID único
+    const id = 'obj-' + Date.now();
     
-    await tursoClient.execute({
-      sql: `INSERT INTO objetivos_calidad (
-              id, codigo, descripcion, meta, responsable, 
-              fecha_inicio, fecha_fin, estado, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    const result = await tursoClient.execute({
+      sql: `INSERT INTO objetivos (
+        id, nombre_objetivo, descripcion, proceso_id, indicador_asociado_id, 
+        meta, responsable, fecha_inicio, fecha_fin, organization_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
-        codigo,
-        descripcion,
+        nombre_objetivo,
+        descripcion || null,
+        proceso_id || null,
+        indicador_asociado_id || null,
         meta || null,
         responsable || null,
         fecha_inicio || null,
         fecha_fin || null,
-        estado || 'activo',
-        fechaCreacion
+        organizationId
       ]
     });
 
-    const newObjetivoResult = await tursoClient.execute({
-      sql: 'SELECT * FROM objetivos_calidad WHERE id = ?',
-      args: [id]
+    console.log(`✅ Objetivo creado exitosamente: ${id}`);
+    res.status(201).json({ 
+      id, 
+      nombre_objetivo, 
+      descripcion, 
+      proceso_id, 
+      indicador_asociado_id, 
+      meta, 
+      responsable, 
+      fecha_inicio, 
+      fecha_fin,
+      organization_id: organizationId
     });
-    
-    res.status(201).json(newObjetivoResult.rows[0]);
   } catch (error) {
-    next(error);
+    console.error('❌ Error al crear objetivo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// PUT /api/objetivos-calidad/:id - Actualizar un objetivo de calidad
-router.put('/:id', async (req, res, next) => {
-  const { id } = req.params;
-  const { 
-    codigo, 
-    descripcion, 
-    meta, 
-    responsable, 
-    fecha_inicio, 
-    fecha_fin, 
-    estado 
-  } = req.body;
-
-  if (!codigo || !descripcion) {
-    const err = new Error('Los campos "codigo" y "descripcion" son obligatorios.');
-    err.statusCode = 400;
-    return next(err);
-  }
-
+// Actualizar objetivo
+router.put('/:id', async (req, res) => {
   try {
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM objetivos_calidad WHERE id = ?',
-      args: [id]
+    const { id } = req.params;
+    const organizationId = req.user?.organization_id || 1;
+    
+    console.log(`🎯 PUT /objetivos/${id} - Actualizando objetivo...`);
+    console.log('Datos recibidos:', req.body);
+    
+    const {
+      nombre_objetivo,
+      descripcion,
+      proceso_id,
+      indicador_asociado_id,
+      meta,
+      responsable,
+      fecha_inicio,
+      fecha_fin
+    } = req.body;
+
+    // Verificar que el objetivo existe
+    const checkResult = await tursoClient.execute({
+      sql: 'SELECT id FROM objetivos WHERE id = ? AND organization_id = ?',
+      args: [id, organizationId]
     });
     
-    if (existsCheck.rows.length === 0) {
-      const err = new Error('Objetivo de calidad no encontrado');
-      err.statusCode = 404;
-      return next(err);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo no encontrado' });
     }
 
-    const duplicateCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM objetivos_calidad WHERE codigo = ? AND id != ?',
-      args: [codigo, id]
+    const result = await tursoClient.execute({
+      sql: `UPDATE objetivos SET 
+        nombre_objetivo = ?, descripcion = ?, proceso_id = ?, 
+        indicador_asociado_id = ?, meta = ?, responsable = ?, 
+        fecha_inicio = ?, fecha_fin = ?
+        WHERE id = ? AND organization_id = ?`,
+      args: [
+        nombre_objetivo,
+        descripcion || null,
+        proceso_id || null,
+        indicador_asociado_id || null,
+        meta || null,
+        responsable || null,
+        fecha_inicio || null,
+        fecha_fin || null,
+        id,
+        organizationId
+      ]
     });
 
-    if (duplicateCheck.rows.length > 0) {
-      const err = new Error('Ya existe otro objetivo de calidad con ese código.');
-      err.statusCode = 400;
-      return next(err);
+    console.log(`✅ Objetivo actualizado exitosamente: ${id}`);
+    res.json({ 
+      id, 
+      nombre_objetivo, 
+      descripcion, 
+      proceso_id, 
+      indicador_asociado_id, 
+      meta, 
+      responsable, 
+      fecha_inicio, 
+      fecha_fin,
+      organization_id: organizationId
+    });
+  } catch (error) {
+    console.error('❌ Error al actualizar objetivo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar objetivo
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const organizationId = req.user?.organization_id || 1;
+    
+    console.log(`🎯 DELETE /objetivos/${id} - Eliminando objetivo...`);
+    
+    // Verificar que el objetivo existe
+    const checkResult = await tursoClient.execute({
+      sql: 'SELECT id FROM objetivos WHERE id = ? AND organization_id = ?',
+      args: [id, organizationId]
+    });
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo no encontrado' });
     }
 
     await tursoClient.execute({
-      sql: `UPDATE objetivos_calidad SET 
-              codigo = ?, descripcion = ?, meta = ?, responsable = ?,
-              fecha_inicio = ?, fecha_fin = ?, estado = ?
-            WHERE id = ?`,
-      args: [
-        codigo,
-        descripcion,
-        meta || null,
-        responsable || null,
-        fecha_inicio || null,
-        fecha_fin || null,
-        estado || 'activo',
-        id
-      ]
+      sql: 'DELETE FROM objetivos WHERE id = ? AND organization_id = ?',
+      args: [id, organizationId]
     });
 
-    const updatedObjetivoResult = await tursoClient.execute({
-      sql: 'SELECT * FROM objetivos_calidad WHERE id = ?',
-      args: [id]
-    });
-
-    res.json(updatedObjetivoResult.rows[0]);
+    console.log(`✅ Objetivo eliminado exitosamente: ${id}`);
+    res.json({ message: 'Objetivo eliminado exitosamente' });
   } catch (error) {
-    next(error);
-  }
-});
-
-// DELETE /api/objetivos-calidad/:id - Eliminar un objetivo de calidad
-router.delete('/:id', async (req, res, next) => {
-  const { id } = req.params;
-  try {
-    const result = await tursoClient.execute({
-      sql: 'DELETE FROM objetivos_calidad WHERE id = ?',
-      args: [id]
-    });
-
-    if (result.rowsAffected === 0) {
-      const err = new Error('Objetivo de calidad no encontrado');
-      err.statusCode = 404;
-      return next(err);
-    }
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// GET /api/objetivos-calidad/estado/:estado - Obtener objetivos por estado
-router.get('/estado/:estado', async (req, res, next) => {
-  const { estado } = req.params;
-  try {
-    const result = await tursoClient.execute({
-      sql: 'SELECT * FROM objetivos_calidad WHERE estado = ? ORDER BY fecha_creacion DESC',
-      args: [estado]
-    });
-
-    res.json(result.rows);
-  } catch (error) {
-    next(error);
+    console.error('❌ Error al eliminar objetivo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

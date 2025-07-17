@@ -1,161 +1,228 @@
 import { Router } from 'express';
-import { tursoClient } from '../lib/tursoClient.js';
 import multer from 'multer';
-import { ensureTenant, secureQuery, requireRole } from '../middleware/tenantMiddleware.js';
-import { auditCreateDocument, auditUpdateDocument, auditDeleteDocument, auditDownloadDocument } from '../middleware/auditMiddleware.js';
-
-// Configurar Multer para manejar la subida de archivos en memoria
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+import path from 'path';
+import { tursoClient } from '../lib/tursoClient.js';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const router = Router();
 
-// Aplicar middleware de tenant a todas las rutas
-router.use(ensureTenant);
+// --- Configuración de Multer para la subida de archivos ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// --- RUTAS CRUD PARA DOCUMENTOS ---
+// Crear directorio si no existe
+const uploadsDir = path.join(__dirname, '../uploads/documentos');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-// 1. OBTENER TODOS LOS DOCUMENTOS (METADATA SOLAMENTE)
+// Ubicación donde se guardarán los archivos subidos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Crear un nombre de archivo único para evitar colisiones
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB máximo
+  }
+});
+
+// --- Rutas de la API ---
+
+// GET /api/documentos - Listar todos los documentos de una organización
 router.get('/', async (req, res) => {
   try {
-    // Usar secureQuery para filtrar por organización
-    const result = await secureQuery(
-      'SELECT id, titulo, version, descripcion, fecha_creacion, archivo_nombre, archivo_mime_type FROM documentos WHERE organization_id = ? ORDER BY fecha_creacion DESC',
-      [req.user.organization_id]
-    );
-    res.json(result.rows);
+    const organization_id = req.user?.organization_id;
+    if (!organization_id) {
+      return res.status(400).json({ message: 'La organización del usuario no fue encontrada.' });
+    }
+
+    const result = await tursoClient.execute({
+      sql: 'SELECT * FROM documentos WHERE organization_id = ? ORDER BY created_at DESC',
+      args: [organization_id],
+    });
+
+    // Convertir BigInt a Number en los resultados
+    const documentos = result.rows.map(row => ({
+      ...row,
+      id: row.id ? Number(row.id) : null,
+      organization_id: row.organization_id ? Number(row.organization_id) : null,
+      tamaño: row.tamaño ? Number(row.tamaño) : null
+    }));
+
+    res.status(200).json(documentos);
   } catch (error) {
     console.error('Error al obtener documentos:', error);
-    res.status(500).json({ message: 'Error interno del servidor al obtener documentos' });
+    res.status(500).json({ message: 'Error interno del servidor al obtener documentos.' });
   }
 });
 
-// 2. OBTENER UN DOCUMENTO POR ID (METADATA SOLAMENTE)
+// GET /api/documentos/:id - Obtener un documento específico
 router.get('/:id', async (req, res) => {
-  const { id } = req.params;
   try {
-    const result = await secureQuery(
-      'SELECT id, titulo, version, descripcion, fecha_creacion, archivo_nombre, archivo_mime_type FROM documentos WHERE id = ? AND organization_id = ?',
-      [id, req.user.organization_id]
-    );
+    const { id } = req.params;
+    const organization_id = req.user?.organization_id;
+
+    const result = await tursoClient.execute({
+      sql: 'SELECT * FROM documentos WHERE id = ? AND organization_id = ?',
+      args: [id, organization_id],
+    });
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Documento no encontrado.' });
+      return res.status(404).json({ message: 'Documento no encontrado' });
     }
 
-    res.json(result.rows[0]);
+    const documento = result.rows[0];
+    // Convertir BigInt a Number
+    const documentoFormateado = {
+      ...documento,
+      id: documento.id ? Number(documento.id) : null,
+      organization_id: documento.organization_id ? Number(documento.organization_id) : null,
+      tamaño: documento.tamaño ? Number(documento.tamaño) : null
+    };
+
+    res.status(200).json(documentoFormateado);
   } catch (error) {
-    console.error(`Error al obtener el documento ${id}:`, error);
-    res.status(500).json({ message: 'Error interno del servidor al obtener el documento' });
+    console.error('Error al obtener documento:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
-// 3. DESCARGAR UN ARCHIVO DE DOCUMENTO ESPECÍFICO
-router.get('/:id/download', auditDownloadDocument, async (req, res) => {
-  const { id } = req.params;
+// POST /api/documentos - Subir un nuevo documento
+router.post('/', upload.single('archivo'), async (req, res) => {
   try {
-    const result = await secureQuery(
-      'SELECT archivo_nombre, archivo_mime_type, archivo_contenido FROM documentos WHERE id = ? AND organization_id = ?',
-      [id, req.user.organization_id]
-    );
+    console.log('📤 POST /api/documentos - Iniciando...');
+    console.log('📋 Body recibido:', req.body);
+    console.log('📁 Archivo recibido:', req.file ? req.file.originalname : 'NO HAY ARCHIVO');
+    console.log('👤 Usuario:', req.user);
+    
+    const { titulo, descripcion, version } = req.body;
+    const organization_id = req.user?.organization_id;
 
-    if (result.rows.length === 0 || !result.rows[0].archivo_contenido) {
-      return res.status(404).json({ message: 'Archivo no encontrado o el documento no tiene contenido.' });
+    // Validaciones básicas
+    if (!titulo || !req.file) {
+      console.log('❌ Validación fallida: título o archivo faltante');
+      return res.status(400).json({ message: 'El título y el archivo son requeridos.' });
+    }
+    if (!organization_id) {
+      console.log('❌ Validación fallida: organization_id faltante');
+      return res.status(400).json({ message: 'La organización del usuario no fue encontrada.' });
     }
 
-    const doc = result.rows[0];
-    const nombreArchivo = doc.archivo_nombre || 'documento.bin';
-    const mimeType = doc.archivo_mime_type || 'application/octet-stream';
+    const archivo = req.file;
+    const archivo_nombre = archivo.originalname;
+    const archivo_path = archivo.filename; // Solo guardamos el nombre del archivo, no la ruta completa
+    const tipo_archivo = archivo.mimetype;
+    const tamaño = archivo.size;
 
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
-    res.send(doc.archivo_contenido);
-
-  } catch (error) {
-    console.error(`Error al descargar el archivo del documento ${id}:`, error);
-    res.status(500).json({ message: 'Error interno del servidor al descargar el archivo' });
-  }
-});
-
-// 4. CREAR UN NUEVO DOCUMENTO (CON ARCHIVO) - Solo admins y managers
-router.post('/', requireRole('manager'), auditCreateDocument, upload.single('archivo'), async (req, res) => {
-  const { titulo, version, descripcion } = req.body;
-  const archivo = req.file;
-
-  if (!titulo || !version) {
-    return res.status(400).json({ message: 'Los campos título y versión son obligatorios.' });
-  }
-
-  if (!archivo) {
-    return res.status(400).json({ message: 'Se requiere un archivo para crear el documento.' });
-  }
-
-  try {
-    await tursoClient.execute({
-      sql: `
-        INSERT INTO documentos (titulo, version, descripcion, archivo_nombre, archivo_mime_type, archivo_contenido, organization_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
-      `,
-      args: [titulo, version, descripcion || null, archivo.originalname, archivo.mimetype, archivo.buffer, req.user.organization_id]
+    console.log('💾 Intentando guardar en BD:', {
+      titulo, descripcion, version, archivo_nombre, archivo_path, tipo_archivo, tamaño, organization_id
     });
-    res.status(201).json({ message: 'Documento creado exitosamente.' });
+
+    const result = await tursoClient.execute({
+      sql: `INSERT INTO documentos (titulo, nombre, descripcion, version, archivo_nombre, archivo_path, tipo_archivo, tamaño, organization_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [titulo, titulo, descripcion || '', version || '1.0', archivo_nombre, archivo_path, tipo_archivo, tamaño, organization_id],
+    });
+
+    console.log('✅ Documento guardado con ID:', result.lastInsertRowid);
+
+    // Convertir BigInt a Number para evitar error de serialización
+    const documentoId = Number(result.lastInsertRowid);
+
+    res.status(201).json({ 
+      message: 'Documento creado exitosamente', 
+      id: documentoId,
+      titulo,
+      archivo_nombre
+    });
   } catch (error) {
-    console.error('Error al crear el documento:', error);
-    res.status(500).json({ message: 'Error interno del servidor al crear el documento' });
+    console.error('❌ Error al crear documento:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ message: 'Error interno del servidor al crear el documento.' });
   }
 });
 
-// 5. ACTUALIZAR UN DOCUMENTO - Solo admins y managers
-router.put('/:id', requireRole('manager'), auditUpdateDocument, upload.single('archivo'), async (req, res) => {
-  const { id } = req.params;
-  const { titulo, version, descripcion } = req.body;
-  const archivo = req.file;
-
-  if (!titulo || !version) {
-    return res.status(400).json({ message: 'Los campos título y versión son obligatorios.' });
-  }
-
+// GET /api/documentos/:id/download - Descargar un documento
+router.get('/:id/download', async (req, res) => {
   try {
-    if (archivo) {
-      // Si se sube un nuevo archivo, actualizar todo
-      await tursoClient.execute({
-        sql: `
-          UPDATE documentos
-          SET titulo = ?, version = ?, descripcion = ?, archivo_nombre = ?, archivo_mime_type = ?, archivo_contenido = ?
-          WHERE id = ? AND organization_id = ?;
-        `,
-        args: [titulo, version, descripcion || null, archivo.originalname, archivo.mimetype, archivo.buffer, id, req.user.organization_id]
-      });
-    } else {
-      // Si no se sube archivo, actualizar solo los metadatos
-      await tursoClient.execute({
-        sql: `
-          UPDATE documentos
-          SET titulo = ?, version = ?, descripcion = ?
-          WHERE id = ? AND organization_id = ?;
-        `,
-        args: [titulo, version, descripcion || null, id, req.user.organization_id]
-      });
+    const { id } = req.params;
+    const organization_id = req.user?.organization_id;
+
+    // Obtener información del documento
+    const result = await tursoClient.execute({
+      sql: 'SELECT * FROM documentos WHERE id = ? AND organization_id = ?',
+      args: [id, organization_id],
+    });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
     }
-    res.json({ message: 'Documento actualizado exitosamente.' });
+
+    const documento = result.rows[0];
+    const filePath = path.join(uploadsDir, documento.archivo_path);
+
+    // Verificar que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Archivo no encontrado en el servidor' });
+    }
+
+    // Enviar el archivo
+    res.download(filePath, documento.archivo_nombre);
   } catch (error) {
-    console.error(`Error al actualizar el documento ${id}:`, error);
-    res.status(500).json({ message: 'Error interno del servidor al actualizar el documento' });
+    console.error('Error al descargar documento:', error);
+    res.status(500).json({ message: 'Error al descargar el documento' });
   }
 });
 
-// 6. ELIMINAR UN DOCUMENTO - Solo admins
-router.delete('/:id', requireRole('admin'), auditDeleteDocument, async (req, res) => {
-  const { id } = req.params;
+// DELETE /api/documentos/:id - Eliminar un documento
+router.delete('/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    const organization_id = req.user?.organization_id;
+
+    // Primero obtener el documento para eliminar el archivo
+    const selectResult = await tursoClient.execute({
+      sql: 'SELECT archivo_path FROM documentos WHERE id = ? AND organization_id = ?',
+      args: [id, organization_id],
+    });
+
+    if (selectResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
+    }
+
+    const documento = selectResult.rows[0];
+
+    // Eliminar el archivo físico
+    try {
+      const filePath = path.join(uploadsDir, documento.archivo_path);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (fileError) {
+      console.error('Error al eliminar archivo físico:', fileError);
+      // Continuar con la eliminación del registro aunque falle el archivo
+    }
+
+    // Eliminar el registro de la base de datos
     await tursoClient.execute({
       sql: 'DELETE FROM documentos WHERE id = ? AND organization_id = ?',
-      args: [id, req.user.organization_id]
+      args: [id, organization_id],
     });
-    res.status(204).send(); // 204 No Content
+
+    res.status(200).json({ message: 'Documento eliminado exitosamente' });
   } catch (error) {
-    console.error(`Error al eliminar el documento ${id}:`, error);
-    res.status(500).json({ message: 'Error interno del servidor al eliminar el documento' });
+    console.error('Error al eliminar documento:', error);
+    res.status(500).json({ message: 'Error al eliminar el documento' });
   }
 });
 

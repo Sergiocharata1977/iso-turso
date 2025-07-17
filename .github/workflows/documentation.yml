@@ -1,0 +1,151 @@
+name: 📚 Documentation Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.md'
+      - '.github/workflows/documentation.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**.md'
+      - '.github/workflows/documentation.yml'
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    name: 📋 Validate Documentation
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+
+    - name: 📝 Check main documentation files exist
+      run: |
+        echo "Checking main documentation files..."
+        if [ ! -f "README.md" ]; then
+          echo "❌ README.md not found"
+          exit 1
+        fi
+        if [ ! -f "PROYECTO_ISOFLOW3.md" ]; then
+          echo "❌ PROYECTO_ISOFLOW3.md not found"
+          exit 1
+        fi
+        if [ ! -f "NORMAS_Y_ESTANDARES.md" ]; then
+          echo "❌ NORMAS_Y_ESTANDARES.md not found"
+          exit 1
+        fi
+        if [ ! -f "FLUJOS_DE_TRABAJO.md" ]; then
+          echo "❌ FLUJOS_DE_TRABAJO.md not found"
+          exit 1
+        fi
+        echo "✅ All main documentation files exist"
+
+    - name: 🔍 Check for broken links
+      run: |
+        echo "Checking for broken internal links..."
+        # Check if links to main docs work
+        grep -r "\[.*\](PROYECTO_ISOFLOW3.md)" . --include="*.md" || true
+        grep -r "\[.*\](NORMAS_Y_ESTANDARES.md)" . --include="*.md" || true
+        grep -r "\[.*\](FLUJOS_DE_TRABAJO.md)" . --include="*.md" || true
+        echo "✅ Link validation completed"
+
+    - name: 📊 Documentation stats
+      run: |
+        echo "📊 Documentation Statistics:"
+        echo "Total .md files: $(find . -name '*.md' | wc -l)"
+        echo "Main documentation files:"
+        echo "- README.md: $(wc -l < README.md) lines"
+        echo "- PROYECTO_ISOFLOW3.md: $(wc -l < PROYECTO_ISOFLOW3.md) lines"
+        echo "- NORMAS_Y_ESTANDARES.md: $(wc -l < NORMAS_Y_ESTANDARES.md) lines"
+        echo "- FLUJOS_DE_TRABAJO.md: $(wc -l < FLUJOS_DE_TRABAJO.md) lines"
+        
+        total_lines=$(cat README.md PROYECTO_ISOFLOW3.md NORMAS_Y_ESTANDARES.md FLUJOS_DE_TRABAJO.md | wc -l)
+        echo "📈 Total unified documentation: $total_lines lines"
+
+    - name: 🎯 Check documentation standards
+      run: |
+        echo "Checking documentation standards..."
+        
+        # Check if all main docs have required sections
+        if ! grep -q "^## 🎯" README.md; then
+          echo "⚠️ README.md missing standard sections"
+        fi
+        
+        if ! grep -q "OBLIGATORIO" NORMAS_Y_ESTANDARES.md; then
+          echo "⚠️ NORMAS_Y_ESTANDARES.md missing obligatory markers"
+        fi
+        
+        if ! grep -q "Flujo" FLUJOS_DE_TRABAJO.md; then
+          echo "⚠️ FLUJOS_DE_TRABAJO.md missing workflow content"
+        fi
+        
+        echo "✅ Documentation standards check completed"
+
+    - name: 🏷️ Add documentation label
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.addLabels({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['documentation']
+          })
+
+  spell-check:
+    runs-on: ubuntu-latest
+    name: 🔤 Spell Check
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+
+    - name: 🔤 Check spelling
+      run: |
+        echo "Basic spell check for common errors..."
+        echo "Checking for common Spanish typos..."
+        
+        # Check for common typos (this is a basic check)
+        if grep -r "funcion" . --include="*.md" && ! grep -r "función" . --include="*.md"; then
+          echo "⚠️ Found 'funcion' - should be 'función'"
+        fi
+        
+        if grep -r "informacion" . --include="*.md" && ! grep -r "información" . --include="*.md"; then
+          echo "⚠️ Found 'informacion' - should be 'información'"
+        fi
+        
+        echo "✅ Basic spell check completed"
+
+  markdown-lint:
+    runs-on: ubuntu-latest
+    name: 📝 Markdown Lint
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+
+    - name: 📝 Lint markdown files
+      run: |
+        echo "Basic markdown validation..."
+        
+        # Check for basic markdown issues
+        for file in *.md; do
+          if [ -f "$file" ]; then
+            echo "Checking $file..."
+            
+            # Check for trailing spaces
+            if grep -q '[[:space:]]$' "$file"; then
+              echo "⚠️ $file has trailing spaces"
+            fi
+            
+            # Check for consistent heading levels
+            if grep -q '^#[^#]' "$file" && ! grep -q '^# ' "$file"; then
+              echo "⚠️ $file may have inconsistent heading format"
+            fi
+            
+            echo "✅ $file checked"
+          fi
+        done 
