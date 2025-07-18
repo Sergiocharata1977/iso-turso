@@ -169,7 +169,7 @@ export const login = async (req, res) => {
       console.log('  [❌ ERROR] Usuario no encontrado en la base de datos.');
       return res.status(401).json({ 
         success: false, 
-        message: 'Credenciales inválidas' 
+        message: 'El email ingresado no está registrado en el sistema' 
       });
     }
 
@@ -185,7 +185,7 @@ export const login = async (req, res) => {
       console.log('  [❌ ERROR] La contraseña no coincide.');
       return res.status(401).json({ 
         success: false, 
-        message: 'Credenciales inválidas' 
+        message: 'La contraseña ingresada es incorrecta' 
       });
     }
 

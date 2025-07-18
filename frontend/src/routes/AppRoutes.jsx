@@ -45,6 +45,10 @@ const VerificacionesPage = lazy(() => import("../pages/VerificacionesPage"));
 const UsersPage = lazy(() => import("../pages/UsersPage"));
 const UsuariosSingle = lazy(() => import("../pages/UsuariosSingle"));
 
+// Administración
+const SuperAdminPage = lazy(() => import("../pages/Admin/SuperAdminPage"));
+const OrganizationAdminPage = lazy(() => import("../pages/Admin/OrganizationAdminPage"));
+
 // Componentes usados como páginas (desde components)
 const DepartamentosPage = lazy(() => import("../components/departamentos/DepartamentosListing"));
 const PuestosPage = lazy(() => import("../components/puestos/PuestosListing"));
@@ -157,6 +161,8 @@ const AppRoutes = () => {
                   {/* Administración */}
                   <Route path="usuarios" element={<UsersPage />} />
                   <Route path="usuarios-single" element={<UsuariosSingle />} />
+                  <Route path="admin/super" element={<SuperAdminPage />} />
+                  <Route path="admin/organization" element={<OrganizationAdminPage />} />
                   <Route path="competencias" element={<CompetenciasPage />} />
                   <Route path="evalcompe-programacion" element={<EvalcompeProgramacionPage />} />
 

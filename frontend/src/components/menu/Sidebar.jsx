@@ -22,7 +22,8 @@ import {
   User,
   ListChecks,
   Activity,
-  Target
+  Target,
+  Package
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 
@@ -146,6 +147,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       color: 'blue',
       items: [
         { name: 'Procesos', path: '/procesos', icon: ClipboardCheck },
+        { name: 'Productos y Servicios', path: '/productos', icon: Package },
         { name: 'Objetivos de calidad', path: '/objetivos-calidad', icon: Briefcase },
         { name: 'Indicadores de calidad', path: '/indicadores-calidad', icon: GraduationCap },
         { name: 'Mediciones', path: '/mediciones', icon: Users },
@@ -159,6 +161,29 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       items: [
         { name: 'Hallazgos', path: '/hallazgos', icon: ClipboardCheck },
         { name: 'Acciones', path: '/acciones', icon: Briefcase },
+      ]
+    },
+    {
+      id: 'administracion',
+      name: 'Administración',
+      icon: Settings,
+      color: 'orange',
+      items: [
+        { 
+          name: 'Super Administrador', 
+          path: '/admin/super', 
+          icon: Settings, 
+          role: 'super_admin',
+          show: () => user?.role === 'super_admin'
+        },
+        { 
+          name: 'Admin de Organización', 
+          path: '/admin/organization', 
+          icon: Building, 
+          role: 'admin',
+          show: () => ['admin', 'super_admin'].includes(user?.role)
+        },
+        { name: 'Usuarios', path: '/usuarios', icon: Users },
       ]
     },
   ];
@@ -209,7 +234,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
                   <div className="flex items-center gap-2">
                     {Array.isArray(department.items) && department.items.length > 0 && (
                       <Badge variant="secondary" className="text-xs bg-slate-700 text-slate-300">
-                        {department.items.length}
+                        {department.items.filter(item => !item.show || item.show()).length}
                       </Badge>
                     )}
                     {isExpanded ? (
@@ -232,6 +257,11 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
                     >
                       <div className="ml-4 space-y-1 border-l-2 border-slate-700 pl-4">
                         {department.items.map((item) => {
+                          // Filtrar items basado en el rol del usuario
+                          if (item.show && !item.show()) {
+                            return null; // No mostrar este item
+                          }
+
                           const isActive = location.pathname === item.path;
                           const itemColorClasses = getColorClasses(department.color, isActive);
 
@@ -267,6 +297,11 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
                                     >
                                       <div className="ml-4 space-y-1 border-l-2 border-slate-700 pl-4">
                                         {item.items.map((subItem) => {
+                                          // Filtrar subitems basado en el rol del usuario
+                                          if (subItem.show && !subItem.show()) {
+                                            return null; // No mostrar este subitem
+                                          }
+
                                           const subItemIsActive = location.pathname === subItem.path;
                                           const subItemColorClasses = getColorClasses(department.color, subItemIsActive);
                                           return (
@@ -284,7 +319,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
                                               {subItem.name}
                                             </Button>
                                           );
-                                        })}
+                                        }).filter(Boolean)} {/* Filtrar elementos null */}
                                       </div>
                                     </motion.div>
                                   )}
@@ -308,7 +343,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
                               </Button>
                             );
                           }
-                        })}
+                        }).filter(Boolean)} {/* Filtrar elementos null */}
                       </div>
                     </motion.div>
                   )}

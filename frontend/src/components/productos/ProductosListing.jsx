@@ -127,19 +127,21 @@ function ProductosListing() {
   };
 
   const getEstadoBadge = (estado) => {
-    const variants = {
-      'Activo': 'success',
-      'En Desarrollo': 'secondary',
-      'Obsoleto': 'destructive',
+    const estadosISO = {
+      'Borrador': { variant: 'secondary', icon: <Clock className="h-3 w-3 mr-1" />, color: 'text-gray-600' },
+      'En Revisión': { variant: 'outline', icon: <AlertCircle className="h-3 w-3 mr-1" />, color: 'text-yellow-600' },
+      'Pendiente Aprobación': { variant: 'outline', icon: <AlertCircle className="h-3 w-3 mr-1" />, color: 'text-orange-600' },
+      'Aprobado': { variant: 'default', icon: <CheckCircle2 className="h-3 w-3 mr-1" />, color: 'text-green-600' },
+      'Activo': { variant: 'success', icon: <CheckCircle2 className="h-3 w-3 mr-1" />, color: 'text-blue-600' },
+      'En Modificación': { variant: 'outline', icon: <Pencil className="h-3 w-3 mr-1" />, color: 'text-purple-600' },
+      'Descontinuado': { variant: 'destructive', icon: <XCircle className="h-3 w-3 mr-1" />, color: 'text-red-600' }
     };
-    const icons = {
-      'Activo': <CheckCircle2 className="h-3 w-3 mr-1" />,
-      'En Desarrollo': <Clock className="h-3 w-3 mr-1" />,
-      'Obsoleto': <XCircle className="h-3 w-3 mr-1" />,
-    };
+    
+    const estadoConfig = estadosISO[estado] || estadosISO['Borrador'];
+    
     return (
-      <Badge variant={variants[estado] || 'outline'}>
-        {icons[estado] || <AlertCircle className="h-3 w-3 mr-1" />}
+      <Badge variant={estadoConfig.variant} className={estadoConfig.color}>
+        {estadoConfig.icon}
         {estado || 'Indefinido'}
       </Badge>
     );
