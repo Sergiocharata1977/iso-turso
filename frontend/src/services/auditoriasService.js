@@ -146,3 +146,44 @@ export const auditoriasService = {
     ];
   }
 };
+
+// Funciones de relaciones de auditorías
+export const getRelaciones = async (auditoriaId) => {
+  try {
+    const response = await apiService.get(`/auditorias/${auditoriaId}/relaciones`);
+    return response.data;
+  } catch (error) {
+    console.error('Error obteniendo relaciones:', error);
+    throw error;
+  }
+};
+
+export const addRelacion = async (auditoriaId, relacionData) => {
+  try {
+    const response = await apiService.post(`/auditorias/${auditoriaId}/relaciones`, relacionData);
+    return response.data;
+  } catch (error) {
+    console.error('Error agregando relación:', error);
+    throw error;
+  }
+};
+
+export const deleteRelacion = async (relacionId) => {
+  try {
+    const response = await apiService.delete(`/auditorias/relaciones/${relacionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error eliminando relación:', error);
+    throw error;
+  }
+};
+
+export const getRegistrosRelacionables = async (tipo) => {
+  try {
+    const response = await apiService.get(`/auditorias/registros-relacionables/${tipo}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error obteniendo registros relacionables:', error);
+    throw error;
+  }
+};

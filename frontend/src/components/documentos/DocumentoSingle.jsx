@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, FileDown, Edit, Info, FileText, Tag, Calendar, Hash } from 'lucide-react';
-import documentosService from '../../services/documentosService';
+import { documentosService } from '../../services/documentosService';
 import { useTheme } from '../../context/ThemeContext';
 
 const DocumentoSingle = () => {

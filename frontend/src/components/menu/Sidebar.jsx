@@ -21,7 +21,8 @@ import {
   Award,
   User,
   ListChecks,
-  Activity
+  Activity,
+  Target
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 
@@ -71,6 +72,12 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
         text: isActive ? 'text-white' : 'text-slate-200',
         icon: isActive ? 'text-white' : 'text-purple-400',
         border: isActive ? 'border-l-4 border-purple-500' : ''
+      },
+      orange: {
+        bg: isActive ? 'bg-orange-700' : 'hover:bg-orange-800',
+        text: isActive ? 'text-white' : 'text-slate-200',
+        icon: isActive ? 'text-white' : 'text-orange-400',
+        border: isActive ? 'border-l-4 border-orange-500' : ''
       }
     };
     return colors[color] || colors.emerald;
@@ -78,6 +85,28 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
 
   // Definir departmentModules antes del return
   const departmentModules = [
+    {
+      id: 'planificacion-revision',
+      name: 'Planificación y Revisión',
+      icon: Target,
+      color: 'orange',
+      items: [
+        { name: 'Planificación Estratégica', path: '/planificacion-estrategica', icon: Target },
+        { name: 'Revisión por la Dirección', path: '/revision-direccion', icon: BarChart3 },
+        { name: 'Objetivos y Metas', path: '/objetivos-metas', icon: TrendingUp },
+      ]
+    },
+    {
+      id: 'auditorias',
+      name: 'Auditorías',
+      icon: BarChart3,
+      color: 'blue',
+      items: [
+        { name: 'Auditorías Internas', path: '/auditorias', icon: BarChart3 },
+        { name: 'Programa de Auditorías', path: '/programa-auditorias', icon: Calendar },
+        { name: 'Hallazgos de Auditoría', path: '/hallazgos-auditoria', icon: ClipboardCheck },
+      ]
+    },
     {
       id: 'recursos-humanos',
       name: 'Recursos Humanos',
@@ -151,18 +180,6 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
             <p className="text-sm text-slate-400">Sistema de Gestión ISO 9001</p>
           </div>
         </div>
-      </div>
-
-      {/* Acceso directo a Auditorías */}
-      <div className="px-4 pt-4">
-        <Button
-          variant={location.pathname === '/auditorias' ? 'secondary' : 'ghost'}
-          onClick={() => handleNavigation('/auditorias')}
-          className={`w-full flex items-center gap-3 p-3 h-auto rounded-lg mb-2 ${location.pathname === '/auditorias' ? 'bg-blue-700 text-white' : ''}`}
-        >
-          <BarChart3 className="h-5 w-5" />
-          <span className="font-medium">Auditorías</span>
-        </Button>
       </div>
 
       {/* Navigation */}
@@ -302,18 +319,6 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
         </div>
       </nav>
 
-      {/* Acceso directo a Planificación y Dirección */}
-      <div className="px-4 pb-2">
-        <Button
-          variant={location.pathname === '/planificacion-revision' ? 'secondary' : 'ghost'}
-          onClick={() => handleNavigation('/planificacion-revision')}
-          className={`w-full flex items-center gap-3 p-3 h-auto rounded-lg mb-2 ${location.pathname === '/planificacion-revision' ? 'bg-purple-700 text-white' : ''}`}
-        >
-          <ClipboardCheck className="h-5 w-5" />
-          <span className="font-medium">Planificación y Dirección</span>
-        </Button>
-      </div>
-
       {/* Acceso directo a Documentación */}
       <div className="px-4 pb-4">
         <Button
@@ -325,7 +330,6 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           <span className="font-medium">Documentación</span>
         </Button>
       </div>
-
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-700">

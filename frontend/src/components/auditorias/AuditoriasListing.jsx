@@ -12,10 +12,12 @@ import {
   BarChart3
 } from 'lucide-react';
 import { auditoriasService } from '../../services/auditoriasService.js';
+import { departamentosService } from '../../services/departamentos.js';
 import { Button } from '../ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card.jsx';
 import { Badge } from '../ui/badge.jsx';
 import { useNavigate } from 'react-router-dom';
+import AuditoriaModal from './AuditoriaModal.jsx';
 
 // ===============================================
 // COMPONENTE DE LISTADO DE AUDITORÍAS - SGC PRO
@@ -23,9 +25,12 @@ import { useNavigate } from 'react-router-dom';
 
 const AuditoriasListing = () => {
   const [auditorias, setAuditorias] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban', 'grid', 'list'
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingAuditoria, setEditingAuditoria] = useState(null);
   const navigate = useNavigate();
 
   // Estados de auditoría
@@ -39,19 +44,69 @@ const AuditoriasListing = () => {
   };
 
   useEffect(() => {
-    loadAuditorias();
+    loadData();
   }, []);
 
-  const loadAuditorias = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const response = await auditoriasService.getAll();
-      setAuditorias(response.data || []);
+      
+      // Cargar auditorías y departamentos en paralelo
+      const [auditoriasRes, departamentosRes] = await Promise.all([
+        auditoriasService.getAll(),
+        departamentosService.getAll()
+      ]);
+
+      setAuditorias(auditoriasRes.data || []);
+      
+      // Procesar departamentos
+      let departamentosData = [];
+      if (departamentosRes?.data) {
+        departamentosData = departamentosRes.data;
+      } else if (Array.isArray(departamentosRes)) {
+        departamentosData = departamentosRes;
+      } else if (departamentosRes?.success && departamentosRes?.data) {
+        departamentosData = departamentosRes.data;
+      }
+      
+      setDepartamentos(departamentosData);
+      
+      console.log('📊 Datos cargados:', {
+        auditorias: auditoriasRes.data?.length || 0,
+        departamentos: departamentosData.length
+      });
+      
     } catch (err) {
-      console.error('Error cargando auditorías:', err);
-      setError('Error al cargar las auditorías');
+      console.error('Error cargando datos:', err);
+      setError('Error al cargar los datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Función para obtener nombres de departamentos desde áreas
+  const getAreaNames = (areas) => {
+    if (!areas) return 'Sin área';
+    
+    try {
+      // Si es string, intentar parsear como JSON
+      const areasArray = typeof areas === 'string' ? JSON.parse(areas) : areas;
+      
+      if (areasArray.includes('todos')) {
+        return 'Todos los departamentos';
+      }
+      
+      const areaNames = areasArray
+        .map(areaId => {
+          const depto = departamentos.find(d => d.id?.toString() === areaId?.toString());
+          return depto?.nombre || `Departamento ${areaId}`;
+        })
+        .filter(name => name);
+      
+      return areaNames.length > 0 ? areaNames.join(', ') : 'Sin área';
+    } catch (error) {
+      console.error('Error parseando áreas:', error);
+      return areas; // Devolver el valor original si no se puede parsear
     }
   };
 
@@ -59,11 +114,36 @@ const AuditoriasListing = () => {
     if (window.confirm('¿Estás seguro de que quieres eliminar esta auditoría?')) {
       try {
         await auditoriasService.delete(id);
-        await loadAuditorias();
+        await loadData(); // Reload data after deletion
       } catch (err) {
         console.error('Error eliminando auditoría:', err);
         alert('Error al eliminar la auditoría');
       }
+    }
+  };
+
+  const handleOpenModal = (auditoria = null) => {
+    setEditingAuditoria(auditoria);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingAuditoria(null);
+  };
+
+  const handleSaveAuditoria = async (formData) => {
+    try {
+      if (editingAuditoria) {
+        await auditoriasService.update(editingAuditoria.id, formData);
+      } else {
+        await auditoriasService.create(formData);
+      }
+      await loadData(); // Reload data after saving
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error guardando auditoría:', error);
+      throw error;
     }
   };
 
@@ -112,7 +192,7 @@ const AuditoriasListing = () => {
             <div className="flex items-center text-sm text-sgc-700">
               <Target className="w-4 h-4 mr-2 text-sgc-500" />
               <span className="font-medium">Área:</span>
-              <span className="ml-1">{auditoria.area}</span>
+              <span className="ml-1">{getAreaNames(auditoria.area)}</span>
             </div>
             
             <div className="flex items-center text-sm text-sgc-700">
@@ -231,7 +311,7 @@ const AuditoriasListing = () => {
                 <div className="flex items-center space-x-4 text-sm text-sgc-700">
                   <div className="flex items-center">
                     <Target className="w-4 h-4 mr-1" />
-                    {auditoria.area}
+                    {getAreaNames(auditoria.area)}
                   </div>
                   <div className="flex items-center">
                     <User className="w-4 h-4 mr-1" />
@@ -267,7 +347,7 @@ const AuditoriasListing = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate(`/auditorias/${auditoria.id}/editar`)}
+                    onClick={() => handleOpenModal(auditoria)}
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -354,7 +434,7 @@ const AuditoriasListing = () => {
           
           {/* Botón Nueva Auditoría */}
           <Button
-            onClick={() => navigate('/auditorias/nueva')}
+            onClick={() => handleOpenModal()}
             className="bg-sgc-600 hover:bg-sgc-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
@@ -369,6 +449,13 @@ const AuditoriasListing = () => {
         {viewMode === 'grid' && <GridView />}
         {viewMode === 'list' && <ListView />}
       </div>
+
+      <AuditoriaModal
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveAuditoria}
+        auditoria={editingAuditoria}
+      />
     </div>
   );
 };

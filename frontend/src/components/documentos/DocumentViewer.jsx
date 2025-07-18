@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Eye, Download, X, Maximize, FileText, AlertCircle } from 'lucide-react';
-import documentosService from '@/services/documentosService';
+import { documentosService } from '@/services/documentosService';
 import { useToast } from '@/components/ui/use-toast';
 
 /**

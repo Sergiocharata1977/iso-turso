@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { capacitacionesService } from "@/services/capacitacionesService";
 import CapacitacionModal from "./CapacitacionModal";
-import personalService from '@/services/personalService';
+import { personalService } from '@/services/personalService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

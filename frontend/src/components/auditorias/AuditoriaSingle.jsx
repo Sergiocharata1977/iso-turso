@@ -12,7 +12,8 @@ import {
   AlertCircle,
   Clock,
   Plus,
-  Trash2
+  Trash2,
+  Link
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { auditoriasService } from '../../services/auditoriasService.js';
@@ -20,6 +21,7 @@ import { Button } from '../ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card.jsx';
 import { Badge } from '../ui/badge.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.jsx';
+import AuditoriaRelaciones from './AuditoriaRelaciones.jsx';
 
 // ===============================================
 // COMPONENTE DE VISTA DETALLADA DE AUDITORÍA - SGC PRO
@@ -126,10 +128,10 @@ const AuditoriaSingle = () => {
           </Button>
           
           <div>
-            <h1 className="text-2xl font-bold text-sgc-800">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               {auditoria.codigo}
             </h1>
-            <p className="text-sgc-600">Single de Auditoría</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Detalle de Auditoría</p>
           </div>
         </div>
         
@@ -161,7 +163,7 @@ const AuditoriaSingle = () => {
               <Calendar className="w-8 h-8 text-sgc-500" />
               <div>
                 <p className="text-sm text-sgc-600">Fecha Programada</p>
-                <p className="font-semibold text-sgc-800">
+                <p className="font-semibold text-gray-900 dark:text-white">
                   {formatDate(auditoria.fecha_programada)}
                 </p>
               </div>
@@ -175,7 +177,7 @@ const AuditoriaSingle = () => {
               <User className="w-8 h-8 text-sgc-500" />
               <div>
                 <p className="text-sm text-sgc-600">Responsable</p>
-                <p className="font-semibold text-sgc-800">
+                <p className="font-semibold text-gray-900 dark:text-white">
                   {auditoria.responsable_nombre || 'No asignado'}
                 </p>
               </div>
@@ -207,7 +209,7 @@ const AuditoriaSingle = () => {
 
       {/* Pestañas de contenido */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-white border border-sgc-200">
+        <TabsList className="grid w-full grid-cols-4 bg-white border border-sgc-200">
           <TabsTrigger 
             value="planificacion"
             className="data-[state=active]:bg-sgc-600 data-[state=active]:text-white"
@@ -219,6 +221,12 @@ const AuditoriaSingle = () => {
             className="data-[state=active]:bg-sgc-600 data-[state=active]:text-white"
           >
             Procesos Auditados
+          </TabsTrigger>
+          <TabsTrigger 
+            value="relaciones"
+            className="data-[state=active]:bg-sgc-600 data-[state=active]:text-white"
+          >
+            Relaciones
           </TabsTrigger>
           <TabsTrigger 
             value="historial"
@@ -234,7 +242,7 @@ const AuditoriaSingle = () => {
             {/* Información General */}
             <Card className="bg-white border border-sgc-200">
               <CardHeader>
-                <CardTitle className="flex items-center text-sgc-800">
+                <CardTitle className="flex items-center text-gray-900 dark:text-white">
                   <FileText className="w-5 h-5 mr-2" />
                   Información General
                 </CardTitle>
@@ -242,30 +250,30 @@ const AuditoriaSingle = () => {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-sgc-700">Área</label>
-                  <p className="text-sgc-800">{auditoria.area}</p>
+                  <p className="text-gray-900 dark:text-white">{auditoria.area}</p>
                 </div>
                 
                 <div>
                   <label className="text-sm font-medium text-sgc-700">Objetivos</label>
-                  <p className="text-sgc-800">{auditoria.objetivos || 'No definidos'}</p>
+                  <p className="text-gray-900 dark:text-white">{auditoria.objetivos || 'No definidos'}</p>
                 </div>
                 
                 <div>
                   <label className="text-sm font-medium text-sgc-700">Fecha de Creación</label>
-                  <p className="text-sgc-800">{formatDate(auditoria.created_at)}</p>
+                  <p className="text-gray-900 dark:text-white">{formatDate(auditoria.created_at)}</p>
                 </div>
                 
                 {auditoria.alcance && (
                   <div>
                     <label className="text-sm font-medium text-sgc-700">Alcance</label>
-                    <p className="text-sgc-800">{auditoria.alcance}</p>
+                    <p className="text-gray-900 dark:text-white">{auditoria.alcance}</p>
                   </div>
                 )}
                 
                 {auditoria.criterios && (
                   <div>
                     <label className="text-sm font-medium text-sgc-700">Criterios</label>
-                    <p className="text-sgc-800">{auditoria.criterios}</p>
+                    <p className="text-gray-900 dark:text-white">{auditoria.criterios}</p>
                   </div>
                 )}
               </CardContent>
@@ -275,7 +283,7 @@ const AuditoriaSingle = () => {
             <Card className="bg-white border border-sgc-200">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center text-sgc-800">
+                  <CardTitle className="flex items-center text-gray-900 dark:text-white">
                     <Target className="w-5 h-5 mr-2" />
                     Aspectos Procesos que se van a Auditar
                   </CardTitle>
@@ -366,6 +374,21 @@ const AuditoriaSingle = () => {
                   <p className="text-sgc-600">Contenido de ejecución en desarrollo...</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pestaña Relaciones */}
+        <TabsContent value="relaciones" className="space-y-6">
+          <Card className="bg-white border border-sgc-200">
+            <CardHeader>
+              <CardTitle className="flex items-center text-sgc-800">
+                <Link className="w-5 h-5 mr-2" />
+                Relaciones del Sistema
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AuditoriaRelaciones auditoriaId={id} />
             </CardContent>
           </Card>
         </TabsContent>

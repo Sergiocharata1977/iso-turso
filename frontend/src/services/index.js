@@ -2,7 +2,7 @@
 import auth from './auth.js';
 import departamentos from './departamentos.js';
 import puestos from './puestos.js';
-import personalService from './personalService.js';
+import { personalService } from './personalService.js';
 import auditoriasService from './auditoriasService.js';
 import indicadoresService from './indicadoresService.js';
 import medicionesService from './medicionesService.js';
@@ -13,7 +13,7 @@ import productosService from './productosService.js';
 import encuestasService from './encuestasService.js';
 import usuariosService from './usuariosService.js';
 
-import documentosService from './documentosService.js';
+import { documentosService } from './documentosService.js';
 import normasService from './normasService.js';
 import procesosService from './procesosService.js';
 import objetivosCalidadService from './objetivosCalidadService.js';

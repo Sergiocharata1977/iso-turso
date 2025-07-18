@@ -35,6 +35,9 @@ const ComunicacionesPage = lazy(() => import("../pages/ComunicacionesPage"));
 const MedicionesPage = lazy(() => import("../pages/MedicionesPage"));
 const ConfiguracionPage = lazy(() => import("../pages/ConfiguracionPage"));
 const PlanificacionDireccionPage = lazy(() => import("../pages/PlanificacionDireccionPage"));
+const PlanificacionEstrategicaPage = lazy(() => import("../pages/PlanificacionEstrategicaPage"));
+const RevisionDireccionPage = lazy(() => import("../pages/RevisionDireccionPage"));
+const ObjetivosMetasPage = lazy(() => import("../pages/ObjetivosMetasPage"));
 const TratamientosPage = lazy(() => import("../pages/TratamientosPage"));
 const VerificacionesPage = lazy(() => import("../pages/VerificacionesPage"));
 
@@ -112,6 +115,11 @@ const AppRoutes = () => {
                   <Route path="planificacion-revision" element={<PlanificacionDireccionPage />} />
                   <Route path="tratamientos" element={<TratamientosPage />} />
                   <Route path="verificaciones" element={<VerificacionesPage />} />
+                  
+                  {/* Planificación y Revisión */}
+                  <Route path="planificacion-estrategica" element={<PlanificacionEstrategicaPage />} />
+                  <Route path="revision-direccion" element={<RevisionDireccionPage />} />
+                  <Route path="objetivos-metas" element={<ObjetivosMetasPage />} />
                   
                   {/* Recursos Humanos */}
                   <Route path="departamentos" element={<DepartamentosPage />} />

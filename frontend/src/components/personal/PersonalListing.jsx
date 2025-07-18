@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2, User, Download, Filter, Grid, List, ArrowLeft, Mail, Phone, MapPin, Calendar, Building, Award, CheckCircle, AlertCircle, Clock, Users, Eye, UserCheck } from 'lucide-react';
-import personalService from '@/services/personalService';
+import { personalService } from '@/services/personalService';
 import PersonalModal from './PersonalModal';
 import PersonalTableView from './PersonalTableView';
 import PersonalCard from './PersonalCard';

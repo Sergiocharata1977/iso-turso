@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, User, Building, Award, Clock, CheckCircle, AlertCircle, Plus, Briefcase, GraduationCap, Star } from 'lucide-react';
-import personalService from '@/services/personalService';
+import { personalService } from '@/services/personalService';
 import { puestosService } from '@/services/puestosService';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/components/ui/use-toast";

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import documentosService from '@/services/documentosService';
+import { documentosService } from '@/services/documentosService';
 import DocumentoModal from './DocumentoModal';
 import { useAuth } from '@/context/AuthContext';
 

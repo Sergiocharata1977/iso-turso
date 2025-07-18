@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import evalcompeProgramacionService from '@/services/evalcompeProgramacionService';
 import competenciasService from '@/services/competenciasService';
-import personalService from '@/services/personalService';
+import { personalService } from '@/services/personalService';
 import { usuariosService } from '@/services/usuariosService';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
