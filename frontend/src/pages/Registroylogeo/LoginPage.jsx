@@ -10,6 +10,7 @@ import { authService } from '../../services/authService';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const { login: loginToStore } = useAuthStore();
   const navigate = useNavigate();
 
@@ -75,6 +76,7 @@ const LoginPage = () => {
     } catch (error) {
       console.error('💥 LoginPage - Error en login:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error de conexión. Intenta nuevamente.';
+      setLoginError(errorMessage);
       toast.error(errorMessage);
     }
   };
@@ -157,6 +159,13 @@ const LoginPage = () => {
                 <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
               )}
             </div>
+
+            {/* Error Message */}
+            {loginError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {loginError}
+              </div>
+            )}
 
             {/* Submit Button */}
             <div>

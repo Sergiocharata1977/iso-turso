@@ -97,4 +97,4 @@ const personalService = {
   }
 };
 
-export default personalService;
+export { personalService };

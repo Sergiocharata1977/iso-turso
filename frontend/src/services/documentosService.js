@@ -236,5 +236,5 @@ const documentosService = {
   },
 };
 
-export default documentosService;
+export { documentosService };
 

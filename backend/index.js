@@ -51,6 +51,8 @@ import userRoutes from './routes/userRoutes.js';
 import auditoriasRoutes from './routes/auditorias.routes.js';
 // import auditoriaRoutes from './routes/auditorias.routes.js'; // ELIMINADO - Empezando desde cero
 import actividadRoutes from './routes/actividad.routes.js';
+import reunionesRoutes from './src/routes/reunionesRoutes.js';
+
 
 console.log('🔥 MODO ULTRA SIMPLE: Sin restricciones');
 
@@ -95,6 +97,7 @@ app.use('/api/evalcompe-programacion', evalcompeProgramacionRouter);
 app.use('/api/evalcompe-detalle', evalcompeDetalleRouter);
 app.use('/api', direccionRoutes);
 app.use('/api/auditorias', auditoriasRoutes);
+app.use('/api/reuniones', reunionesRoutes);
 
 console.log('✅ TODAS las rutas después de /api/auth están protegidas');
 

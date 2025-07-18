@@ -302,6 +302,18 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
         </div>
       </nav>
 
+      {/* Acceso directo a Planificación y Dirección */}
+      <div className="px-4 pb-2">
+        <Button
+          variant={location.pathname === '/planificacion-revision' ? 'secondary' : 'ghost'}
+          onClick={() => handleNavigation('/planificacion-revision')}
+          className={`w-full flex items-center gap-3 p-3 h-auto rounded-lg mb-2 ${location.pathname === '/planificacion-revision' ? 'bg-purple-700 text-white' : ''}`}
+        >
+          <ClipboardCheck className="h-5 w-5" />
+          <span className="font-medium">Planificación y Dirección</span>
+        </Button>
+      </div>
+
       {/* Acceso directo a Documentación */}
       <div className="px-4 pb-4">
         <Button
@@ -313,7 +325,6 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           <span className="font-medium">Documentación</span>
         </Button>
       </div>
-
 
 
       {/* Footer */}

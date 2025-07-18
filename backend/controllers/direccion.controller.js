@@ -3,10 +3,14 @@ import { tursoClient } from '../lib/tursoClient.js';
 // Obtener la configuración actual
 export const getConfiguracion = async (req, res) => {
   try {
-    const result = await tursoClient.execute('SELECT * FROM direccion_configuracion WHERE id = 1');
+    const organizationId = req.user?.organization_id || 1; // Default a 1 si no hay usuario
+    const result = await tursoClient.execute(
+      'SELECT * FROM direccion_configuracion WHERE organization_id = ?', 
+      [organizationId]
+    );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'No se encontró la configuración.' });
+      return res.status(404).json({ message: 'No se encontró la configuración para esta organización.' });
     }
 
     res.status(200).json(result.rows[0]);
@@ -18,11 +22,22 @@ export const getConfiguracion = async (req, res) => {
 
 // Actualizar la configuración
 export const updateConfiguracion = async (req, res) => {
-  const { politica_calidad, alcance, estrategia } = req.body;
+  const { 
+    politica_calidad, 
+    alcance, 
+    estrategia,
+    organigrama_url,
+    mapa_procesos_url,
+    compromiso_titulo,
+    compromiso_descripcion,
+    compromiso_satisfaccion,
+    compromiso_calidad: compromiso_calidad_text,
+    compromiso_mejora,
+    compromiso_personal
+  } = req.body;
+  
+  const organizationId = req.user?.organization_id || 1;
   const now = new Date().toISOString();
-
-  // Por ahora solo manejamos los campos de texto.
-  // Las URLs de las imágenes se manejarán más adelante cuando implementemos la subida de archivos.
 
   try {
     const result = await tursoClient.execute({
@@ -32,17 +47,45 @@ export const updateConfiguracion = async (req, res) => {
           politica_calidad = ?,
           alcance = ?,
           estrategia = ?,
+          organigrama_url = ?,
+          mapa_procesos_url = ?,
+          compromiso_titulo = ?,
+          compromiso_descripcion = ?,
+          compromiso_satisfaccion = ?,
+          compromiso_calidad = ?,
+          compromiso_mejora = ?,
+          compromiso_personal = ?,
           updated_at = ?
-        WHERE id = 1;
+        WHERE organization_id = ?;
       `,
-      args: [politica_calidad, alcance, estrategia, now]
+      args: [
+        politica_calidad, 
+        alcance, 
+        estrategia,
+        organigrama_url,
+        mapa_procesos_url,
+        compromiso_titulo,
+        compromiso_descripcion,
+        compromiso_satisfaccion,
+        compromiso_calidad_text,
+        compromiso_mejora,
+        compromiso_personal,
+        now,
+        organizationId
+      ]
     });
 
     if (result.rowsAffected === 0) {
         return res.status(404).json({ message: 'No se encontró la configuración para actualizar.' });
     }
 
-    res.status(200).json({ message: 'Configuración actualizada correctamente.' });
+    // Obtener la configuración actualizada para devolverla
+    const updatedConfig = await tursoClient.execute(
+      'SELECT * FROM direccion_configuracion WHERE organization_id = ?',
+      [organizationId]
+    );
+
+    res.status(200).json(updatedConfig.rows[0]);
   } catch (error) {
     console.error('Error al actualizar la configuración de dirección:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
