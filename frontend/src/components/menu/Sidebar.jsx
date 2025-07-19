@@ -23,7 +23,8 @@ import {
   ListChecks,
   Activity,
   Target,
-  Package
+  Package,
+  Database
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 
@@ -92,6 +93,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       icon: Target,
       color: 'orange',
       items: [
+        { name: 'Calendario', path: '/calendario', icon: Calendar },
         { name: 'Planificación Estratégica', path: '/planificacion-estrategica', icon: Target },
         { name: 'Revisión por la Dirección', path: '/revision-direccion', icon: BarChart3 },
         { name: 'Objetivos y Metas', path: '/objetivos-metas', icon: TrendingUp },
@@ -184,6 +186,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           show: () => ['admin', 'super_admin'].includes(user?.role)
         },
         { name: 'Usuarios', path: '/usuarios', icon: Users },
+        { name: 'Esquema de BD', path: '/database-schema', icon: Database },
       ]
     },
   ];

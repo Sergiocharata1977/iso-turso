@@ -84,6 +84,9 @@ const TestSimpleComponent = lazy(() => import("../components/TestSimpleComponent
 const CompetenciasPage = lazy(() => import('../components/competencias/CompetenciasListing'));
 const EvalcompeProgramacionPage = lazy(() => import('../components/competencias/EvalcompeProgramacionListing'));
 
+// Base de Datos y Esquemas
+const DatabaseSchemaPage = lazy(() => import("../pages/DatabaseSchemaPage"));
+
 
 const AppRoutes = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -174,6 +177,9 @@ const AppRoutes = () => {
                     <Route path="api" element={<ApiDocsPage />} />
                     <Route path="guias" element={<GuiasPage />} />
                   </Route>
+
+                  {/* Base de Datos y Esquemas */}
+                  <Route path="database-schema" element={<DatabaseSchemaPage />} />
 
                   {/* Prueba de renderizado */}
                   <Route path="test-simple" element={<TestSimpleComponent />} />
