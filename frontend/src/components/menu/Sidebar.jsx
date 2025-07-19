@@ -108,6 +108,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
         { name: 'Auditorías Internas', path: '/auditorias', icon: BarChart3 },
         { name: 'Programa de Auditorías', path: '/programa-auditorias', icon: Calendar },
         { name: 'Hallazgos de Auditoría', path: '/hallazgos-auditoria', icon: ClipboardCheck },
+        { name: 'Diseño y Desarrollo de Productos', path: '/productos', icon: Package },
       ]
     },
     {
@@ -149,7 +150,6 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       color: 'blue',
       items: [
         { name: 'Procesos', path: '/procesos', icon: ClipboardCheck },
-        { name: 'Productos y Servicios', path: '/productos', icon: Package },
         { name: 'Objetivos de calidad', path: '/objetivos-calidad', icon: Briefcase },
         { name: 'Indicadores de calidad', path: '/indicadores-calidad', icon: GraduationCap },
         { name: 'Mediciones', path: '/mediciones', icon: Users },
