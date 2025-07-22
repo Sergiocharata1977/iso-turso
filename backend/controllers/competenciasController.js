@@ -1,39 +1,85 @@
 import { tursoClient } from '../lib/tursoClient.js';
 
-// Listar todas las competencias
+// Listar todas las competencias de la organización del usuario
 export const getCompetencias = async (req, res) => {
   try {
-    const { organizacion_id } = req.query;
-    const query = organizacion_id
-      ? 'SELECT * FROM competencias WHERE organizacion_id = ?'
-      : 'SELECT * FROM competencias';
-    const params = organizacion_id ? [organizacion_id] : [];
-    console.log('🔎 [Competencias] Ejecutando query:', query, 'con params:', params);
-    const result = await tursoClient.execute({ sql: query, args: params });
-    console.log('🔎 [Competencias] Resultados:', result.rows);
-    res.json(result.rows);
+    const organization_id = req.user?.organization_id;
+    
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+
+    console.log(`🔎 [Competencias] Obteniendo competencias para organización: ${organization_id}`);
+    
+    const result = await tursoClient.execute({ 
+      sql: 'SELECT * FROM competencias WHERE organization_id = ? ORDER BY created_at DESC',
+      args: [organization_id]
+    });
+    
+    console.log(`✅ [Competencias] Encontradas ${result.rows.length} competencias para organización ${organization_id}`);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length
+    });
   } catch (error) {
     console.error('❌ [Competencias] Error al obtener competencias:', error);
-    res.status(500).json({ error: 'Error al obtener competencias', details: error.message });
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al obtener competencias', 
+      details: error.message 
+    });
   }
 };
 
 // Crear una competencia
 export const createCompetencia = async (req, res) => {
   try {
-    const { nombre, descripcion, organizacion_id } = req.body;
-    if (!nombre || !organizacion_id) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    const { nombre, descripcion } = req.body;
+    const organization_id = req.user?.organization_id;
+    
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
     }
+    
+    if (!nombre) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'El nombre es obligatorio' 
+      });
+    }
+    
     const result = await tursoClient.execute({
-      sql: 'INSERT INTO competencias (nombre, descripcion, organizacion_id) VALUES (?, ?, ?)',
-      args: [nombre, descripcion || '', organizacion_id]
+      sql: 'INSERT INTO competencias (nombre, descripcion, organization_id, created_at, updated_at) VALUES (?, ?, ?, datetime("now"), datetime("now"))',
+      args: [nombre, descripcion || '', organization_id]
     });
-    console.log('✅ [Competencias] Competencia guardada:', { id: result.lastInsertRowid, nombre, descripcion, organizacion_id });
-    res.status(201).json({ id: result.lastInsertRowid, nombre, descripcion, organizacion_id });
+    
+    console.log(`✅ [Competencias] Competencia creada con ID: ${result.lastInsertRowid}`);
+    
+    res.status(201).json({ 
+      success: true,
+      data: { 
+        id: Number(result.lastInsertRowid), 
+        nombre, 
+        descripcion, 
+        organization_id: organization_id 
+      },
+      message: 'Competencia creada exitosamente'
+    });
   } catch (error) {
     console.error('❌ [Competencias] Error al crear competencia:', error);
-    res.status(500).json({ error: 'Error al crear competencia', details: error.message });
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al crear competencia', 
+      details: error.message 
+    });
   }
 };
 
@@ -42,16 +88,54 @@ export const updateCompetencia = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion } = req.body;
-    if (!nombre) {
-      return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const organization_id = req.user?.organization_id;
+    
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
     }
-    await tursoClient.execute({
-      sql: 'UPDATE competencias SET nombre = ?, descripcion = ? WHERE id = ?',
-      args: [nombre, descripcion || '', id]
+    
+    if (!nombre) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'El nombre es obligatorio' 
+      });
+    }
+    
+    // Verificar que la competencia pertenece a la organización
+    const existingResult = await tursoClient.execute({
+      sql: 'SELECT id FROM competencias WHERE id = ? AND organizacion_id = ?',
+      args: [id, organization_id]
     });
-    res.json({ id, nombre, descripcion });
+    
+    if (existingResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Competencia no encontrada' 
+      });
+    }
+    
+    await tursoClient.execute({
+      sql: 'UPDATE competencias SET nombre = ?, descripcion = ?, updated_at = datetime("now") WHERE id = ? AND organizacion_id = ?',
+      args: [nombre, descripcion || '', id, organization_id]
+    });
+    
+    console.log(`✅ [Competencias] Competencia ${id} actualizada`);
+    
+    res.json({ 
+      success: true,
+      data: { id, nombre, descripcion },
+      message: 'Competencia actualizada exitosamente'
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar competencia', details: error.message });
+    console.error('❌ [Competencias] Error al actualizar competencia:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al actualizar competencia', 
+      details: error.message 
+    });
   }
 };
 
@@ -59,13 +143,46 @@ export const updateCompetencia = async (req, res) => {
 export const deleteCompetencia = async (req, res) => {
   try {
     const { id } = req.params;
-    await tursoClient.execute({
-      sql: 'DELETE FROM competencias WHERE id = ?',
-      args: [id]
+    const organization_id = req.user?.organization_id;
+    
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+    
+    // Verificar que la competencia pertenece a la organización
+    const existingResult = await tursoClient.execute({
+      sql: 'SELECT id FROM competencias WHERE id = ? AND organizacion_id = ?',
+      args: [id, organization_id]
     });
-    res.json({ id });
+    
+    if (existingResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Competencia no encontrada' 
+      });
+    }
+    
+    await tursoClient.execute({
+      sql: 'DELETE FROM competencias WHERE id = ? AND organizacion_id = ?',
+      args: [id, organization_id]
+    });
+    
+    console.log(`✅ [Competencias] Competencia ${id} eliminada`);
+    
+    res.json({ 
+      success: true,
+      message: 'Competencia eliminada exitosamente'
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar competencia', details: error.message });
+    console.error('❌ [Competencias] Error al eliminar competencia:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al eliminar competencia', 
+      details: error.message 
+    });
   }
 };
 

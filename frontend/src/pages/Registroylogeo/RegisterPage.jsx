@@ -1,269 +1,428 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, UserPlus, AlertCircle, Building } from 'lucide-react';
-import { toast } from 'sonner';
-import { registerSchema } from '../../schemas/authSchemas';
-import { authService } from '../../services/authService';
+import { motion } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Building2, ArrowRight, CheckCircle, Star, Clock, Users, Shield } from 'lucide-react';
+import useAuthStore from '../../store/authStore';
+import { toast } from 'react-hot-toast';
 
 const RegisterPage = () => {
+  const [formData, setFormData] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    empresa: '',
+    telefono: '',
+    plan: 'gratis' // gratis, premium
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  
   const navigate = useNavigate();
+  const { register } = useAuthStore();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting }
-  } = useForm({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      organizationName: '',
-      userName: '',
-      userEmail: '',
-      userPassword: '',
-      confirmPassword: ''
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
     }
-  });
 
-  const onSubmit = async (data) => {
     setIsLoading(true);
+
     try {
-      // Eliminar confirmPassword antes de enviar
-      const { confirmPassword, ...registerData } = data;
+      // Preparar datos según lo que espera el backend
+      const registerData = {
+        organizationName: formData.empresa || 'Mi Empresa',
+        adminName: formData.nombre,
+        adminEmail: formData.email,
+        adminPassword: formData.password,
+        organizationEmail: formData.email,
+        organizationPhone: formData.telefono,
+        plan: formData.plan === 'gratis' ? 'basic' : 'premium'
+      };
+
+      const success = await register(registerData);
       
-      const response = await authService.register(registerData);
-      
-      // Si llegamos aquí sin error, el registro fue exitoso
-      if (response.status === 200 || response.status === 201) {
-        toast.success('¡Registro exitoso! Organización y usuario creados correctamente.');
-        console.log('Registro exitoso:', response.data);
+      if (success) {
+        setIsSubmitted(true);
+        toast.success('¡Registro exitoso! Bienvenido a ISO Flow');
         
-        // Redirigir al login para que el usuario inicie sesión
         setTimeout(() => {
-          navigate('/login');
+          navigate('/app/departamentos');
         }, 2000);
       } else {
-        toast.error(response.data?.message || 'Error al registrar la cuenta');
+        toast.error('Error en el registro');
       }
     } catch (error) {
-      console.error('Error en registro:', error);
-      
-      // Manejar diferentes tipos de errores
-      if (error.response) {
-        // Error del servidor (4xx, 5xx)
-        const errorMessage = error.response.data?.message || 
-                           error.response.data?.error || 
-                           `Error del servidor (${error.response.status})`;
-        toast.error(errorMessage);
-      } else if (error.request) {
-        // Error de red
-        toast.error('No se pudo conectar con el servidor. Verifica tu conexión.');
-      } else {
-        // Otro tipo de error
-        toast.error('Error inesperado. Intenta nuevamente.');
-      }
+      toast.error(error.message || 'Error al crear la cuenta');
+      console.error('Register error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-emerald-600 rounded-full flex items-center justify-center">
-            <UserPlus className="h-6 w-6 text-white" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Crear Cuenta
+  const plans = [
+    {
+      id: 'gratis',
+      name: 'Plan Gratuito',
+      price: 'Gratis',
+      duration: '7 días',
+      features: [
+        'Acceso completo a Recursos Humanos',
+        'Gestión de departamentos y personal',
+        'Capacitaciones y evaluaciones',
+        'Documentación básica',
+        'Soporte por email'
+      ],
+      popular: false,
+      icon: Star,
+      color: 'emerald'
+    },
+    {
+      id: 'premium',
+      name: 'Plan Premium',
+      price: '$99/mes',
+      duration: 'Ilimitado',
+      features: [
+        'Todo del plan gratuito',
+        'Sistema completo ISO 9001',
+        'Auditorías y hallazgos',
+        'Procesos y productos',
+        'Soporte prioritario 24/7',
+        'Backup automático',
+        'Integraciones avanzadas'
+      ],
+      popular: true,
+      icon: Shield,
+      color: 'blue'
+    }
+  ];
+
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-emerald-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-2xl p-8 text-center max-w-md w-full shadow-2xl"
+        >
+          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            ¡Cuenta creada exitosamente!
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Registra tu organización y crea tu cuenta de administrador
+          <p className="text-slate-600 mb-4">
+            Tu cuenta gratuita de ISO Flow está lista
           </p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+            <p className="text-sm text-emerald-800">
+              <strong>Plan Gratuito:</strong> 7 días de acceso completo a Recursos Humanos
+            </p>
+          </div>
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-emerald-900 relative overflow-hidden">
+      {/* Elementos decorativos */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500 opacity-10 rounded-full mix-blend-screen filter blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/3 right-1/4 w-72 h-72 bg-slate-700 opacity-10 rounded-full mix-blend-screen filter blur-3xl animate-pulse animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-emerald-600 opacity-10 rounded-full mix-blend-screen filter blur-3xl animate-pulse animation-delay-4000"></div>
+      </div>
+
+      <div className="relative z-10 flex min-h-screen">
+        {/* Lado izquierdo - Planes */}
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 text-white">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="flex items-center space-x-3 mb-8">
+              <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Building2 className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">ISO Flow</h1>
+                <p className="text-emerald-300">Sistema de Gestión de Calidad</p>
+              </div>
+            </div>
+
+            <h2 className="text-4xl font-bold mb-6">
+              Comienza tu transformación digital
+            </h2>
+            <p className="text-xl text-slate-300 mb-8">
+              Elige el plan que mejor se adapte a tus necesidades
+            </p>
+
+            <div className="space-y-6">
+              {plans.map((plan, index) => (
+                <motion.div
+                  key={plan.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  className={`p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
+                    formData.plan === plan.id
+                      ? 'border-emerald-500 bg-emerald-500/10'
+                      : 'border-slate-600 bg-slate-800/50 hover:border-slate-500'
+                  }`}
+                  onClick={() => setFormData({ ...formData, plan: plan.id })}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <plan.icon className={`w-6 h-6 text-${plan.color}-400`} />
+                      <div>
+                        <h3 className="text-lg font-semibold">{plan.name}</h3>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl font-bold text-emerald-400">{plan.price}</span>
+                          <span className="text-slate-400">/ {plan.duration}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {plan.popular && (
+                      <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+                        Más Popular
+                      </span>
+                    )}
+                  </div>
+                  
+                  <ul className="space-y-2">
+                    {plan.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-center space-x-2 text-sm text-slate-300">
+                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-8 p-6 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+              <h3 className="text-lg font-semibold mb-2">¿Ya tienes una cuenta?</h3>
+              <p className="text-slate-300 mb-4">
+                Inicia sesión para acceder a tu panel de control
+              </p>
+              <Link
+                to="/login"
+                className="inline-flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300"
+              >
+                <span>Iniciar sesión</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Formulario */}
-        <div className="bg-white py-8 px-6 shadow-lg rounded-lg">
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* Organization Name */}
-            <div>
-              <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700">
-                <Building className="inline h-4 w-4 mr-1" />
-                Nombre de la Organización
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  {...register('organizationName')}
-                  type="text"
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                    errors.organizationName ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Mi Empresa S.A."
-                />
-                {errors.organizationName && (
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                  </div>
-                )}
+        {/* Lado derecho - Formulario */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-full max-w-md"
+          >
+            {/* Logo móvil */}
+            <div className="lg:hidden text-center mb-8">
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Building2 className="w-7 h-7 text-white" />
+                </div>
+                <div className="text-white">
+                  <h1 className="text-2xl font-bold">ISO Flow</h1>
+                  <p className="text-emerald-300 text-sm">Sistema de Gestión de Calidad</p>
+                </div>
               </div>
-              {errors.organizationName && (
-                <p className="mt-2 text-sm text-red-600">{errors.organizationName.message}</p>
-              )}
             </div>
 
-            {/* User Name */}
-            <div>
-              <label htmlFor="userName" className="block text-sm font-medium text-gray-700">
-                Nombre Completo del Administrador
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  {...register('userName')}
-                  type="text"
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                    errors.userName ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Juan Pérez"
-                />
-                {errors.userName && (
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                  </div>
-                )}
+            <div className="bg-white rounded-2xl p-8 shadow-2xl">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 mb-2">
+                  Crea tu cuenta
+                </h2>
+                <p className="text-slate-600">
+                  Únete a ISO Flow y transforma tu organización
+                </p>
               </div>
-              {errors.userName && (
-                <p className="mt-2 text-sm text-red-600">{errors.userName.message}</p>
-              )}
-            </div>
 
-            {/* Email */}
-            <div>
-              <label htmlFor="userEmail" className="block text-sm font-medium text-gray-700">
-                Correo Electrónico
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  {...register('userEmail')}
-                  type="email"
-                  autoComplete="email"
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                    errors.userEmail ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="admin@miempresa.com"
-                />
-                {errors.userEmail && (
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Nombre completo
+                    </label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      value={formData.nombre}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                      placeholder="Tu nombre"
+                    />
                   </div>
-                )}
-              </div>
-              {errors.userEmail && (
-                <p className="mt-2 text-sm text-red-600">{errors.userEmail.message}</p>
-              )}
-            </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Empresa
+                    </label>
+                    <input
+                      type="text"
+                      name="empresa"
+                      value={formData.empresa}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                      placeholder="Nombre de la empresa"
+                    />
+                  </div>
+                </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="userPassword" className="block text-sm font-medium text-gray-700">
-                Contraseña
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  {...register('userPassword')}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm pr-10 ${
-                    errors.userPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="••••••••"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Correo electrónico
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                    placeholder="tu@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    name="telefono"
+                    value={formData.telefono}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                    placeholder="+54 11 1234-5678"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Contraseña
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Confirmar contraseña
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Star className="w-5 h-5 text-emerald-500" />
+                    <h3 className="font-semibold text-emerald-800">Plan Seleccionado</h3>
+                  </div>
+                  <p className="text-sm text-emerald-700">
+                    {formData.plan === 'gratis' 
+                      ? 'Plan Gratuito: 7 días de acceso completo a Recursos Humanos'
+                      : 'Plan Premium: Acceso completo a todas las funcionalidades'
+                    }
+                  </p>
+                </div>
+
                 <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-400 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Creando cuenta...
+                    </>
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <>
+                      <span>Crear cuenta gratuita</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
                   )}
                 </button>
+              </form>
+
+              <div className="mt-8 text-center">
+                <p className="text-slate-600">
+                  ¿Ya tienes una cuenta?{' '}
+                  <Link
+                    to="/login"
+                    className="text-emerald-600 hover:text-emerald-700 font-medium"
+                  >
+                    Inicia sesión
+                  </Link>
+                </p>
               </div>
-              {errors.userPassword && (
-                <p className="mt-2 text-sm text-red-600">{errors.userPassword.message}</p>
-              )}
-            </div>
 
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirmar Contraseña
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  {...register('confirmPassword')}
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm pr-10 ${
-                    errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <p className="text-xs text-slate-500 text-center">
+                  Al registrarte, aceptas nuestros{' '}
+                  <a href="#" className="text-emerald-600 hover:text-emerald-700">Términos de Servicio</a>
+                  {' '}y{' '}
+                  <a href="#" className="text-emerald-600 hover:text-emerald-700">Política de Privacidad</a>
+                </p>
               </div>
-              {errors.confirmPassword && (
-                <p className="mt-2 text-sm text-red-600">{errors.confirmPassword.message}</p>
-              )}
             </div>
-
-            {/* Submit Button */}
-            <div>
-              <button
-                type="submit"
-                disabled={isSubmitting || isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creando cuenta...
-                  </div>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Crear Cuenta
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Link to Login */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                ¿Ya tienes una cuenta?{' '}
-                <Link
-                  to="/login"
-                  className="font-medium text-emerald-600 hover:text-emerald-500"
-                >
-                  Inicia sesión aquí
-                </Link>
-              </p>
-            </div>
-          </form>
+          </motion.div>
         </div>
       </div>
     </div>

@@ -5,8 +5,15 @@ import { tursoClient } from '../lib/tursoClient.js';
 // @access  Private
 export const getProductos = async (req, res) => {
   try {
-    const { organizationId } = req.user;
-    console.log(`🔍 Obteniendo productos para organización ${organizationId}...`);
+    const organization_id = req.user?.organization_id;
+    console.log(`🔍 Obteniendo productos para organización ${organization_id}...`);
+
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
 
     const result = await tursoClient.execute({
       sql: `
@@ -19,7 +26,7 @@ export const getProductos = async (req, res) => {
         WHERE organization_id = ? 
         ORDER BY created_at DESC
       `,
-      args: [organizationId]
+      args: [organization_id]
     });
 
     console.log(`✅ ${result.rows.length} productos encontrados`);
@@ -36,8 +43,15 @@ export const getProductos = async (req, res) => {
 export const getProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { organizationId } = req.user;
-    console.log(`🔍 Obteniendo producto ${id} para organización ${organizationId}...`);
+    const organization_id = req.user?.organization_id;
+    console.log(`🔍 Obteniendo producto ${id} para organización ${organization_id}...`);
+
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
 
     const result = await tursoClient.execute({
       sql: `
@@ -49,7 +63,7 @@ export const getProducto = async (req, res) => {
         FROM productos 
         WHERE id = ? AND organization_id = ?
       `,
-      args: [id, organizationId]
+      args: [id, organization_id]
     });
 
     if (result.rows.length === 0) {
@@ -69,7 +83,7 @@ export const getProducto = async (req, res) => {
 // @access  Private
 export const createProducto = async (req, res) => {
   try {
-    const { organizationId } = req.user;
+    const organization_id = req.user?.organization_id;
     const {
       nombre, descripcion, codigo, estado, tipo, categoria,
       responsable, fecha_creacion, fecha_revision, version,
@@ -77,7 +91,14 @@ export const createProducto = async (req, res) => {
       documentos_asociados, observaciones
     } = req.body;
 
-    console.log(`🔍 Creando producto para organización ${organizationId}...`);
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+
+    console.log(`🔍 Creando producto para organización ${organization_id}...`);
 
     // Validar campos requeridos
     if (!nombre || !estado || !tipo) {
@@ -91,7 +112,7 @@ export const createProducto = async (req, res) => {
     if (codigo) {
       const existingResult = await tursoClient.execute({
         sql: 'SELECT id FROM productos WHERE codigo = ? AND organization_id = ?',
-        args: [codigo, organizationId]
+        args: [codigo, organization_id]
       });
 
       if (existingResult.rows.length > 0) {
@@ -113,7 +134,7 @@ export const createProducto = async (req, res) => {
         RETURNING *
       `,
       args: [
-        organizationId, nombre, descripcion, codigo, estado, tipo, categoria,
+        organization_id, nombre, descripcion, codigo, estado, tipo, categoria,
         responsable, fecha_creacion, fecha_revision, version,
         especificaciones, requisitos_calidad, proceso_aprobacion,
         documentos_asociados, observaciones
@@ -138,7 +159,7 @@ export const createProducto = async (req, res) => {
 export const updateProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { organizationId } = req.user;
+    const organization_id = req.user?.organization_id;
     const {
       nombre, descripcion, codigo, estado, tipo, categoria,
       responsable, fecha_creacion, fecha_revision, version,
@@ -146,12 +167,19 @@ export const updateProducto = async (req, res) => {
       documentos_asociados, observaciones
     } = req.body;
 
-    console.log(`🔍 Actualizando producto ${id} para organización ${organizationId}...`);
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+
+    console.log(`🔍 Actualizando producto ${id} para organización ${organization_id}...`);
 
     // Verificar que el producto existe y pertenece a la organización
     const existingResult = await tursoClient.execute({
       sql: 'SELECT id FROM productos WHERE id = ? AND organization_id = ?',
-      args: [id, organizationId]
+      args: [id, organization_id]
     });
 
     if (existingResult.rows.length === 0) {
@@ -162,7 +190,7 @@ export const updateProducto = async (req, res) => {
     if (codigo) {
       const duplicateResult = await tursoClient.execute({
         sql: 'SELECT id FROM productos WHERE codigo = ? AND organization_id = ? AND id != ?',
-        args: [codigo, organizationId, id]
+        args: [codigo, organization_id, id]
       });
 
       if (duplicateResult.rows.length > 0) {
@@ -187,7 +215,7 @@ export const updateProducto = async (req, res) => {
         nombre, descripcion, codigo, estado, tipo, categoria,
         responsable, fecha_creacion, fecha_revision, version,
         especificaciones, requisitos_calidad, proceso_aprobacion,
-        documentos_asociados, observaciones, id, organizationId
+        documentos_asociados, observaciones, id, organization_id
       ]
     });
 
@@ -209,13 +237,21 @@ export const updateProducto = async (req, res) => {
 export const deleteProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { organizationId } = req.user;
-    console.log(`🔍 Eliminando producto ${id} de organización ${organizationId}...`);
+    const organization_id = req.user?.organization_id;
+    
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+    
+    console.log(`🔍 Eliminando producto ${id} de organización ${organization_id}...`);
 
     // Verificar que el producto existe y pertenece a la organización
     const existingResult = await tursoClient.execute({
       sql: 'SELECT id FROM productos WHERE id = ? AND organization_id = ?',
-      args: [id, organizationId]
+      args: [id, organization_id]
     });
 
     if (existingResult.rows.length === 0) {
@@ -224,7 +260,7 @@ export const deleteProducto = async (req, res) => {
 
     await tursoClient.execute({
       sql: 'DELETE FROM productos WHERE id = ? AND organization_id = ?',
-      args: [id, organizationId]
+      args: [id, organization_id]
     });
 
     console.log(`✅ Producto ${id} eliminado`);
@@ -241,7 +277,15 @@ export const deleteProducto = async (req, res) => {
 export const getHistorialProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { organizationId } = req.user;
+    const organization_id = req.user?.organization_id;
+    
+    if (!organization_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No se pudo determinar la organización del usuario.'
+      });
+    }
+    
     console.log(`🔍 Obteniendo historial del producto ${id}...`);
 
     const result = await tursoClient.execute({
@@ -253,7 +297,7 @@ export const getHistorialProducto = async (req, res) => {
         WHERE producto_id = ? AND organization_id = ?
         ORDER BY fecha_cambio DESC
       `,
-      args: [id, organizationId]
+      args: [id, organization_id]
     });
 
     console.log(`✅ ${result.rows.length} cambios encontrados en el historial`);

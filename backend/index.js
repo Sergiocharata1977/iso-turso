@@ -7,8 +7,9 @@ import errorHandler from './middleware/errorHandler.js';
 // import setupDatabase from './scripts/setupDatabase.js'; // Comentado temporalmente
 import simpleAuth from './middleware/simpleAuth.js';
 import competenciasRouter from './routes/competencias.routes.js';
-import evalcompeProgramacionRouter from './routes/evalcompe-programacion.routes.js';
+import evalcompeProgramacionRouter from './routes/evalcompeProgramacion.routes.js';
 import evalcompeDetalleRouter from './routes/evalcompe-detalle.routes.js';
+import evaluacionesRouter from './routes/evaluaciones.routes.js';
 
 // Load environment variables explicitly
 dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
@@ -35,7 +36,7 @@ import personalRouter from './routes/personal.routes.js';
 import objetivosCalidadRouter from './routes/objetivos_calidad.routes.js';
 import normasRouter from './routes/normas.routes.js';
 import capacitacionesRouter from './routes/capacitaciones.routes.js';
-import evaluacionesGrupalesRouter from './routes/evaluaciones-grupales.routes.js';
+
 import indicadoresRouter from './routes/indicadores.routes.js';
 import medicionesRouter from './routes/mediciones.routes.js';
 import ticketsRouter from './routes/tickets.routes.js';
@@ -48,6 +49,7 @@ import tratamientosRouter from './routes/tratamientos.routes.js';
 import verificacionesRouter from './routes/verificaciones.routes.js';
 import accionesRouter from './routes/acciones.routes.js';
 import userRoutes from './routes/userRoutes.js';
+import usuariosRouter from './routes/usuarios.routes.js';
 import auditoriasRoutes from './routes/auditorias.routes.js';
 // import auditoriaRoutes from './routes/auditorias.routes.js'; // ELIMINADO - Empezando desde cero
 import actividadRoutes from './routes/actividad.routes.js';
@@ -73,6 +75,7 @@ app.use('/api', simpleAuth);
 // ===============================================
 
 app.use('/api/users', userRoutes);
+app.use('/api/usuarios', usuariosRouter);
 app.use('/api/departamentos', departamentosRouter);
 app.use('/api/puestos', puestosRouter);
 app.use('/api/personal', personalRouter);
@@ -86,7 +89,7 @@ app.use('/api/hallazgos', hallazgosRouter);
 app.use('/api/acciones', accionesRouter);
 // app.use('/api/auditorias', auditoriaRoutes); // ELIMINADO - Empezando desde cero
 app.use('/api/capacitaciones', capacitacionesRouter);
-app.use('/api/evaluaciones-grupales', evaluacionesGrupalesRouter);
+
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/productos', productosRouter);
 app.use('/api/encuestas', encuestasRouter);
@@ -94,8 +97,9 @@ app.use('/api/tratamientos', tratamientosRouter);
 app.use('/api/verificaciones', verificacionesRouter);
 app.use('/api/actividad', actividadRoutes);
 app.use('/api/competencias', competenciasRouter);
-app.use('/api/evalcompe-programacion', evalcompeProgramacionRouter);
-app.use('/api/evalcompe-detalle', evalcompeDetalleRouter);
+app.use('/api/evaluaciones', evaluacionesRouter);
+app.use('/api/evaluacion-programacion', evalcompeProgramacionRouter);
+app.use('/api/evaluacion-detalle', evalcompeDetalleRouter);
 app.use('/api', direccionRoutes);
 app.use('/api/auditorias', auditoriasRoutes);
 app.use('/api/reuniones', reunionesRoutes);

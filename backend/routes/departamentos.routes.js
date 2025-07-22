@@ -8,8 +8,15 @@ const router = Router();
 // GET /api/departamentos - Listar todos los departamentos
 router.get('/', async (req, res, next) => {
   try {
+    console.log('🔓 Obteniendo departamentos para organización:', req.user?.organization_id);
+    
     // TODO: Considerar un JOIN para obtener el nombre del responsable si es necesario en el listado
-    const result = await tursoClient.execute('SELECT * FROM departamentos ORDER BY created_at DESC');
+    const result = await tursoClient.execute({
+      sql: 'SELECT * FROM departamentos WHERE organization_id = ? ORDER BY created_at DESC',
+      args: [req.user?.organization_id]
+    });
+    
+    console.log(`✅ Encontrados ${result.rows.length} departamentos en organización ${req.user?.organization_id}`);
     res.json(result.rows);
   } catch (error) {
     next(error);
@@ -20,13 +27,15 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
+    console.log(`🔓 Obteniendo departamento ${id} para organización ${req.user?.organization_id}`);
+    
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM departamentos WHERE id = ?',
-      args: [id],
+      sql: 'SELECT * FROM departamentos WHERE id = ? AND organization_id = ?',
+      args: [id, req.user?.organization_id],
     });
 
     if (result.rows.length === 0) {
-      const err = new Error('Departamento no encontrado.');
+      const err = new Error('Departamento no encontrado en tu organización.');
       err.statusCode = 404;
       return next(err);
     }

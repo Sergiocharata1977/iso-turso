@@ -11,23 +11,24 @@ const router = express.Router();
 // Obtener TODO el personal de TODA la base de datos
 router.get('/', async (req, res) => {
   try {
-    console.log('🔓 Obteniendo TODO el personal sin restricciones');
+    console.log('🔓 Obteniendo personal para organización:', req.user?.organization_id);
     
     const result = await tursoClient.execute({
       sql: `SELECT p.*, o.name as organization_name 
             FROM personal p 
             LEFT JOIN organizations o ON p.organization_id = o.id 
+            WHERE p.organization_id = ?
             ORDER BY p.id DESC`,
-      args: []
+      args: [req.user?.organization_id]
     });
 
-    console.log(`✅ Encontradas ${result.rows.length} personas en TODA la base`);
+    console.log(`✅ Encontradas ${result.rows.length} personas en organización ${req.user?.organization_id}`);
     
     res.json({
       success: true,
       data: result.rows,
       total: result.rows.length,
-      message: `${result.rows.length} personas encontradas (TODAS las organizaciones)`
+      message: `${result.rows.length} personas encontradas en tu organización`
     });
     
   } catch (error) {
@@ -45,20 +46,20 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log(`🔓 Obteniendo persona ${id} sin restricciones`);
+    console.log(`🔓 Obteniendo persona ${id} para organización ${req.user?.organization_id}`);
     
     const result = await tursoClient.execute({
       sql: `SELECT p.*, o.name as organization_name 
             FROM personal p 
             LEFT JOIN organizations o ON p.organization_id = o.id 
-            WHERE p.id = ?`,
-      args: [id]
+            WHERE p.id = ? AND p.organization_id = ?`,
+      args: [id, req.user?.organization_id]
     });
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Persona no encontrada'
+        message: 'Persona no encontrada en tu organización'
       });
     }
 

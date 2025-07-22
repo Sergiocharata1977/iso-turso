@@ -13,103 +13,10 @@
         VITE_TURSO_AUTH_TOKEN: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NDY3OTgzMTUsImlkIjoiYjM2Y2MxYzYtY2I0NC00NzFkLWEyYjYtNGI5MTI0NjQ2MmE4IiwicmlkIjoiZDIyMDRlMGQtMTcxYy00NjhkLTliODUtYzNhYTYzNDlhZmI0In0.6FSA-ozXSMWU5XtSgul4oNQ6nzhA42IyX9emolZusfrO4aGP6xvn0p7cHmBHRtpwlTSxX4Tq-UVWaX5QUtdzAw'
       };
     </script>
-    <script type="module" crossorigin src="/assets/index-48325535.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-b9987279.js">
-    <link rel="stylesheet" href="/assets/index-3e2ab41c.css">
-    <script type="module">
-window.onerror = (message, source, lineno, colno, errorObj) => {
-  window.parent.postMessage({
-    type: 'horizons-runtime-error',
-    message,
-    source,
-    lineno,
-    colno,
-    error: errorObj && errorObj.stack
-  }, '*');
-};
-</script>
-    <script type="module">
-const observer = new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    for (const addedNode of mutation.addedNodes) {
-      if (
-        addedNode.nodeType === Node.ELEMENT_NODE &&
-        (
-          addedNode.tagName?.toLowerCase() === 'vite-error-overlay' ||
-          addedNode.classList?.contains('backdrop')
-        )
-      ) {
-        handleViteOverlay(addedNode);
-      }
-    }
-  }
-});
-
-observer.observe(document.documentElement, {
-  childList: true,
-  subtree: true
-});
-
-function handleViteOverlay(node) {
-  if (!node.shadowRoot) {
-    return;
-  }
-
-  const backdrop = node.shadowRoot.querySelector('.backdrop');
-
-  if (backdrop) {
-    const overlayHtml = backdrop.outerHTML;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(overlayHtml, 'text/html');
-    const messageBodyElement = doc.querySelector('.message-body');
-    const fileElement = doc.querySelector('.file');
-    const messageText = messageBodyElement ? messageBodyElement.textContent.trim() : '';
-    const fileText = fileElement ? fileElement.textContent.trim() : '';
-    const error = messageText + (fileText ? ' File:' + fileText : '');
-
-    window.parent.postMessage({
-      type: 'horizons-vite-error',
-      error,
-    }, '*');
-  }
-}
-</script>
-    <script type="module">
-const originalConsoleError = console.error;
-console.error = function(...args) {
-  originalConsoleError.apply(console, args);
-
-  const errorString = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ').toLowerCase();
-
-  window.parent.postMessage({
-    type: 'horizons-console-error',
-    error: errorString
-  }, '*');
-};
-</script>
-    <script type="module">
-const originalFetch = window.fetch;
-
-window.fetch = async function(...args) {
-  return originalFetch.apply(this, args)
-    .then(async response => {
-      if(!response.ok) {
-        const errorFromRes = await response.text();
-        console.error(errorFromRes);
-      }
-
-      return response;
-    })
-    .catch(error => {
-      console.error(error);
-
-    throw error;
-  });
-};
-</script>
+    <script type="module" crossorigin src="/assets/index-BS4ODoLC.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-MQ5UlEkJ.css">
   </head>
   <body>
     <div id="root"></div>
-    
   </body>
 </html>

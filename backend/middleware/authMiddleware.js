@@ -17,13 +17,21 @@ const authMiddleware = async (req, res, next) => {
 
     // Verificar token JWT
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Log para depuración
+    console.log('Decoded JWT:', decoded);
+    // Aceptar tanto 'id' como 'userId' en el token
+    const userId = decoded.id || decoded.userId;
+    if (!userId || (typeof userId !== 'string' && typeof userId !== 'number')) {
+      return res.status(401).json({ message: 'Token sin ID de usuario válido.' });
+    }
     
     // Obtener usuario actual de la base de datos
     const userResult = await tursoClient.execute({
       sql: `SELECT id, organization_id, name, email, role, is_active 
             FROM usuarios 
             WHERE id = ? AND is_active = 1`,
-      args: [decoded.id]
+      args: [userId]
     });
 
     if (userResult.rows.length === 0) {

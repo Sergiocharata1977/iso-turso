@@ -11,12 +11,14 @@ router.use(simpleAuth);
 // GET /api/puestos - Obtener todos los puestos de la organización
 router.get('/', async (req, res, next) => {
   try {
+    console.log('🔓 Obteniendo puestos para organización:', req.user?.organization_id);
+    
     const result = await tursoClient.execute({
-      sql: `SELECT * FROM puestos WHERE organization_id = '2' ORDER BY created_at DESC`,
-      args: []
+      sql: `SELECT * FROM puestos WHERE organization_id = ? ORDER BY created_at DESC`,
+      args: [req.user?.organization_id]
     });
     
-    console.log(`🔓 Puestos cargados para organización ${req.user.organization_id}: ${result.rows.length} registros`);
+    console.log(`🔓 Puestos cargados para organización ${req.user?.organization_id}: ${result.rows.length} registros`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al cargar puestos:', error);

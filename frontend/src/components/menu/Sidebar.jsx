@@ -12,6 +12,7 @@ import {
   Briefcase,
   GraduationCap,
   ClipboardCheck,
+  ClipboardList,
   FileText,
   BarChart3,
   Bell,
@@ -24,7 +25,8 @@ import {
   Activity,
   Target,
   Package,
-  Database
+  Database,
+  Star
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 
@@ -93,10 +95,10 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       icon: Target,
       color: 'orange',
       items: [
-        { name: 'Calendario', path: '/calendario', icon: Calendar },
-        { name: 'Planificación Estratégica', path: '/planificacion-estrategica', icon: Target },
-        { name: 'Revisión por la Dirección', path: '/revision-direccion', icon: BarChart3 },
-        { name: 'Objetivos y Metas', path: '/objetivos-metas', icon: TrendingUp },
+        { name: 'Calendario', path: '/app/calendario', icon: Calendar },
+        { name: 'Planificación Estratégica', path: '/app/planificacion-estrategica', icon: Target },
+        { name: 'Revisión por la Dirección', path: '/app/revision-direccion', icon: BarChart3 },
+        { name: 'Objetivos y Metas', path: '/app/objetivos-metas', icon: TrendingUp },
       ]
     },
     {
@@ -105,10 +107,8 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       icon: BarChart3,
       color: 'blue',
       items: [
-        { name: 'Auditorías Internas', path: '/auditorias', icon: BarChart3 },
-        { name: 'Programa de Auditorías', path: '/programa-auditorias', icon: Calendar },
-        { name: 'Hallazgos de Auditoría', path: '/hallazgos-auditoria', icon: ClipboardCheck },
-        { name: 'Diseño y Desarrollo de Productos', path: '/productos', icon: Package },
+        { name: 'Auditorías Internas', path: '/app/auditorias', icon: BarChart3 },
+        { name: 'Productos', path: '/app/productos', icon: Package },
       ]
     },
     {
@@ -123,9 +123,9 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           icon: Building,
           id: 'organizacion',
           items: [
-            { name: 'Departamentos', path: '/departamentos', icon: Building },
-            { name: 'Puestos', path: '/puestos', icon: Briefcase },
-            { name: 'Personal', path: '/personal', icon: User },
+            { name: 'Departamentos', path: '/app/departamentos', icon: Building },
+            { name: 'Puestos', path: '/app/puestos', icon: Briefcase },
+            { name: 'Personal', path: '/app/personal', icon: User },
           ]
         },
         {
@@ -134,13 +134,14 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           icon: GraduationCap,
           id: 'desarrollo',
           items: [
-            { name: 'Capacitaciones', path: '/capacitaciones', icon: GraduationCap },
-            { name: 'Competencias', path: '/competencias', icon: Award },
-            { name: 'Eval. de Competencias', path: '/evalcompe-programacion', icon: ClipboardCheck },
+            { name: 'Capacitaciones', path: '/app/capacitaciones', icon: GraduationCap },
+            { name: 'Competencias', path: '/app/competencias', icon: ClipboardList },
+            { name: 'Evaluaciones Individuales', path: '/app/evaluaciones-individuales', icon: User },
+            { name: 'Eval. de Competencias', path: '/app/evaluacion-competencias', icon: Star },
           ]
         },
-        { name: 'Documentos', path: '/documentos', icon: FileText },
-        { name: 'Puntos de la Norma', path: '/normas', icon: ListChecks },
+        { name: 'Documentos', path: '/app/documentos', icon: FileText },
+        { name: 'Puntos de la Norma', path: '/app/normas', icon: ListChecks },
       ]
     },
     {
@@ -149,10 +150,10 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       icon: ClipboardCheck,
       color: 'blue',
       items: [
-        { name: 'Procesos', path: '/procesos', icon: ClipboardCheck },
-        { name: 'Objetivos de calidad', path: '/objetivos-calidad', icon: Briefcase },
-        { name: 'Indicadores de calidad', path: '/indicadores-calidad', icon: GraduationCap },
-        { name: 'Mediciones', path: '/mediciones', icon: Users },
+        { name: 'Procesos', path: '/app/procesos', icon: ClipboardCheck },
+        { name: 'Objetivos de calidad', path: '/app/objetivos-calidad', icon: Briefcase },
+        { name: 'Indicadores de calidad', path: '/app/indicadores', icon: GraduationCap },
+        { name: 'Mediciones', path: '/app/mediciones', icon: Users },
       ]
     },
     {
@@ -161,8 +162,8 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       icon: GraduationCap,
       color: 'purple',
       items: [
-        { name: 'Hallazgos', path: '/hallazgos', icon: ClipboardCheck },
-        { name: 'Acciones', path: '/acciones', icon: Briefcase },
+        { name: 'Hallazgos', path: '/app/hallazgos', icon: ClipboardCheck },
+        { name: 'Acciones', path: '/app/acciones', icon: Briefcase },
       ]
     },
     {
@@ -173,20 +174,26 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       items: [
         { 
           name: 'Super Administrador', 
-          path: '/admin/super', 
+          path: '/app/admin/super', 
           icon: Settings, 
           role: 'super_admin',
           show: () => user?.role === 'super_admin'
         },
         { 
           name: 'Admin de Organización', 
-          path: '/admin/organization', 
+          path: '/app/admin/organization', 
           icon: Building, 
           role: 'admin',
           show: () => ['admin', 'super_admin'].includes(user?.role)
         },
-        { name: 'Usuarios', path: '/usuarios', icon: Users },
-        { name: 'Esquema de BD', path: '/database-schema', icon: Database },
+        { name: 'Usuarios', path: '/app/usuarios', icon: Users },
+        { 
+          name: 'Esquema de BD', 
+          path: '/app/database-schema', 
+          icon: Database,
+          role: 'super_admin',
+          show: () => user?.role === 'super_admin'
+        },
       ]
     },
   ];
@@ -198,186 +205,156 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       className="h-full w-76 bg-slate-800 text-white flex flex-col shadow-lg"
     >
       {/* Header */}
-      <div className="p-6 border-b border-slate-700">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
-            <FileText className="h-6 w-6 text-white" />
+      <div className="p-4 border-b border-slate-700">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+            <FileText className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">SGC Pro</h1>
-            <p className="text-sm text-slate-400">Sistema de Gestión ISO 9001</p>
+            <div className="font-semibold text-white">SGC Pro</div>
+            <div className="text-xs text-slate-400">Sistema de Gestión ISO 9001</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="p-4">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Buscar en el sistema..."
+            className="w-full bg-slate-700 text-white placeholder-slate-400 rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <div className="absolute left-3 top-2.5">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-2">
-          {departmentModules.map((department) => {
-            const isExpanded = expandedSections.includes(department.id);
-            const hasActiveItem = Array.isArray(department.items) && department.items.some(item => location.pathname === item.path);
-            const colorClasses = getColorClasses(department.color, hasActiveItem);
+      <div className="flex-1 overflow-y-auto">
+        <nav className="px-4 space-y-2">
+          {departmentModules.map((module) => {
+            const isExpanded = expandedSections.includes(module.id);
+            const isActive = location.pathname.startsWith(module.items[0]?.path || '');
 
             return (
-              <div key={department.id} className="space-y-1">
-                {/* Department Header */}
-                <Button
-                  variant="ghost"
-                  onClick={() => toggleSection(department.id)}
-                  className={`
-                    w-full justify-between p-3 h-auto rounded-lg
-                    ${colorClasses.bg} ${colorClasses.text} ${colorClasses.border}
-                    transition-all duration-200
-                  `}
+              <div key={module.id} className="space-y-1">
+                <button
+                  onClick={() => toggleSection(module.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${getColorClasses(module.color, isActive).bg} ${getColorClasses(module.color, isActive).text} ${getColorClasses(module.color, isActive).border}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <department.icon className={`h-5 w-5 ${colorClasses.icon}`} />
-                    <span className="font-medium">{department.name}</span>
+                  <div className="flex items-center space-x-3">
+                    <module.icon className={`w-4 h-4 ${getColorClasses(module.color, isActive).icon}`} />
+                    <span>{module.name}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {Array.isArray(department.items) && department.items.length > 0 && (
-                      <Badge variant="secondary" className="text-xs bg-slate-700 text-slate-300">
-                        {department.items.filter(item => !item.show || item.show()).length}
-                      </Badge>
-                    )}
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-slate-600 text-slate-200">
+                      {module.items.length}
+                    </Badge>
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="w-4 h-4" />
                     ) : (
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="w-4 h-4" />
                     )}
                   </div>
-                </Button>
+                </button>
 
-                {/* Department Items */}
                 <AnimatePresence>
-                  {isExpanded && Array.isArray(department.items) && (
+                  {isExpanded && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="ml-6 space-y-1"
                     >
-                      <div className="ml-4 space-y-1 border-l-2 border-slate-700 pl-4">
-                        {department.items.map((item) => {
-                          // Filtrar items basado en el rol del usuario
-                          if (item.show && !item.show()) {
-                            return null; // No mostrar este item
-                          }
-
-                          const isActive = location.pathname === item.path;
-                          const itemColorClasses = getColorClasses(department.color, isActive);
-
-                          if (item.type === 'submenu') {
-                            const isSubmenuExpanded = expandedSubmenus[item.id];
-                            return (
-                              <div key={item.id} className="space-y-1">
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => toggleSubmenu(item.id)}
-                                  className={`
-                                    w-full justify-start p-2 h-auto text-sm rounded-lg
-                                    ${itemColorClasses.bg} ${itemColorClasses.text} ${itemColorClasses.border}
-                                    transition-all duration-200
-                                  `}
-                                >
-                                  <item.icon className={`h-4 w-4 mr-3 ${itemColorClasses.icon}`} />
-                                  {item.name}
-                                  {isSubmenuExpanded ? (
-                                    <ChevronDown className="h-4 w-4 ml-auto" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4 ml-auto" />
-                                  )}
-                                </Button>
-                                <AnimatePresence>
-                                  {isSubmenuExpanded && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: 'auto', opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.2 }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="ml-4 space-y-1 border-l-2 border-slate-700 pl-4">
-                                        {item.items.map((subItem) => {
-                                          // Filtrar subitems basado en el rol del usuario
-                                          if (subItem.show && !subItem.show()) {
-                                            return null; // No mostrar este subitem
-                                          }
-
-                                          const subItemIsActive = location.pathname === subItem.path;
-                                          const subItemColorClasses = getColorClasses(department.color, subItemIsActive);
-                                          return (
-                                            <Button
-                                              key={subItem.path}
-                                              variant="ghost"
-                                              onClick={() => handleNavigation(subItem.path)}
-                                              className={`
-                                                w-full justify-start p-2 h-auto text-sm rounded-lg
-                                                ${subItemColorClasses.bg} ${subItemColorClasses.text} ${subItemColorClasses.border}
-                                                transition-all duration-200
-                                              `}
-                                            >
-                                              <subItem.icon className={`h-4 w-4 mr-3 ${subItemColorClasses.icon}`} />
-                                              {subItem.name}
-                                            </Button>
-                                          );
-                                        }).filter(Boolean)} {/* Filtrar elementos null */}
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            );
-                          } else {
-                            return (
-                              <Button
-                                key={item.path}
-                                variant="ghost"
-                                onClick={() => handleNavigation(item.path)}
-                                className={`
-                                  w-full justify-start p-2 h-auto text-sm rounded-lg
-                                  ${itemColorClasses.bg} ${itemColorClasses.text} ${itemColorClasses.border}
-                                  transition-all duration-200
-                                `}
+                      {module.items.map((item, index) => {
+                        if (item.type === 'submenu') {
+                          const isSubmenuExpanded = expandedSubmenus[item.id];
+                          return (
+                            <div key={item.id} className="space-y-1">
+                              <button
+                                onClick={() => toggleSubmenu(item.id)}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 text-slate-300`}
                               >
-                                <item.icon className={`h-4 w-4 mr-3 ${itemColorClasses.icon}`} />
-                                {item.name}
-                              </Button>
-                            );
-                          }
-                        }).filter(Boolean)} {/* Filtrar elementos null */}
-                      </div>
+                                <div className="flex items-center space-x-3">
+                                  <item.icon className="w-4 h-4 text-slate-400" />
+                                  <span>{item.name}</span>
+                                </div>
+                                {isSubmenuExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </button>
+
+                              <AnimatePresence>
+                                {isSubmenuExpanded && (
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="ml-6 space-y-1"
+                                  >
+                                    {item.items.map((subItem) => {
+                                      const isSubItemActive = location.pathname === subItem.path;
+                                      return (
+                                        <button
+                                          key={subItem.path}
+                                          onClick={() => handleNavigation(subItem.path)}
+                                          className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            isSubItemActive
+                                              ? 'bg-emerald-700 text-white border-l-4 border-emerald-500'
+                                              : 'hover:bg-slate-700 text-slate-300'
+                                          }`}
+                                        >
+                                          <subItem.icon className="w-4 h-4" />
+                                          <span>{subItem.name}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        }
+
+                        const isItemActive = location.pathname === item.path;
+                        const shouldShow = item.show ? item.show() : true;
+
+                        if (!shouldShow) return null;
+
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => handleNavigation(item.path)}
+                            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              isItemActive
+                                ? 'bg-emerald-700 text-white border-l-4 border-emerald-500'
+                                : 'hover:bg-slate-700 text-slate-300'
+                            }`}
+                          >
+                            <item.icon className="w-4 h-4" />
+                            <span>{item.name}</span>
+                          </button>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             );
           })}
-        </div>
-      </nav>
-
-      {/* Acceso directo a Documentación */}
-      <div className="px-4 pb-4">
-        <Button
-          variant={location.pathname === '/documentacion' ? 'secondary' : 'ghost'}
-          onClick={() => handleNavigation('/documentacion')}
-          className={`w-full flex items-center gap-3 p-3 h-auto rounded-lg mb-2 ${location.pathname === '/documentacion' ? 'bg-emerald-700 text-white' : ''}`}
-        >
-          <FileText className="h-5 w-5" />
-          <span className="font-medium">Documentación</span>
-        </Button>
+        </nav>
       </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-700">
-        <div className="text-center">
-          <p className="text-xs text-slate-400">
-            © 2024 SGC Pro
-          </p>
-          <p className="text-xs text-slate-500">
-            v3.0.0
-          </p>
+        <div className="text-xs text-slate-400 text-center">
+          © 2024 SGC Pro v3.0.0
         </div>
       </div>
     </motion.div>

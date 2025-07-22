@@ -18,13 +18,91 @@ const useAuthStore = create(
       
       setLoading: (isLoading) => set({ isLoading }),
       
-      login: (userData, accessToken, refreshToken) => set({
-        user: userData,
-        accessToken,
-        refreshToken,
-        isAuthenticated: true,
-        isLoading: false
-      }),
+      login: async (email, password) => {
+        set({ isLoading: true });
+        
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Credenciales inválidas');
+          }
+
+          const data = await response.json();
+          
+          // El backend devuelve los datos en data.data
+          const { user, organization, tokens } = data.data;
+          
+          set({
+            user: {
+              ...user,
+              organization_id: organization.id
+            },
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            isAuthenticated: true,
+            isLoading: false
+          });
+
+          // Guardar token en localStorage para compatibilidad
+          localStorage.setItem('token', tokens.accessToken);
+          
+          return true;
+        } catch (error) {
+          console.error('Error en login:', error);
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
+      register: async (userData) => {
+        set({ isLoading: true });
+        
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Error en el registro');
+          }
+
+          // El backend devuelve los datos en data.data
+          const { user, organization, tokens } = data.data;
+          
+          set({
+            user: {
+              ...user,
+              organization_id: organization.id
+            },
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            isAuthenticated: true,
+            isLoading: false
+          });
+
+          // Guardar token en localStorage para compatibilidad
+          localStorage.setItem('token', tokens.accessToken);
+          
+          return true;
+        } catch (error) {
+          console.error('Error en registro:', error);
+          set({ isLoading: false });
+          throw error;
+        }
+      },
       
       logout: async () => {
         const { refreshToken } = get();

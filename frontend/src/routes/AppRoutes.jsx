@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import MainLayout from "../components/layout/MainLayout";
-import ProtectedRoute from "./ProtectedRoute";
+import ProtectedRoute, { SuperAdminRoute } from "./ProtectedRoute";
 
 // IMPORTACIÓN DIRECTA PARA DEPURACIÓN - TEMPORALMENTE DESHABILITADA
 // import DocumentosListing from "../components/documentos/DocumentosListing";
@@ -81,8 +81,18 @@ const AccionSingle = lazy(() => import('../components/acciones/AccionSingle'));
 // Componente de prueba
 const TestSimpleComponent = lazy(() => import("../components/TestSimpleComponent"));
 
-const CompetenciasPage = lazy(() => import('../components/competencias/CompetenciasListing'));
-const EvalcompeProgramacionPage = lazy(() => import('../components/competencias/EvalcompeProgramacionListing'));
+// Programaciones de Evaluación de Competencias (Temporalmente deshabilitado)
+// const EvalcompeProgramacionListing = lazy(() => import('../components/competencias/EvalcompeProgramacionListing'));
+// const EvalcompeProgramacionSingle = lazy(() => import('../components/competencias/EvalcompeProgramacionSingle'));
+
+// Competencias
+const CompetenciasListing = lazy(() => import('../pages/Competencias/CompetenciasListing'));
+const CompetenciaSingle = lazy(() => import('../pages/Competencias/CompetenciaSingle'));
+const EvaluacionesDashboard = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesDashboardSimple'));
+const EvaluacionesIndividualesSimple = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesIndividualesSimple'));
+const ProgramacionCompetenciasList = lazy(() => import('../pages/EvaluacionCompetencias/ProgramacionCompetenciasList'));
+const ProgramacionSingle = lazy(() => import('../pages/EvaluacionCompetencias/ProgramacionSingle'));
+
 
 // Base de Datos y Esquemas
 const DatabaseSchemaPage = lazy(() => import("../pages/DatabaseSchemaPage"));
@@ -160,14 +170,21 @@ const AppRoutes = () => {
                   <Route path="productos" element={<ProductosPage />} />
                   <Route path="tickets" element={<TicketsPage />} />
                   <Route path="encuestas" element={<EncuestasPage />} />
+                  {/* Rutas de Evaluación de Competencias (Temporalmente deshabilitado) */}
+                  {/* <Route path="evalcompe-programacion" element={<EvalcompeProgramacionListing />} /> */}
+                  {/* <Route path="evalcompe-programacion/:id" element={<EvalcompeProgramacionSingle />} /> */}
+                  <Route path="competencias" element={<CompetenciasListing />} />
+                  <Route path="competencias/:id" element={<CompetenciaSingle />} />
+                  <Route path="evaluaciones-individuales" element={<EvaluacionesIndividualesSimple />} />
+                  <Route path="evaluaciones-dashboard" element={<EvaluacionesDashboard />} />
+                  <Route path="evaluacion-competencias" element={<ProgramacionCompetenciasList />} />
+                  <Route path="evaluacion-competencias/:id" element={<ProgramacionSingle />} />
                   
                   {/* Administración */}
                   <Route path="usuarios" element={<UsersPage />} />
                   <Route path="usuarios-single" element={<UsuariosSingle />} />
                   <Route path="admin/super" element={<SuperAdminPage />} />
                   <Route path="admin/organization" element={<OrganizationAdminPage />} />
-                  <Route path="competencias" element={<CompetenciasPage />} />
-                  <Route path="evalcompe-programacion" element={<EvalcompeProgramacionPage />} />
 
                   {/* Documentación */}
                   <Route path="documentacion" element={<DocumentacionLayout />}>
@@ -179,7 +196,11 @@ const AppRoutes = () => {
                   </Route>
 
                   {/* Base de Datos y Esquemas */}
-                  <Route path="database-schema" element={<DatabaseSchemaPage />} />
+                  <Route path="database-schema" element={
+                    <SuperAdminRoute>
+                      <DatabaseSchemaPage />
+                    </SuperAdminRoute>
+                  } />
 
                   {/* Prueba de renderizado */}
                   <Route path="test-simple" element={<TestSimpleComponent />} />

@@ -57,7 +57,7 @@ export const register = async (req, res) => {
       args: [organizationName, organizationEmail, organizationPhone, plan]
     });
 
-    const organizationId = orgResult.lastInsertRowid;
+    const organizationId = Number(orgResult.lastInsertRowid);
 
     // Crear features básicas para la organización
     const basicFeatures = [
@@ -86,7 +86,7 @@ export const register = async (req, res) => {
       args: [adminName, adminEmail, hashedPassword, 'admin', organizationId]
     });
 
-    const userId = userResult.lastInsertRowid;
+    const userId = Number(userResult.lastInsertRowid);
 
     // Generar tokens
     const accessToken = jwt.sign(
@@ -192,8 +192,8 @@ export const login = async (req, res) => {
     console.log('[5/6] ✍️  Generando tokens JWT...');
     const accessToken = jwt.sign(
       { 
-        userId: user.id, 
-        organizationId: user.organization_id, 
+        userId: Number(user.id), 
+        organizationId: Number(user.organization_id), 
         role: user.role 
       },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -201,7 +201,7 @@ export const login = async (req, res) => {
     );
 
     const refreshToken = jwt.sign(
-      { userId: user.id, organizationId: user.organization_id },
+      { userId: Number(user.id), organizationId: Number(user.organization_id) },
       process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
       { expiresIn: '7d' }
     );
@@ -225,13 +225,13 @@ export const login = async (req, res) => {
       message: 'Login exitoso',
       data: {
         user: {
-          id: user.id,
+          id: Number(user.id),
           name: user.name,
           email: user.email,
           role: user.role
         },
         organization: {
-          id: user.organization_id
+          id: Number(user.organization_id)
         },
         tokens: {
           accessToken,
