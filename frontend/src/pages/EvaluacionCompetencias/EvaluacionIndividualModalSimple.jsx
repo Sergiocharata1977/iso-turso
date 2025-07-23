@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, User, Calendar, FileText, X, Award } from 'lucide-react';
+import { personalService } from '@/services/personalService';
+import { competenciasService } from '@/services/competenciasService';
 
 const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }) => {
   const [formData, setFormData] = useState({
@@ -18,26 +20,16 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
     competencias: []
   });
 
-  const [empleados, setEmpleados] = useState([
-    { id: 1, nombre: 'Juan', apellido: 'Pérez' },
-    { id: 2, nombre: 'María', apellido: 'González' },
-    { id: 3, nombre: 'Carlos', apellido: 'López' },
-    { id: 4, nombre: 'Ana', apellido: 'Martínez' }
-  ]);
-
-  const [competencias, setCompetencias] = useState([
-    { id: 1, nombre: 'Liderazgo', descripcion: 'Capacidad de dirigir equipos' },
-    { id: 2, nombre: 'Comunicación', descripcion: 'Habilidades de comunicación efectiva' },
-    { id: 3, nombre: 'Trabajo en Equipo', descripcion: 'Colaboración y cooperación' },
-    { id: 4, nombre: 'Resolución de Problemas', descripcion: 'Análisis y solución de problemas' },
-    { id: 5, nombre: 'Adaptabilidad', descripcion: 'Flexibilidad ante cambios' }
-  ]);
-
+  const [empleados, setEmpleados] = useState([]);
+  const [competencias, setCompetencias] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Cargar datos iniciales
   useEffect(() => {
     if (isOpen) {
+      loadEmpleados();
+      loadCompetencias();
+      
       if (evaluacion) {
         // Modo edición
         setFormData({
@@ -47,11 +39,7 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
             new Date(evaluacion.fecha_evaluacion).toISOString().split('T')[0] : 
             new Date().toISOString().split('T')[0],
           observaciones: evaluacion.observaciones || '',
-          competencias: evaluacion.competencias || competencias.map(comp => ({
-            competencia_id: comp.id,
-            nombre: comp.nombre,
-            puntaje: 0
-          }))
+          competencias: evaluacion.competencias || []
         });
       } else {
         // Modo creación
@@ -60,15 +48,49 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
           empleado_nombre: '',
           fecha_evaluacion: new Date().toISOString().split('T')[0],
           observaciones: '',
-          competencias: competencias.map(comp => ({
-            competencia_id: comp.id,
-            nombre: comp.nombre,
-            puntaje: 0
-          }))
+          competencias: []
         });
       }
     }
-  }, [isOpen, evaluacion, competencias]);
+  }, [isOpen, evaluacion]);
+
+  // Cargar empleados desde la base de datos
+  const loadEmpleados = async () => {
+    try {
+      console.log('🔄 [EvaluacionModal] Cargando empleados...');
+      const data = await personalService.getAllPersonal();
+      const empleadosData = Array.isArray(data) ? data : [];
+      setEmpleados(empleadosData);
+      console.log('✅ [EvaluacionModal] Empleados cargados:', empleadosData.length);
+    } catch (error) {
+      console.error('❌ [EvaluacionModal] Error al cargar empleados:', error);
+      setEmpleados([]);
+    }
+  };
+
+  // Cargar competencias desde la base de datos
+  const loadCompetencias = async () => {
+    try {
+      console.log('🔄 [EvaluacionModal] Cargando competencias...');
+      const data = await competenciasService.getAll();
+      const competenciasData = Array.isArray(data) ? data : [];
+      setCompetencias(competenciasData);
+      
+      // Si es nueva evaluación, inicializar competencias con puntaje 0
+      if (!evaluacion && competenciasData.length > 0) {
+        const competenciasIniciales = competenciasData.map(comp => ({
+          competencia_id: comp.id,
+          competencia_nombre: comp.nombre,
+          puntaje: 0
+        }));
+        setFormData(prev => ({ ...prev, competencias: competenciasIniciales }));
+      }
+      console.log('✅ [EvaluacionModal] Competencias cargadas:', competenciasData.length);
+    } catch (error) {
+      console.error('❌ [EvaluacionModal] Error al cargar competencias:', error);
+      setCompetencias([]);
+    }
+  };
 
   // Manejar cambios en campos básicos
   const handleChange = (field, value) => {
@@ -80,13 +102,15 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
 
   // Manejar selección de empleado
   const handleEmpleadoChange = (empleadoId) => {
+    console.log('🔄 [EvaluacionModal] Seleccionando empleado:', empleadoId);
     const empleado = empleados.find(emp => emp.id === parseInt(empleadoId));
     if (empleado) {
       setFormData(prev => ({
         ...prev,
-        empleado_id: empleado.id,
-        empleado_nombre: `${empleado.nombre} ${empleado.apellido}`
+        empleado_id: parseInt(empleadoId), // Convertir a número
+        empleado_nombre: `${empleado.nombres || empleado.nombre || ''} ${empleado.apellidos || empleado.apellido || ''}`.trim()
       }));
+      console.log('✅ [EvaluacionModal] Empleado seleccionado:', empleado);
     }
   };
 
@@ -102,59 +126,78 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
     }));
   };
 
+  // Calcular puntaje total
+  const calcularPuntajeTotal = () => {
+    if (formData.competencias.length === 0) return 0;
+    const suma = formData.competencias.reduce((acc, comp) => acc + (comp.puntaje || 0), 0);
+    return (suma / formData.competencias.length).toFixed(1);
+  };
+
   // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🔄 [EvaluacionModal] Iniciando guardado de evaluación...');
+    console.log('📋 [EvaluacionModal] Datos del formulario:', formData);
     
+    // Validar campos obligatorios
     if (!formData.empleado_id) {
       alert('Por favor selecciona un empleado');
       return;
     }
-
+    
+    if (!formData.fecha_evaluacion) {
+      alert('Por favor selecciona una fecha de evaluación');
+      return;
+    }
+    
+    if (!formData.competencias || formData.competencias.length === 0) {
+      alert('No hay competencias para evaluar');
+      return;
+    }
+    
     setIsLoading(true);
+
     try {
-      console.log('🔄 [EvaluacionModal] Guardando evaluación:', formData);
-      
-      // Preparar datos para enviar
-      const evaluacionData = {
-        empleado_id: formData.empleado_id,
-        fecha_evaluacion: formData.fecha_evaluacion,
-        observaciones: formData.observaciones,
-        competencias: formData.competencias.filter(comp => comp.puntaje > 0) // Solo competencias con puntaje
+      const dataToSave = {
+        ...formData,
+        puntaje_total: parseFloat(calcularPuntajeTotal()),
+        estado: formData.competencias.every(comp => comp.puntaje > 0) ? 'completada' : 'pendiente'
       };
 
-      await onSave(evaluacionData);
+      console.log('💾 [EvaluacionModal] Datos a guardar:', dataToSave);
+      await onSave(dataToSave);
       console.log('✅ [EvaluacionModal] Evaluación guardada exitosamente');
-      
-      // Cerrar modal
-      onClose();
     } catch (error) {
       console.error('❌ [EvaluacionModal] Error al guardar evaluación:', error);
-      alert('Error al guardar la evaluación. Por favor, inténtalo de nuevo.');
+      alert('Error al guardar la evaluación: ' + error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Renderizar estrellas para puntaje
-  const renderStars = (competenciaId, puntaje) => {
+  const renderStars = (competenciaId, currentPuntaje) => {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center space-x-1">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
           <button
             key={star}
             type="button"
             onClick={() => handleCompetenciaPuntaje(competenciaId, star)}
             className={`w-6 h-6 ${
-              star <= puntaje 
-                ? 'text-yellow-400 fill-current' 
-                : 'text-gray-300 hover:text-yellow-200'
-            } transition-colors`}
+              star <= currentPuntaje
+                ? 'text-yellow-400'
+                : 'text-slate-400'
+            } hover:text-yellow-300 hover:scale-110 transition-all duration-200 cursor-pointer`}
           >
-            <Star className="w-full h-full" />
+            <Star 
+              className={`w-full h-full ${
+                star <= currentPuntaje ? 'fill-yellow-400' : 'fill-none'
+              }`} 
+            />
           </button>
         ))}
-        <span className="ml-2 text-white font-medium">{puntaje}/10</span>
+        <span className="ml-2 text-sm font-medium text-white">{currentPuntaje}/10</span>
       </div>
     );
   };
@@ -163,21 +206,16 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-800 border-slate-700 text-white">
         <DialogHeader className="flex flex-row items-center justify-between">
-          <div>
-            <DialogTitle className="text-xl font-semibold text-white">
-              {evaluacion ? 'Editar Evaluación Individual' : 'Nueva Evaluación Individual'}
-            </DialogTitle>
-            <DialogDescription className="text-slate-300">
-              {evaluacion ? 'Modifica los datos de la evaluación individual' : 'Crea una nueva evaluación individual de competencias'}
-            </DialogDescription>
-          </div>
+          <DialogTitle className="text-xl font-semibold text-white">
+            {evaluacion ? 'Editar Evaluación Individual' : 'Nueva Evaluación Individual'}
+          </DialogTitle>
           <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-slate-700">
             <X className="h-4 w-4" />
           </Button>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Información General */}
+          {/* Información básica */}
           <Card className="bg-slate-700 border-slate-600">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
@@ -192,14 +230,14 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
                     <User className="h-4 w-4" />
                     Empleado *
                   </Label>
-                  <Select value={formData.empleado_id.toString()} onValueChange={handleEmpleadoChange}>
-                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue placeholder="Seleccionar empleado" />
+                  <Select value={formData.empleado_id} onValueChange={handleEmpleadoChange}>
+                    <SelectTrigger className="bg-slate-600 border-slate-500 text-white hover:bg-slate-500 focus:ring-2 focus:ring-teal-500">
+                      <SelectValue placeholder="Seleccionar empleado" className="text-white" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-700 border-slate-600">
-                      {empleados.map((empleado) => (
-                        <SelectItem key={empleado.id} value={empleado.id.toString()}>
-                          {empleado.nombre} {empleado.apellido}
+                    <SelectContent className="bg-slate-600 border-slate-500">
+                      {empleados.filter(emp => emp.id).map((empleado) => (
+                        <SelectItem key={empleado.id} value={empleado.id} className="text-white hover:bg-slate-500">
+                          {`${empleado.nombres || empleado.nombre || ''} ${empleado.apellidos || empleado.apellido || ''}`.trim()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -207,16 +245,16 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="fecha_evaluacion" className="text-white flex items-center gap-2">
+                  <Label htmlFor="fecha" className="text-white flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
                     Fecha de Evaluación *
                   </Label>
                   <Input
-                    id="fecha_evaluacion"
+                    id="fecha"
                     type="date"
                     value={formData.fecha_evaluacion}
                     onChange={(e) => handleChange('fecha_evaluacion', e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
+                    className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
                     required
                   />
                 </div>
@@ -225,86 +263,83 @@ const EvaluacionIndividualModalSimple = ({ isOpen, onClose, onSave, evaluacion }
               <div className="space-y-2">
                 <Label htmlFor="observaciones" className="text-white flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Observaciones
+                  Observaciones Generales
                 </Label>
                 <Textarea
                   id="observaciones"
                   value={formData.observaciones}
                   onChange={(e) => handleChange('observaciones', e.target.value)}
-                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
-                  placeholder="Observaciones generales sobre la evaluación..."
+                  className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-500 resize-none"
+                  placeholder="Observaciones sobre la evaluación..."
                   rows={3}
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Evaluación de Competencias */}
+          {/* Evaluación de competencias */}
           <Card className="bg-slate-700 border-slate-600">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Award className="h-5 w-5" />
                 Evaluación de Competencias
+                <div className="ml-auto text-sm">
+                  Puntaje Total: <span className="font-bold text-teal-400">{calcularPuntajeTotal()}/10</span>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {formData.competencias.map((competencia) => (
-                <div
-                  key={competencia.competencia_id}
-                  className="p-4 bg-slate-600 rounded-lg border border-slate-500"
-                >
+              {formData.competencias.map((comp) => (
+                <div key={comp.competencia_id} className="p-4 bg-slate-600 rounded-lg">
                   <div className="flex flex-col space-y-3">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium text-white">{competencia.nombre}</h4>
-                        <p className="text-slate-300 text-sm">
-                          {competencias.find(c => c.id === competencia.competencia_id)?.descripcion}
-                        </p>
+                      <h4 className="font-medium text-white">{comp.competencia_nombre}</h4>
+                      <div className="text-sm text-slate-300">
+                        Puntaje: {comp.puntaje}/10
                       </div>
-                      <Badge 
-                        className={`${
-                          competencia.puntaje >= 8 ? 'bg-green-600' :
-                          competencia.puntaje >= 6 ? 'bg-yellow-600' :
-                          competencia.puntaje >= 4 ? 'bg-orange-600' :
-                          competencia.puntaje > 0 ? 'bg-red-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        {competencia.puntaje > 0 ? `${competencia.puntaje}/10` : 'Sin evaluar'}
-                      </Badge>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300 text-sm">Puntaje:</span>
-                      {renderStars(competencia.competencia_id, competencia.puntaje)}
+                    
+                    <div className="flex items-center justify-center">
+                      {renderStars(comp.competencia_id, comp.puntaje)}
                     </div>
                   </div>
                 </div>
               ))}
+
+              {formData.competencias.length === 0 && (
+                <div className="text-center py-8 text-slate-400">
+                  <Award className="mx-auto h-12 w-12 mb-2" />
+                  <p>No hay competencias disponibles</p>
+                  <p className="text-sm">Asegúrate de tener competencias creadas en el sistema</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Botones de acción */}
-          <div className="flex justify-end space-x-4 pt-4">
-            <Button
-              type="button"
-              variant="outline"
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
+            <Button 
+              type="button" 
+              variant="outline" 
               onClick={onClose}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              className="bg-transparent border-slate-600 text-white hover:bg-slate-700"
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
+            <Button 
+              type="submit" 
               disabled={isLoading}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => {
+                console.log('🖱️ [EvaluacionModal] Botón clickeado');
+                console.log('📋 [EvaluacionModal] Estado del formulario:', {
+                  empleado_id: formData.empleado_id,
+                  isLoading,
+                  competencias: formData.competencias.length
+                });
+              }}
             >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Guardando...
-                </>
-              ) : (
-                evaluacion ? 'Actualizar Evaluación' : 'Crear Evaluación'
-              )}
+              {isLoading ? 'Guardando...' : (evaluacion ? 'Actualizar' : 'Crear')} Evaluación
             </Button>
           </div>
         </form>

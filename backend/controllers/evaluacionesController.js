@@ -17,10 +17,10 @@ export const getEvaluaciones = async (req, res) => {
     const result = await tursoClient.execute({ 
       sql: `SELECT 
               e.*,
-              p.nombre as empleado_nombre,
-              p.apellido as empleado_apellido,
-              ev.nombre as evaluador_nombre,
-              ev.apellido as evaluador_apellido
+              p.nombres as empleado_nombre,
+              p.apellidos as empleado_apellido,
+              ev.nombres as evaluador_nombre,
+              ev.apellidos as evaluador_apellido
             FROM evaluaciones_individuales e
             LEFT JOIN personal p ON e.empleado_id = p.id
             LEFT JOIN personal ev ON e.evaluador_id = ev.id

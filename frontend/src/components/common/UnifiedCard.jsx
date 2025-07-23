@@ -64,18 +64,27 @@ const UnifiedCard = ({
   const colors = getColorClasses();
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+    // Validación robusta para evitar errores
+    if (!status || typeof status !== 'string') {
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+    
+    switch (status.toLowerCase()) {
       case 'activo':
       case 'completado':
       case 'completada':
+      case 'excelente':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'en_proceso':
       case 'en progreso':
       case 'pendiente':
+      case 'bueno':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'cancelado':
       case 'cancelada':
       case 'inactivo':
+      case 'regular':
+      case 'necesita mejora':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -138,7 +147,9 @@ const UnifiedCard = ({
 
           {status && (
             <div className="flex items-center gap-2 pt-2">
-              <Badge className={getStatusColor(status)}>{status}</Badge>
+              <Badge className={getStatusColor(typeof status === 'string' ? status : String(status))}>
+                {typeof status === 'string' ? status : String(status)}
+              </Badge>
             </div>
           )}
         </div>

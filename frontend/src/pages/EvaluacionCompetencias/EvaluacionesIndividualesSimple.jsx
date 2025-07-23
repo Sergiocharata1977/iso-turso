@@ -16,6 +16,8 @@ import {
 import { Search, Plus, Grid3X3, Table2, FileEdit, Trash2, Eye, Calendar, Users, Star, User } from 'lucide-react';
 import { evaluacionesService } from '@/services/evaluacionesService';
 import EvaluacionIndividualModalSimple from './EvaluacionIndividualModalSimple';
+import UnifiedCard from '@/components/common/UnifiedCard';
+import UnifiedHeader from '@/components/common/UnifiedHeader';
 
 const EvaluacionesIndividualesSimple = () => {
   const [evaluaciones, setEvaluaciones] = useState([]);
@@ -32,65 +34,13 @@ const EvaluacionesIndividualesSimple = () => {
     console.log('🔄 [EvaluacionesSimple] Iniciando carga de evaluaciones...');
     setIsLoading(true);
     try {
-      // Por ahora usar datos de ejemplo hasta que el servicio funcione
-      const datosEjemplo = [
-        {
-          id: 1,
-          empleado_id: 1,
-          empleado_nombre: 'Juan Pérez',
-          fecha_evaluacion: '2025-07-20',
-          observaciones: 'Evaluación trimestral - Buen desempeño general',
-          competencias: [
-            { competencia_id: 1, nombre: 'Liderazgo', puntaje: 8 },
-            { competencia_id: 2, nombre: 'Comunicación', puntaje: 9 },
-            { competencia_id: 3, nombre: 'Trabajo en Equipo', puntaje: 7 }
-          ],
-          promedio: 8.0,
-          fecha_creacion: '2025-07-20 10:30:00'
-        },
-        {
-          id: 2,
-          empleado_id: 2,
-          empleado_nombre: 'María González',
-          fecha_evaluacion: '2025-07-19',
-          observaciones: 'Evaluación semestral - Excelente rendimiento',
-          competencias: [
-            { competencia_id: 1, nombre: 'Liderazgo', puntaje: 9 },
-            { competencia_id: 2, nombre: 'Comunicación', puntaje: 10 },
-            { competencia_id: 4, nombre: 'Resolución de Problemas', puntaje: 8 }
-          ],
-          promedio: 9.0,
-          fecha_creacion: '2025-07-19 14:15:00'
-        },
-        {
-          id: 3,
-          empleado_id: 3,
-          empleado_nombre: 'Carlos López',
-          fecha_evaluacion: '2025-07-18',
-          observaciones: 'Evaluación mensual - Necesita mejorar en algunas áreas',
-          competencias: [
-            { competencia_id: 2, nombre: 'Comunicación', puntaje: 6 },
-            { competencia_id: 3, nombre: 'Trabajo en Equipo', puntaje: 7 },
-            { competencia_id: 5, nombre: 'Adaptabilidad', puntaje: 5 }
-          ],
-          promedio: 6.0,
-          fecha_creacion: '2025-07-18 09:45:00'
-        }
-      ];
-
-      setEvaluaciones(datosEjemplo);
-      console.log('✅ [EvaluacionesSimple] Evaluaciones cargadas:', datosEjemplo.length);
-
-      // Intentar cargar desde el servicio (comentado por ahora)
-      /*
       const data = await evaluacionesService.getAll();
       console.log('📋 [EvaluacionesSimple] Datos del servicio:', data);
       setEvaluaciones(Array.isArray(data) ? data : []);
-      */
-      
+      console.log('✅ [EvaluacionesSimple] Evaluaciones cargadas:', Array.isArray(data) ? data.length : 0);
     } catch (error) {
       console.error('❌ [EvaluacionesSimple] Error al cargar evaluaciones:', error);
-      // Mantener datos de ejemplo en caso de error
+      setEvaluaciones([]);
     } finally {
       setIsLoading(false);
       console.log('✅ [EvaluacionesSimple] Carga finalizada');
@@ -155,15 +105,13 @@ const EvaluacionesIndividualesSimple = () => {
         console.log('✅ [EvaluacionesSimple] Nueva evaluación creada');
       }
 
-      // Aquí se haría la llamada al servicio real
-      /*
+      // Llamada al servicio real
       if (currentEvaluacion) {
         await evaluacionesService.update(currentEvaluacion.id, evaluacionData);
       } else {
         await evaluacionesService.create(evaluacionData);
       }
       await loadEvaluaciones(); // Recargar datos
-      */
       
     } catch (error) {
       console.error('❌ [EvaluacionesSimple] Error al guardar evaluación:', error);
@@ -187,11 +135,9 @@ const EvaluacionesIndividualesSimple = () => {
       // Eliminar de la lista local
       setEvaluaciones(prev => prev.filter(evaluacion => evaluacion.id !== evaluacionToDelete.id));
       
-      // Aquí se haría la llamada al servicio real
-      /*
+      // Llamada al servicio real
       await evaluacionesService.delete(evaluacionToDelete.id);
       await loadEvaluaciones(); // Recargar datos
-      */
       
       console.log('✅ [EvaluacionesSimple] Evaluación eliminada');
     } catch (error) {
@@ -216,77 +162,78 @@ const EvaluacionesIndividualesSimple = () => {
     return new Date(dateString).toLocaleDateString('es-ES');
   };
 
-  // Renderizar vista de tarjetas
-  const renderGridView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {filteredEvaluaciones.map((evaluacion) => (
-        <Card key={evaluacion.id} className="hover:shadow-lg transition-shadow cursor-pointer bg-slate-800 border-slate-700">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <User className="h-5 w-5 text-teal-600" />
-                <CardTitle className="text-lg text-white">{evaluacion.empleado_nombre}</CardTitle>
-              </div>
-              {getPromedioBadge(evaluacion.promedio)}
-            </div>
-            <div className="flex items-center text-slate-400 text-sm">
-              <Calendar className="h-4 w-4 mr-1" />
-              {formatDate(evaluacion.fecha_evaluacion)}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div>
-                <p className="text-slate-300 text-sm line-clamp-2">
-                  {evaluacion.observaciones || 'Sin observaciones'}
-                </p>
-              </div>
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Competencias:</span>
-                <span className="text-white font-medium">{evaluacion.competencias?.length || 0}</span>
-              </div>
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Promedio:</span>
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                  <span className="text-white font-medium">{evaluacion.promedio?.toFixed(1) || '0.0'}/10</span>
-                </div>
+  // Renderizar vista de tarjetas usando UnifiedCard
+  const renderGridView = () => {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm animate-pulse">
+              <div className="bg-gradient-to-r from-teal-500 to-teal-600 p-4 h-20"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
               </div>
             </div>
-            
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => console.log('Ver evaluación:', evaluacion.id)}
-                className="text-teal-600 border-teal-600 hover:bg-teal-600 hover:text-white"
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleOpenModal(evaluacion)}
-                className="text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
-              >
-                <FileEdit className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleConfirmDelete(evaluacion)}
-                className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredEvaluaciones.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <User className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground">No se encontraron evaluaciones.</p>
+          <Button onClick={() => handleOpenModal()} className="mt-4">
+            <Plus className="h-4 w-4 mr-2" />
+            Crear primera evaluación
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredEvaluaciones.map((evaluacion) => {
+          const fields = [
+            { 
+              icon: Calendar, 
+              label: "Fecha", 
+              value: formatDate(evaluacion.fecha_evaluacion) 
+            },
+            { 
+              icon: Star, 
+              label: "Promedio", 
+              value: `${evaluacion.promedio?.toFixed(1) || '0.0'}/10` 
+            },
+            { 
+              icon: Users, 
+              label: "Competencias", 
+              value: `${evaluacion.competencias?.length || 0} evaluadas` 
+            }
+          ];
+
+          return (
+            <UnifiedCard
+              key={evaluacion.id}
+              title={evaluacion.empleado_nombre}
+              subtitle={`ID: ${evaluacion.id}`}
+              description={evaluacion.observaciones || 'Sin observaciones'}
+              status={evaluacion.promedio >= 8 ? 'Excelente' : evaluacion.promedio >= 6 ? 'Bueno' : evaluacion.promedio >= 4 ? 'Regular' : 'Necesita Mejora'}
+              fields={fields}
+              icon={User}
+              primaryColor="teal"
+              onView={() => console.log('Ver evaluación:', evaluacion.id)}
+              onEdit={() => handleOpenModal(evaluacion)}
+              onDelete={() => handleConfirmDelete(evaluacion)}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   // Renderizar vista de tabla
   const renderTableView = () => (
@@ -392,121 +339,43 @@ const EvaluacionesIndividualesSimple = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Evaluaciones Individuales</h1>
-          <p className="text-slate-400">Gestión de evaluaciones de competencias individuales</p>
-        </div>
-        <Button
-          onClick={() => handleOpenModal()}
-          className="bg-teal-600 hover:bg-teal-700 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Evaluación
-        </Button>
-      </div>
-
-      {/* Controles */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-          <Input
-            placeholder="Buscar evaluaciones..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 focus:border-teal-500"
-          />
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-            className={viewMode === 'grid' ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-            className={viewMode === 'table' ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}
-          >
-            <Table2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Estadísticas rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-slate-800 border-slate-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm">Total Evaluaciones</p>
-                <p className="text-2xl font-bold text-white">{evaluaciones.length}</p>
-              </div>
-              <Users className="h-8 w-8 text-teal-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-slate-800 border-slate-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm">Promedio General</p>
-                <p className="text-2xl font-bold text-white">
-                  {evaluaciones.length > 0 
-                    ? (evaluaciones.reduce((sum, evaluacion) => sum + (evaluacion.promedio || 0), 0) / evaluaciones.length).toFixed(1)
-                    : '0.0'
-                  }
-                </p>
-              </div>
-              <Star className="h-8 w-8 text-yellow-400" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-slate-800 border-slate-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm">Excelentes</p>
-                <p className="text-2xl font-bold text-green-400">
-                  {evaluaciones.filter(evaluacion => (evaluacion.promedio || 0) >= 8).length}
-                </p>
-              </div>
-              <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
-                <span className="text-white text-sm font-bold">A</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-slate-800 border-slate-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm">Necesitan Mejora</p>
-                <p className="text-2xl font-bold text-red-400">
-                  {evaluaciones.filter(evaluacion => (evaluacion.promedio || 0) < 6).length}
-                </p>
-              </div>
-              <div className="h-8 w-8 rounded-full bg-red-600 flex items-center justify-center">
-                <span className="text-white text-sm font-bold">!</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Header usando UnifiedHeader */}
+      <UnifiedHeader
+        title="Evaluaciones Individuales"
+        subtitle="Gestión de evaluaciones de competencias individuales"
+        searchPlaceholder="Buscar evaluaciones..."
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onNew={() => handleOpenModal()}
+        newButtonText="Nueva Evaluación"
+        stats={[
+          { label: "Total Evaluaciones", value: evaluaciones.length, icon: Users },
+          { 
+            label: "Promedio General", 
+            value: evaluaciones.length > 0 
+              ? (evaluaciones.reduce((sum, evaluacion) => sum + (evaluacion.promedio || 0), 0) / evaluaciones.length).toFixed(1)
+              : '0.0',
+            icon: Star 
+          },
+          { 
+            label: "Excelentes", 
+            value: evaluaciones.filter(evaluacion => (evaluacion.promedio || 0) >= 8).length,
+            icon: Star 
+          },
+          { 
+            label: "Necesitan Mejora", 
+            value: evaluaciones.filter(evaluacion => (evaluacion.promedio || 0) < 6).length,
+            icon: User 
+          }
+        ]}
+      />
 
       {/* Contenido principal */}
       {filteredEvaluaciones.length === 0 ? (
         <div className="text-center py-12">
-          <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No hay evaluaciones</h3>
           <p className="text-slate-400 mb-4">
             {searchTerm ? 'No se encontraron evaluaciones que coincidan con tu búsqueda.' : 'Comienza creando tu primera evaluación individual.'}

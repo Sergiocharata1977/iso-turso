@@ -10,6 +10,7 @@ import competenciasRouter from './routes/competencias.routes.js';
 import evalcompeProgramacionRouter from './routes/evalcompeProgramacion.routes.js';
 import evalcompeDetalleRouter from './routes/evalcompe-detalle.routes.js';
 import evaluacionesRouter from './routes/evaluaciones.routes.js';
+import relacionesRouter from './routes/relaciones.routes.js';
 
 // Load environment variables explicitly
 dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
@@ -98,6 +99,7 @@ app.use('/api/verificaciones', verificacionesRouter);
 app.use('/api/actividad', actividadRoutes);
 app.use('/api/competencias', competenciasRouter);
 app.use('/api/evaluaciones', evaluacionesRouter);
+app.use('/api/relaciones', relacionesRouter);
 app.use('/api/evaluacion-programacion', evalcompeProgramacionRouter);
 app.use('/api/evaluacion-detalle', evalcompeDetalleRouter);
 app.use('/api', direccionRoutes);

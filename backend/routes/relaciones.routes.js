@@ -4,75 +4,344 @@ import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Proteger todas las rutas
+// Aplicar middleware de autenticación a todas las rutas
 router.use(authMiddleware);
 
-// GET /api/relaciones - Listar relaciones (por organización y filtros opcionales)
+// GET /relaciones - Obtener todas las relaciones
 router.get('/', async (req, res) => {
   try {
-    const organization_id = req.user?.organization_id;
-    if (!organization_id) {
-      return res.status(400).json({ message: 'No se encontró la organización del usuario.' });
-    }
-    const { origen_tipo, origen_id, destino_tipo, destino_id } = req.query;
-    let sql = 'SELECT * FROM relaciones_sgc WHERE organization_id = ?';
-    const args = [organization_id];
-    if (origen_tipo) { sql += ' AND origen_tipo = ?'; args.push(origen_tipo); }
-    if (origen_id)   { sql += ' AND origen_id = ?';   args.push(Number(origen_id)); }
-    if (destino_tipo){ sql += ' AND destino_tipo = ?';args.push(destino_tipo); }
-    if (destino_id)  { sql += ' AND destino_id = ?';  args.push(Number(destino_id)); }
-    sql += ' ORDER BY fecha_creacion DESC';
-    const result = await tursoClient.execute({ sql, args });
-    res.json(result.rows);
+    console.log('🔄 [RelacionesRoutes] Obteniendo todas las relaciones...');
+    
+    const result = await tursoClient.execute({
+      sql: `SELECT * FROM relaciones_sgc WHERE organization_id = ? ORDER BY fecha_creacion DESC`,
+      args: [req.user.organization_id]
+    });
+
+    console.log(`✅ [RelacionesRoutes] Encontradas ${result.rows.length} relaciones`);
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length
+    });
   } catch (error) {
-    console.error('Error al listar relaciones:', error);
-    res.status(500).json({ message: 'Error interno al listar relaciones.' });
+    console.error('❌ [RelacionesRoutes] Error al obtener relaciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener las relaciones',
+      error: error.message
+    });
   }
 });
 
-// POST /api/relaciones - Crear nueva relación
+// GET /relaciones/origen/:tipo - Obtener relaciones por tipo de origen
+router.get('/origen/:tipo', async (req, res) => {
+  try {
+    const { tipo } = req.params;
+    console.log(`🔄 [RelacionesRoutes] Obteniendo relaciones de origen: ${tipo}`);
+    
+    const result = await tursoClient.execute({
+      sql: `SELECT * FROM relaciones_sgc 
+            WHERE organization_id = ? AND origen_tipo = ? 
+            ORDER BY fecha_creacion DESC`,
+      args: [req.user.organization_id, tipo]
+    });
+
+    console.log(`✅ [RelacionesRoutes] Encontradas ${result.rows.length} relaciones para origen ${tipo}`);
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error(`❌ [RelacionesRoutes] Error al obtener relaciones de origen ${req.params.tipo}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener las relaciones',
+      error: error.message
+    });
+  }
+});
+
+// GET /relaciones/destino/:tipo - Obtener relaciones por tipo de destino
+router.get('/destino/:tipo', async (req, res) => {
+  try {
+    const { tipo } = req.params;
+    console.log(`🔄 [RelacionesRoutes] Obteniendo relaciones de destino: ${tipo}`);
+    
+    const result = await tursoClient.execute({
+      sql: `SELECT * FROM relaciones_sgc 
+            WHERE organization_id = ? AND destino_tipo = ? 
+            ORDER BY fecha_creacion DESC`,
+      args: [req.user.organization_id, tipo]
+    });
+
+    console.log(`✅ [RelacionesRoutes] Encontradas ${result.rows.length} relaciones para destino ${tipo}`);
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error(`❌ [RelacionesRoutes] Error al obtener relaciones de destino ${req.params.tipo}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener las relaciones',
+      error: error.message
+    });
+  }
+});
+
+// GET /relaciones/relacion - Obtener relación específica
+router.get('/relacion', async (req, res) => {
+  try {
+    const { origenTipo, origenId, destinoTipo, destinoId } = req.query;
+    console.log(`🔄 [RelacionesRoutes] Obteniendo relación: ${origenTipo}:${origenId} -> ${destinoTipo}:${destinoId}`);
+    
+    const result = await tursoClient.execute({
+      sql: `SELECT * FROM relaciones_sgc 
+            WHERE organization_id = ? 
+            AND origen_tipo = ? AND origen_id = ? 
+            AND destino_tipo = ? AND destino_id = ?`,
+      args: [req.user.organization_id, origenTipo, origenId, destinoTipo, destinoId]
+    });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Relación no encontrada'
+      });
+    }
+
+    console.log('✅ [RelacionesRoutes] Relación encontrada');
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ [RelacionesRoutes] Error al obtener relación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener la relación',
+      error: error.message
+    });
+  }
+});
+
+// GET /relaciones/entidades-relacionadas - Obtener entidades relacionadas
+router.get('/entidades-relacionadas', async (req, res) => {
+  try {
+    const { origenTipo, origenId, destinoTipo } = req.query;
+    console.log(`🔄 [RelacionesRoutes] Obteniendo ${destinoTipo} relacionados con ${origenTipo}:${origenId}`);
+    
+    // Obtener IDs de entidades relacionadas
+    const relacionesResult = await tursoClient.execute({
+      sql: `SELECT destino_id FROM relaciones_sgc 
+            WHERE organization_id = ? 
+            AND origen_tipo = ? AND origen_id = ? 
+            AND destino_tipo = ?`,
+      args: [req.user.organization_id, origenTipo, origenId, destinoTipo]
+    });
+
+    if (relacionesResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        total: 0
+      });
+    }
+
+    const destinoIds = relacionesResult.rows.map(row => row.destino_id);
+    const placeholders = destinoIds.map(() => '?').join(',');
+    
+    // Obtener datos de las entidades relacionadas
+    let entidadesResult;
+    switch (destinoTipo) {
+      case 'personal':
+        entidadesResult = await tursoClient.execute({
+          sql: `SELECT * FROM personal WHERE id IN (${placeholders}) AND organization_id = ?`,
+          args: [...destinoIds, req.user.organization_id]
+        });
+        break;
+      case 'competencias':
+        entidadesResult = await tursoClient.execute({
+          sql: `SELECT * FROM competencias WHERE id IN (${placeholders}) AND organization_id = ?`,
+          args: [...destinoIds, req.user.organization_id]
+        });
+        break;
+      case 'evaluaciones':
+        entidadesResult = await tursoClient.execute({
+          sql: `SELECT * FROM evaluaciones WHERE id IN (${placeholders}) AND organization_id = ?`,
+          args: [...destinoIds, req.user.organization_id]
+        });
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: `Tipo de destino no soportado: ${destinoTipo}`
+        });
+    }
+
+    console.log(`✅ [RelacionesRoutes] Encontradas ${entidadesResult.rows.length} entidades relacionadas`);
+    res.json({
+      success: true,
+      data: entidadesResult.rows,
+      total: entidadesResult.rows.length
+    });
+  } catch (error) {
+    console.error('❌ [RelacionesRoutes] Error al obtener entidades relacionadas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener entidades relacionadas',
+      error: error.message
+    });
+  }
+});
+
+// POST /relaciones - Crear nueva relación
 router.post('/', async (req, res) => {
   try {
-    const organization_id = req.user?.organization_id;
-    const usuario_creador = req.user?.nombre || req.user?.email || 'Sistema';
-    if (!organization_id) {
-      return res.status(400).json({ message: 'No se encontró la organización del usuario.' });
+    const {
+      organization_id,
+      origen_tipo,
+      origen_id,
+      destino_tipo,
+      destino_id,
+      descripcion,
+      usuario_creador
+    } = req.body;
+
+    console.log('🔄 [RelacionesRoutes] Creando nueva relación:', {
+      organization_id,
+      origen_tipo,
+      origen_id,
+      destino_tipo,
+      destino_id
+    });
+
+    // Validar campos obligatorios
+    if (!organization_id || !origen_tipo || !origen_id || !destino_tipo || !destino_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan campos obligatorios: organization_id, origen_tipo, origen_id, destino_tipo, destino_id'
+      });
     }
-    const { origen_tipo, origen_id, destino_tipo, destino_id, descripcion } = req.body;
-    if (!origen_tipo || !origen_id || !destino_tipo || !destino_id) {
-      return res.status(400).json({ message: 'Faltan datos obligatorios.' });
+
+    // Verificar que no exista la relación
+    const existingResult = await tursoClient.execute({
+      sql: `SELECT id FROM relaciones_sgc 
+            WHERE organization_id = ? 
+            AND origen_tipo = ? AND origen_id = ? 
+            AND destino_tipo = ? AND destino_id = ?`,
+      args: [organization_id, origen_tipo, origen_id, destino_tipo, destino_id]
+    });
+
+    if (existingResult.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'La relación ya existe'
+      });
     }
-    const sql = `INSERT INTO relaciones_sgc (organization_id, origen_tipo, origen_id, destino_tipo, destino_id, descripcion, usuario_creador) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    const args = [organization_id, origen_tipo, origen_id, destino_tipo, destino_id, descripcion || null, usuario_creador];
-    await tursoClient.execute({ sql, args });
-    res.status(201).json({ message: 'Relación creada exitosamente.' });
+
+    // Crear la relación
+    const result = await tursoClient.execute({
+      sql: `INSERT INTO relaciones_sgc 
+            (organization_id, origen_tipo, origen_id, destino_tipo, destino_id, descripcion, usuario_creador, fecha_creacion) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      args: [organization_id, origen_tipo, origen_id, destino_tipo, destino_id, descripcion, usuario_creador]
+    });
+
+    console.log('✅ [RelacionesRoutes] Relación creada exitosamente');
+    res.status(201).json({
+      success: true,
+      message: 'Relación creada exitosamente',
+      data: {
+        id: result.lastInsertRowid,
+        organization_id,
+        origen_tipo,
+        origen_id,
+        destino_tipo,
+        destino_id,
+        descripcion,
+        usuario_creador
+      }
+    });
   } catch (error) {
-    if (error.message && error.message.includes('UNIQUE')) {
-      return res.status(409).json({ message: 'La relación ya existe.' });
-    }
-    console.error('Error al crear relación:', error);
-    res.status(500).json({ message: 'Error interno al crear relación.' });
+    console.error('❌ [RelacionesRoutes] Error al crear relación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear la relación',
+      error: error.message
+    });
   }
 });
 
-// DELETE /api/relaciones/:id - Eliminar relación por ID
+// PUT /relaciones/:id - Actualizar relación
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { descripcion, usuario_creador } = req.body;
+
+    console.log(`🔄 [RelacionesRoutes] Actualizando relación ${id}`);
+
+    const result = await tursoClient.execute({
+      sql: `UPDATE relaciones_sgc 
+            SET descripcion = ?, usuario_creador = ? 
+            WHERE id = ? AND organization_id = ?`,
+      args: [descripcion, usuario_creador, id, req.user.organization_id]
+    });
+
+    if (result.changes === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Relación no encontrada'
+      });
+    }
+
+    console.log('✅ [RelacionesRoutes] Relación actualizada exitosamente');
+    res.json({
+      success: true,
+      message: 'Relación actualizada exitosamente'
+    });
+  } catch (error) {
+    console.error(`❌ [RelacionesRoutes] Error al actualizar relación ${req.params.id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar la relación',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /relaciones/:id - Eliminar relación
 router.delete('/:id', async (req, res) => {
   try {
-    const organization_id = req.user?.organization_id;
-    if (!organization_id) {
-      return res.status(400).json({ message: 'No se encontró la organización del usuario.' });
-    }
     const { id } = req.params;
-    const sql = 'DELETE FROM relaciones_sgc WHERE id = ? AND organization_id = ?';
-    const args = [id, organization_id];
-    const result = await tursoClient.execute({ sql, args });
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ message: 'Relación no encontrada o no pertenece a la organización.' });
+    console.log(`🔄 [RelacionesRoutes] Eliminando relación ${id}`);
+
+    const result = await tursoClient.execute({
+      sql: `DELETE FROM relaciones_sgc WHERE id = ? AND organization_id = ?`,
+      args: [id, req.user.organization_id]
+    });
+
+    if (result.changes === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Relación no encontrada'
+      });
     }
-    res.json({ message: 'Relación eliminada correctamente.' });
+
+    console.log('✅ [RelacionesRoutes] Relación eliminada exitosamente');
+    res.json({
+      success: true,
+      message: 'Relación eliminada exitosamente'
+    });
   } catch (error) {
-    console.error('Error al eliminar relación:', error);
-    res.status(500).json({ message: 'Error interno al eliminar relación.' });
+    console.error(`❌ [RelacionesRoutes] Error al eliminar relación ${req.params.id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar la relación',
+      error: error.message
+    });
   }
 });
 
