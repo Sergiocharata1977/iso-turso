@@ -88,10 +88,15 @@ const TestSimpleComponent = lazy(() => import("../components/TestSimpleComponent
 // Competencias
 const CompetenciasListing = lazy(() => import('../pages/Competencias/CompetenciasListing'));
 const CompetenciaSingle = lazy(() => import('../pages/Competencias/CompetenciaSingle'));
+
+// Evaluaciones de Competencias Individuales
 const EvaluacionesDashboard = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesDashboardSimple'));
-const EvaluacionesIndividualesSimple = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesIndividualesSimple'));
-const ProgramacionCompetenciasList = lazy(() => import('../pages/EvaluacionCompetencias/ProgramacionCompetenciasList'));
-const ProgramacionSingle = lazy(() => import('../pages/EvaluacionCompetencias/ProgramacionSingle'));
+const EvaluacionesIndividualesList = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesIndividualesList'));
+const EvaluacionesIndividualesPage = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesIndividualesPage'));
+
+// Evaluaciones de Programas
+const ProgramacionCompetenciasList = lazy(() => import('../pages/Evaluaciones-programas/ProgramacionCompetenciasList'));
+const ProgramacionCompetenciasModal = lazy(() => import('../pages/Evaluaciones-programas/ProgramacionCompetenciasModal'));
 
 
 // Base de Datos y Esquemas
@@ -175,10 +180,15 @@ const AppRoutes = () => {
                   {/* <Route path="evalcompe-programacion/:id" element={<EvalcompeProgramacionSingle />} /> */}
                   <Route path="competencias" element={<CompetenciasListing />} />
                   <Route path="competencias/:id" element={<CompetenciaSingle />} />
-                  <Route path="evaluaciones-individuales" element={<EvaluacionesIndividualesSimple />} />
+                  
+                  {/* Evaluaciones de Competencias Individuales */}
+                  <Route path="evaluaciones-individuales" element={<EvaluacionesIndividualesPage />} />
+                  <Route path="evaluaciones-individuales-list" element={<EvaluacionesIndividualesList />} />
                   <Route path="evaluaciones-dashboard" element={<EvaluacionesDashboard />} />
+                  
+                  {/* Evaluaciones de Programas */}
                   <Route path="evaluacion-competencias" element={<ProgramacionCompetenciasList />} />
-                  <Route path="evaluacion-competencias/:id" element={<ProgramacionSingle />} />
+                  <Route path="evaluacion-competencias-modal" element={<ProgramacionCompetenciasModal />} />
                   
                   {/* Administración */}
                   <Route path="usuarios" element={<UsersPage />} />

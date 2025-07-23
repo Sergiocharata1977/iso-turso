@@ -8,6 +8,7 @@ import AppRoutes from './routes/AppRoutes';
 import WebRoutes from './routes/WebRoutes';
 import useAuthStore from './store/authStore';
 import './index.css';
+// Importaciones removidas - AppLayout no existe y EvaluacionesIndividualesPage se movió
 
 // Configuración de React Query
 const queryClient = new QueryClient({
