@@ -94,9 +94,9 @@ const EvaluacionesDashboard = lazy(() => import('../pages/EvaluacionCompetencias
 const EvaluacionesIndividualesList = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesIndividualesList'));
 const EvaluacionesIndividualesPage = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesIndividualesPage'));
 
-// Evaluaciones de Programas
-const ProgramacionCompetenciasList = lazy(() => import('../pages/Evaluaciones-programas/ProgramacionCompetenciasList'));
-const ProgramacionCompetenciasModal = lazy(() => import('../pages/Evaluaciones-programas/ProgramacionCompetenciasModal'));
+// Evaluaciones de Programas (Temporalmente deshabilitado)
+// const ProgramacionCompetenciasList = lazy(() => import('../pages/Evaluaciones-programas/ProgramacionCompetenciasList'));
+// const ProgramacionCompetenciasModal = lazy(() => import('../pages/Evaluaciones-programas/ProgramacionCompetenciasModal'));
 
 
 // Base de Datos y Esquemas
@@ -186,9 +186,9 @@ const AppRoutes = () => {
                   <Route path="evaluaciones-individuales-list" element={<EvaluacionesIndividualesList />} />
                   <Route path="evaluaciones-dashboard" element={<EvaluacionesDashboard />} />
                   
-                  {/* Evaluaciones de Programas */}
-                  <Route path="evaluacion-competencias" element={<ProgramacionCompetenciasList />} />
-                  <Route path="evaluacion-competencias-modal" element={<ProgramacionCompetenciasModal />} />
+                  {/* Evaluaciones de Programas (Temporalmente deshabilitado) */}
+                  {/* <Route path="evaluacion-competencias" element={<ProgramacionCompetenciasList />} /> */}
+                  {/* <Route path="evaluacion-competencias-modal" element={<ProgramacionCompetenciasModal />} /> */}
                   
                   {/* Administración */}
                   <Route path="usuarios" element={<UsersPage />} />

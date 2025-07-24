@@ -137,7 +137,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
             { name: 'Capacitaciones', path: '/app/capacitaciones', icon: GraduationCap },
             { name: 'Competencias', path: '/app/competencias', icon: ClipboardList },
             { name: 'Evaluaciones Individuales', path: '/app/evaluaciones-individuales', icon: User },
-            { name: 'Eval. de Competencias', path: '/app/evaluacion-competencias', icon: Star },
+            // { name: 'Eval. de Competencias', path: '/app/evaluacion-competencias', icon: Star },
           ]
         },
         { name: 'Documentos', path: '/app/documentos', icon: FileText },

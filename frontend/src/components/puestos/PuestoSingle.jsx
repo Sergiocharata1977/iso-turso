@@ -6,7 +6,7 @@ import { puestosService } from '@/services/puestosService';
 import { departamentosService } from '@/services/departamentos';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { getRelaciones, createRelacion, deleteRelacion } from '@/services/relacionesService';
+import { relacionesService } from '@/services/relacionesService';
 import normasService from '@/services/normasService';
 import { documentosService } from '@/services/documentosService';
 import { Badge } from '@/components/ui/badge';
@@ -105,9 +105,9 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   const cargarRelaciones = async () => {
     setLoadingRelaciones(true);
     try {
-      const normas = await getRelaciones({ origen_tipo: 'puesto', origen_id: puesto.id, destino_tipo: 'norma' });
+      const normas = await relacionesService.getEntidadesRelacionadas('puesto', puesto.id, 'norma');
       setNormasRelacionadas(normas);
-      const docs = await getRelaciones({ origen_tipo: 'puesto', origen_id: puesto.id, destino_tipo: 'documento' });
+      const docs = await relacionesService.getEntidadesRelacionadas('puesto', puesto.id, 'documento');
       setDocumentosRelacionados(docs);
     } catch (e) {
       toast({ title: 'Error', description: 'No se pudieron cargar las relaciones', variant: 'destructive' });
@@ -128,7 +128,14 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   const handleAgregarNorma = async () => {
     if (!normaSeleccionada) return;
     try {
-      await createRelacion({ origen_tipo: 'puesto', origen_id: puesto.id, destino_tipo: 'norma', destino_id: normaSeleccionada });
+      await relacionesService.create({ 
+        organization_id: user.organization_id,
+        origen_tipo: 'puesto', 
+        origen_id: puesto.id, 
+        destino_tipo: 'norma', 
+        destino_id: normaSeleccionada,
+        usuario_creador: user.id
+      });
       setNormaSeleccionada('');
       cargarRelaciones();
       toast({ title: 'Norma asociada', description: 'Norma asociada correctamente', variant: 'success' });
@@ -136,7 +143,7 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   };
   const handleQuitarNorma = async (relacionId) => {
     try {
-      await deleteRelacion(relacionId);
+      await relacionesService.delete(relacionId);
       cargarRelaciones();
       toast({ title: 'Norma quitada', description: 'Relación eliminada', variant: 'success' });
     } catch (e) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
@@ -144,7 +151,14 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   const handleAgregarDocumento = async () => {
     if (!documentoSeleccionado) return;
     try {
-      await createRelacion({ origen_tipo: 'puesto', origen_id: puesto.id, destino_tipo: 'documento', destino_id: documentoSeleccionado });
+      await relacionesService.create({ 
+        organization_id: user.organization_id,
+        origen_tipo: 'puesto', 
+        origen_id: puesto.id, 
+        destino_tipo: 'documento', 
+        destino_id: documentoSeleccionado,
+        usuario_creador: user.id
+      });
       setDocumentoSeleccionado('');
       cargarRelaciones();
       toast({ title: 'Documento asociado', description: 'Documento asociado correctamente', variant: 'success' });
@@ -152,7 +166,7 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   };
   const handleQuitarDocumento = async (relacionId) => {
     try {
-      await deleteRelacion(relacionId);
+      await relacionesService.delete(relacionId);
       cargarRelaciones();
       toast({ title: 'Documento quitado', description: 'Relación eliminada', variant: 'success' });
     } catch (e) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
