@@ -65,11 +65,14 @@ const EvaluacionIndividualModal = ({ isOpen, onClose, onSave, evaluacion }) => {
       console.log('📈 [EvaluacionModal] Es array:', Array.isArray(data));
       console.log('🔢 [EvaluacionModal] Cantidad de empleados:', data?.length);
       
-      if (data && Array.isArray(data)) {
+      if (data && Array.isArray(data) && data.length > 0) {
         console.log('✅ [EvaluacionModal] Datos válidos, estableciendo empleados');
-        setEmpleados(data);
+        // Asegurar que cada empleado tenga un ID válido
+        const empleadosValidos = data.filter(emp => emp && emp.id);
+        console.log('✅ [EvaluacionModal] Empleados válidos:', empleadosValidos.length);
+        setEmpleados(empleadosValidos);
       } else {
-        console.error('❌ [EvaluacionModal] Datos inválidos:', data);
+        console.error('❌ [EvaluacionModal] Datos inválidos o vacíos:', data);
         setEmpleados([]);
       }
     } catch (error) {
@@ -210,9 +213,6 @@ const EvaluacionIndividualModal = ({ isOpen, onClose, onSave, evaluacion }) => {
           <DialogTitle className="text-xl font-semibold text-white">
             {evaluacion ? 'Editar Evaluación Individual' : 'Nueva Evaluación Individual'}
           </DialogTitle>
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-slate-700">
-            <X className="h-4 w-4" />
-          </Button>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -237,14 +237,21 @@ const EvaluacionIndividualModal = ({ isOpen, onClose, onSave, evaluacion }) => {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-600 border-slate-500">
                       {console.log('🎯 [EvaluacionModal] Renderizando empleados:', empleados)}
-                      {empleados.filter(emp => emp.id).map((empleado) => {
-                        console.log('👤 [EvaluacionModal] Empleado en map:', empleado);
-                        return (
-                          <SelectItem key={empleado.id} value={empleado.id} className="text-white hover:bg-slate-500">
-                            {`${empleado.nombres || empleado.nombre || ''} ${empleado.apellidos || empleado.apellido || ''}`.trim()}
-                          </SelectItem>
-                        );
-                      })}
+                      {empleados.length === 0 ? (
+                        <SelectItem value="" disabled className="text-slate-400">
+                          No hay empleados disponibles
+                        </SelectItem>
+                      ) : (
+                        empleados.map((empleado) => {
+                          console.log('👤 [EvaluacionModal] Empleado en map:', empleado);
+                          const nombreCompleto = `${empleado.nombres || empleado.nombre || ''} ${empleado.apellidos || empleado.apellido || ''}`.trim();
+                          return (
+                            <SelectItem key={empleado.id} value={empleado.id} className="text-white hover:bg-slate-500">
+                              {nombreCompleto || `Empleado ${empleado.id}`}
+                            </SelectItem>
+                          );
+                        })
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

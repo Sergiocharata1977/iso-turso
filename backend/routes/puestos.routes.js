@@ -1,24 +1,27 @@
 import { Router } from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
 import crypto from 'crypto';
-import simpleAuth from '../middleware/simpleAuth.js';
+import { secureQuery, logTenantOperation, checkPermission } from '../middleware/tenantMiddleware.js';
+import ActivityLogService from '../services/activityLogService.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// ✅ OBLIGATORIO: Aplicar middleware simple
-router.use(simpleAuth);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authMiddleware);
 
 // GET /api/puestos - Obtener todos los puestos de la organización
 router.get('/', async (req, res, next) => {
   try {
-    console.log('🔓 Obteniendo puestos para organización:', req.user?.organization_id);
+    const organizationId = req.user?.organization_id || req.organizationId;
+    console.log('🔓 Obteniendo puestos para organización:', organizationId);
     
     const result = await tursoClient.execute({
       sql: `SELECT * FROM puestos WHERE organization_id = ? ORDER BY created_at DESC`,
-      args: [req.user?.organization_id]
+      args: [String(organizationId)]
     });
     
-    console.log(`🔓 Puestos cargados para organización ${req.user?.organization_id}: ${result.rows.length} registros`);
+    console.log(`🔓 Puestos cargados para organización ${organizationId}: ${result.rows.length} registros`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al cargar puestos:', error);

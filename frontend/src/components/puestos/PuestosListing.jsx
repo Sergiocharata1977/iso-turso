@@ -45,7 +45,9 @@ function PuestosListing() {
   const loadPuestos = async () => {
     try {
       setIsLoading(true);
+      console.log('Cargando puestos para organization_id:', user.organization_id);
       const data = await puestosService.getAll(user.organization_id);
+      console.log('Puestos recibidos:', data);
       setPuestos(data);
     } catch (error) {
       console.error("Error al cargar puestos:", error);
@@ -141,7 +143,7 @@ function PuestosListing() {
   };
 
   const filteredPuestos = puestos.filter((puesto) =>
-    (puesto.titulo_puesto?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (puesto.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (puesto.codigo_puesto?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
@@ -233,7 +235,7 @@ function PuestosListing() {
                   <div className="flex items-center space-x-3">
                     <Briefcase className="h-5 w-5 text-emerald-500" />
                     <div>
-                      <p className="font-medium">{puesto.titulo_puesto}</p>
+                      <p className="font-medium">{puesto.nombre}</p>
                       <p className="text-sm text-muted-foreground">{puesto.codigo_puesto}</p>
                     </div>
                   </div>
@@ -359,4 +361,4 @@ function PuestosListing() {
   );
 }
 
-export default PuestosListing; 
+export default PuestosListing;

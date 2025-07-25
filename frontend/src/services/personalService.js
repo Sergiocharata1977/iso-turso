@@ -2,15 +2,34 @@
 import { createApiClient } from './apiService';
 
 const personalApi = createApiClient('/personal');
+const relacionesApi = createApiClient('/relaciones');
 
 const personalService = {
   getAllPersonal: async () => {
     try {
+      console.log('🔄 [PersonalService] Obteniendo lista de personal...');
       const response = await personalApi.get();
-      // El backend devuelve { success: true, data: [...] }
-      return response.data || response;
+      console.log('📡 [PersonalService] Respuesta completa:', response);
+      
+      // Manejar diferentes formatos de respuesta del backend
+      let personalData = [];
+      if (response) {
+        if (response.data && Array.isArray(response.data)) {
+          personalData = response.data;
+        } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          personalData = response.data.data;
+        } else if (Array.isArray(response)) {
+          personalData = response;
+        }
+      }
+      
+      console.log('✅ [PersonalService] Personal procesado:', personalData.length, 'registros');
+      console.log('📋 [PersonalService] Primer registro:', personalData[0]);
+      
+      return personalData;
     } catch (error) {
-      console.error('Error fetching personal:', error);
+      console.error('❌ [PersonalService] Error fetching personal:', error);
+      console.error('❌ [PersonalService] Error details:', error.response?.data);
       throw new Error('No se pudo obtener la lista de personal');
     }
   },
@@ -26,6 +45,122 @@ const personalService = {
     } catch (error) {
       console.error(`Error fetching personal with id ${id}:`, error);
       throw new Error('No se pudo obtener el detalle del personal');
+    }
+  },
+
+  // NUEVO: Obtener personal con relaciones usando relaciones_sgc
+  getPersonalConRelaciones: async (personalId, organizationId) => {
+    try {
+      console.log('🔄 [PersonalService] Obteniendo personal con relaciones...');
+      
+      // Obtener datos del personal
+      const personalData = await personalService.getPersonalById(personalId);
+      
+      // Obtener relaciones de puestos
+      const puestosResponse = await relacionesApi.get('/entidades-relacionadas', {
+        params: { 
+          origenTipo: 'personal', 
+          origenId: personalId, 
+          destinoTipo: 'puesto' 
+        }
+      });
+      
+      // Obtener relaciones de departamentos
+      const departamentosResponse = await relacionesApi.get('/entidades-relacionadas', {
+        params: { 
+          origenTipo: 'personal', 
+          origenId: personalId, 
+          destinoTipo: 'departamento' 
+        }
+      });
+      
+      const puestos = puestosResponse?.data || [];
+      const departamentos = departamentosResponse?.data || [];
+      
+      return {
+        ...personalData,
+        puestos_relacionados: puestos,
+        departamentos_relacionados: departamentos,
+        puesto_actual: puestos[0] || null,
+        departamento_actual: departamentos[0] || null
+      };
+    } catch (error) {
+      console.error('❌ [PersonalService] Error obteniendo personal con relaciones:', error);
+      throw error;
+    }
+  },
+
+  // NUEVO: Asignar puesto usando relaciones_sgc
+  asignarPuesto: async (personalId, puestoId, organizationId, usuarioId) => {
+    try {
+      console.log('🔄 [PersonalService] Asignando puesto usando relaciones_sgc...');
+      
+      // Crear relación en tabla relaciones_sgc
+      const response = await relacionesApi.post('', {
+        organization_id: organizationId,
+        origen_tipo: 'personal',
+        origen_id: personalId,
+        destino_tipo: 'puesto',
+        destino_id: puestoId,
+        descripcion: 'Asignación de puesto al personal',
+        usuario_creador: usuarioId
+      });
+      
+      console.log('✅ [PersonalService] Puesto asignado exitosamente');
+      return response.data;
+    } catch (error) {
+      console.error('❌ [PersonalService] Error asignando puesto:', error);
+      throw error;
+    }
+  },
+
+  // NUEVO: Asignar departamento usando relaciones_sgc
+  asignarDepartamento: async (personalId, departamentoId, organizationId, usuarioId) => {
+    try {
+      console.log('🔄 [PersonalService] Asignando departamento usando relaciones_sgc...');
+      
+      // Crear relación en tabla relaciones_sgc
+      const response = await relacionesApi.post('', {
+        organization_id: organizationId,
+        origen_tipo: 'personal',
+        origen_id: personalId,
+        destino_tipo: 'departamento',
+        destino_id: departamentoId,
+        descripcion: 'Asignación de departamento al personal',
+        usuario_creador: usuarioId
+      });
+      
+      console.log('✅ [PersonalService] Departamento asignado exitosamente');
+      return response.data;
+    } catch (error) {
+      console.error('❌ [PersonalService] Error asignando departamento:', error);
+      throw error;
+    }
+  },
+
+  // NUEVO: Obtener puestos disponibles para asignar
+  getPuestosDisponibles: async (organizationId) => {
+    try {
+      const response = await createApiClient('/puestos').get('', {
+        params: { organization_id: organizationId }
+      });
+      return response.data || response;
+    } catch (error) {
+      console.error('❌ [PersonalService] Error obteniendo puestos disponibles:', error);
+      throw error;
+    }
+  },
+
+  // NUEVO: Obtener departamentos disponibles para asignar
+  getDepartamentosDisponibles: async (organizationId) => {
+    try {
+      const response = await createApiClient('/departamentos').get('', {
+        params: { organization_id: organizationId }
+      });
+      return response.data || response;
+    } catch (error) {
+      console.error('❌ [PersonalService] Error obteniendo departamentos disponibles:', error);
+      throw error;
     }
   },
 
