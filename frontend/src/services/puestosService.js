@@ -8,7 +8,7 @@ export const puestosService = {
       const response = await apiClient.get('', {
         params: { organization_id: organizationId }
       });
-      return response;
+      return response.data || response;
     } catch (error) {
       console.error('Error en puestosService.getAll:', error);
       throw error;
@@ -20,7 +20,7 @@ export const puestosService = {
       const response = await apiClient.get(`/${id}`, {
         params: { organization_id: organizationId }
       });
-      return response;
+      return response.data || response;
     } catch (error) {
       console.error(`Error en puestosService.getById ${id}:`, error);
       throw error;
@@ -96,7 +96,7 @@ export const puestosService = {
       const response = await apiClient.delete(`/${id}`, {
         params: { organization_id: organizationId }
       });
-      return response;
+      return response.data || response;
     } catch (error) {
       console.error(`Error en puestosService.delete ${id}:`, error);
       if (error.response?.data) {

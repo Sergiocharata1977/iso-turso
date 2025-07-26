@@ -162,6 +162,32 @@ router.get('/entidades-relacionadas', async (req, res) => {
           args: [...destinoIds, req.user.organization_id]
         });
         break;
+      case 'puesto':
+      case 'puestos':
+        entidadesResult = await tursoClient.execute({
+          sql: `SELECT 
+                  id,
+                  organization_id,
+                  COALESCE(nombre, titulo_puesto) as nombre,
+                  COALESCE(descripcion, descripcion_responsabilidades) as descripcion,
+                  departamento_id,
+                  COALESCE(requisitos_experiencia, experiencia_requerida) as requisitos_experiencia,
+                  COALESCE(requisitos_formacion, formacion_requerida) as requisitos_formacion,
+                  COALESCE(estado, estado_puesto) as estado,
+                  codigo_puesto,
+                  created_at,
+                  updated_at
+                FROM puestos WHERE id IN (${placeholders}) AND organization_id = ?`,
+          args: [...destinoIds, req.user.organization_id]
+        });
+        break;
+      case 'departamento':
+      case 'departamentos':
+        entidadesResult = await tursoClient.execute({
+          sql: `SELECT * FROM departamentos WHERE id IN (${placeholders}) AND organization_id = ?`,
+          args: [...destinoIds, req.user.organization_id]
+        });
+        break;
       case 'competencias':
         entidadesResult = await tursoClient.execute({
           sql: `SELECT * FROM competencias WHERE id IN (${placeholders}) AND organization_id = ?`,

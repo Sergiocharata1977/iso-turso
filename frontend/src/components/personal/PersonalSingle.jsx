@@ -12,15 +12,30 @@ import FormacionModal from './FormacionModal';
 import HabilidadesModal from './HabilidadesModal';
 import CapacitacionPersonalModal from './CapacitacionPersonalModal';
 
-export default function PersonalSingle({ initialPerson = null }) {
+export default function PersonalSingle({ initialPerson = null, onBack }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   
+  console.log('🎯 PersonalSingle renderizado con ID:', id);
+  console.log('📍 Location state:', location.state);
+  console.log('👤 Initial person:', initialPerson);
+  console.log('🌍 PersonalSingle URL:', window.location.href);
+  console.log('🗺️ PersonalSingle Pathname:', window.location.pathname);
+  
   // Obtener datos iniciales si se pasan como props
   const initialData = location.state?.person || initialPerson;
+
+  // Función para manejar el regreso al listado
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate('/app/personal');
+    }
+  };
 
   const [person, setPerson] = useState(initialData || {});
   const [loading, setLoading] = useState(!initialData);
@@ -135,14 +150,22 @@ export default function PersonalSingle({ initialPerson = null }) {
   ]);
 
   useEffect(() => {
+    console.log('🔄 useEffect ejecutado con ID:', id);
+    console.log('📊 Initial data:', initialData);
+    
     // Si ya tenemos los datos (vía props o state), no necesitamos volver a cargar.
-    if (initialData) return;
+    if (initialData) {
+      console.log('✅ Usando datos iniciales, no cargando desde backend');
+      return;
+    }
 
     // Solo intentar cargar desde el backend si el ID no es temporal
     if (id && !id.toString().startsWith('temp-')) {
+      console.log('🔄 Cargando datos desde backend para ID:', id);
       fetchPersonal();
     } else if (id && id.toString().startsWith('temp-')) {
       // Si es un ID temporal y no tenemos datos, mostrar error
+      console.log('❌ ID temporal detectado:', id);
       setError('No se pueden cargar los datos de este registro temporal');
       setLoading(false);
     }
@@ -410,6 +433,7 @@ export default function PersonalSingle({ initialPerson = null }) {
   };
 
   if (loading) {
+    console.log('⏳ PersonalSingle en estado de carga...');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -421,6 +445,7 @@ export default function PersonalSingle({ initialPerson = null }) {
   }
 
   if (error || !person) {
+    console.log('❌ PersonalSingle con error o sin datos:', { error, person });
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -428,7 +453,7 @@ export default function PersonalSingle({ initialPerson = null }) {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar</h2>
           <p className="text-gray-600 mb-4">{error || 'No se encontró la información del personal'}</p>
           <button
-            onClick={() => navigate('/personal')}
+            onClick={handleBack}
             className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -439,6 +464,7 @@ export default function PersonalSingle({ initialPerson = null }) {
     );
   }
 
+  console.log('✅ PersonalSingle renderizando componente principal con datos:', person);
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -447,7 +473,7 @@ export default function PersonalSingle({ initialPerson = null }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/personal')}
+                onClick={handleBack}
                 className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

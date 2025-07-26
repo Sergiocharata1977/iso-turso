@@ -146,8 +146,8 @@ const AppRoutes = () => {
                   {/* Recursos Humanos */}
                   <Route path="departamentos" element={<DepartamentosPage />} />
                   <Route path="puestos" element={<PuestosPage />} />
-                  <Route path="personal" element={<PersonalPage />} />
                   <Route path="personal/:id" element={<PersonalSingle />} />
+                  <Route path="personal" element={<PersonalPage />} />
                   <Route path="capacitaciones" element={<CapacitacionesPage />} />
                   
                   {/* Sistema de Gestión */}

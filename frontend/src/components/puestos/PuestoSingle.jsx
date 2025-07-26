@@ -46,7 +46,9 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   const loadPuesto = async () => {
     try {
       setIsLoading(true);
+      console.log('Cargando puesto con ID:', puestoId, 'para organización:', user.organization_id);
       const data = await puestosService.getById(puestoId, user.organization_id);
+      console.log('Datos del puesto recibidos:', data);
       setPuesto(data);
     } catch (error) {
       console.error('Error al cargar puesto:', error);
@@ -177,7 +179,17 @@ export default function PuestoSingle({ puestoId, onBack, onEdit }) {
   }
 
   if (!puesto) {
-    return <div>No se encontró el puesto</div>;
+    return (
+      <div className="text-center py-12">
+        <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-medium">No se encontró el puesto</h3>
+        <p className="mt-2 text-muted-foreground">ID: {puestoId}</p>
+        <Button onClick={onBack} className="mt-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Volver a la lista
+        </Button>
+      </div>
+    );
   }
 
   return (

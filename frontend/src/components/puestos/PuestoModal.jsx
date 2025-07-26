@@ -61,7 +61,7 @@ function PuestoModal({ isOpen, onClose, onSave, puesto, isSaving, organizacionId
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-slate-800 border-slate-700 text-white">
+      <DialogContent className="max-w-5xl w-[70%] bg-slate-800 border-slate-700 text-white">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="text-xl font-semibold text-white">
             {puesto ? "Editar Puesto" : "Nuevo Puesto"}
@@ -115,12 +115,12 @@ function PuestoModal({ isOpen, onClose, onSave, puesto, isSaving, organizacionId
               <Clock className="h-4 w-4" />
               Experiencia Requerida
             </Label>
-            <Input
+            <Textarea
               id="requisitos_experiencia"
               value={formData.requisitos_experiencia}
               onChange={(e) => handleInputChange('requisitos_experiencia', e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
-              placeholder="Ej: 3 años en puestos similares"
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500 min-h-[100px]"
+              placeholder="Ej: 3 años en puestos similares, experiencia en gestión de equipos, conocimiento en sistemas de calidad ISO 9001..."
             />
           </div>
 
@@ -129,12 +129,12 @@ function PuestoModal({ isOpen, onClose, onSave, puesto, isSaving, organizacionId
               <GraduationCap className="h-4 w-4" />
               Formación Requerida
             </Label>
-            <Input
+            <Textarea
               id="requisitos_formacion"
               value={formData.requisitos_formacion}
               onChange={(e) => handleInputChange('requisitos_formacion', e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500"
-              placeholder="Ej: Licenciatura en Administración"
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-teal-500 min-h-[100px]"
+              placeholder="Ej: Licenciatura en Administración, Ingeniería Industrial o carreras afines. Certificaciones en calidad deseable..."
             />
           </div>
         </form>

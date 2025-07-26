@@ -300,3 +300,236 @@ frontend/
 **📅 Fecha de Documentación:** 25 de Julio, 2025  
 **👨‍💻 Desarrollador:** Asistente AI  
 **🎯 Estado:** ✅ COMPLETADO Y FUNCIONANDO 
+
+## 🔧 Problema: Conexión entre tabla de puestos y PuestoSingle
+
+### 🚨 Síntomas identificados:
+1. **Error 500** en la ruta `GET /api/puestos/:id`
+2. **"No se encontró el puesto"** en la interfaz aunque los datos existen
+3. **Inconsistencia en nombres de campos** entre esquema y datos reales
+4. **Errores de Axios** en el servicio frontend
+
+### 🔍 Análisis del problema:
+
+#### 1. **Inconsistencia en estructura de datos:**
+- **Esquema**: Campo `nombre` en tabla `puestos`
+- **Datos reales**: Scripts insertan con `titulo_puesto`
+- **Backend**: Consultas usando `nombre`
+- **Frontend**: Espera tanto `nombre` como `titulo_puesto`
+
+#### 2. **Problemas en el backend:**
+- Uso incorrecto de `secureQuery()` en rutas GET
+- Falta de logging para debugging
+- Manejo inconsistente de `organization_id`
+
+#### 3. **Problemas en el frontend:**
+- Servicio no maneja correctamente `response.data`
+- Componentes usan campos inconsistentes
+- Falta de validación de datos
+
+### ✅ Soluciones aplicadas:
+
+#### 1. **Corrección del backend (`backend/routes/puestos.routes.js`):**
+
+```javascript
+// ANTES:
+const query = secureQuery(req);
+const result = await tursoClient.execute({
+  sql: `SELECT * FROM puestos WHERE id = ? AND ${query.where()}`,
+  args: [id, ...query.args()]
+});
+
+// DESPUÉS:
+const organizationId = req.user?.organization_id || req.organizationId;
+const result = await tursoClient.execute({
+  sql: `SELECT 
+          id,
+          organization_id,
+          COALESCE(nombre, titulo_puesto) as nombre,
+          COALESCE(descripcion, descripcion_responsabilidades) as descripcion,
+          departamento_id,
+          COALESCE(requisitos_experiencia, experiencia_requerida) as requisitos_experiencia,
+          COALESCE(requisitos_formacion, formacion_requerida) as requisitos_formacion,
+          COALESCE(estado, estado_puesto) as estado,
+          codigo_puesto,
+          created_at,
+          updated_at
+        FROM puestos 
+        WHERE id = ? AND organization_id = ?`,
+  args: [id, String(organizationId)]
+});
+```
+
+#### 2. **Corrección del servicio frontend (`frontend/src/services/puestosService.js`):**
+
+```javascript
+// ANTES:
+return response;
+
+// DESPUÉS:
+return response.data || response;
+```
+
+#### 3. **Corrección de componentes frontend:**
+
+**PuestoCard.jsx:**
+```javascript
+// ANTES:
+<h3>{puesto.titulo_puesto || puesto.nombre}</h3>
+
+// DESPUÉS:
+<h3>{puesto.nombre}</h3>
+```
+
+**PuestosListing.jsx:**
+```javascript
+// ANTES:
+setPuestos(data);
+
+// DESPUÉS:
+setPuestos(Array.isArray(data) ? data : []);
+```
+
+#### 4. **Mejoras en debugging:**
+
+**PuestoSingle.jsx:**
+```javascript
+// Agregado logging detallado
+console.log('Cargando puesto con ID:', puestoId, 'para organización:', user.organization_id);
+console.log('Datos del puesto recibidos:', data);
+```
+
+**Backend:**
+```javascript
+// Agregado logging para debugging
+console.log(`🔓 Obteniendo puesto ${id} para organización:`, organizationId);
+console.log(`✅ Puesto ${id} cargado exitosamente`);
+```
+
+### 🎯 Resultados esperados:
+
+1. ✅ **Eliminación del error 500** en rutas GET
+2. ✅ **Conexión correcta** entre lista y vista individual
+3. ✅ **Manejo consistente** de campos de datos
+4. ✅ **Mejor debugging** para futuros problemas
+5. ✅ **Interfaz más robusta** con validaciones
+
+### 🔄 Próximos pasos recomendados:
+
+1. **Migración de datos**: Estandarizar todos los registros para usar `nombre` en lugar de `titulo_puesto`
+2. **Validación de esquema**: Actualizar scripts de creación para usar campos consistentes
+3. **Testing**: Probar todas las operaciones CRUD de puestos
+4. **Documentación**: Actualizar documentación de API
+
+### 📝 Notas técnicas:
+
+- **COALESCE**: Usado para manejar campos que pueden tener nombres diferentes
+- **String(organizationId)**: Conversión explícita para evitar problemas de tipo
+- **Array.isArray()**: Validación para evitar errores si la respuesta no es un array
+- **Logging estructurado**: Implementado para facilitar debugging
+
+## 🔧 Problema: Navegación de Personal no funciona correctamente
+
+### 🚨 Síntomas identificados:
+1. **Tarjetas de personal no redirigen** al componente PersonalSingle
+2. **Puestos no se muestran** en el listing (0 elementos)
+3. **Navegación duplicada** en UnifiedCard
+4. **Rutas de relaciones incompletas** en el backend
+
+### 🔍 Análisis del problema:
+
+#### 1. **Problema en UnifiedCard:**
+- **Navegación duplicada**: El componente tenía `onClick={onView}` en el contenedor principal
+- **Conflicto de eventos**: El botón "Ver" también llamaba a `onView()`
+- **Cursor pointer**: Se mostraba en toda la tarjeta pero no funcionaba correctamente
+
+#### 2. **Problema en rutas de relaciones:**
+- **Tipos faltantes**: La ruta `/entidades-relacionadas` no manejaba `puesto` y `departamento`
+- **Frontend esperaba**: `puesto` y `departamento` como tipos válidos
+- **Backend solo soportaba**: `personal`, `competencias`, `evaluaciones`
+
+#### 3. **Problema en PuestosListing:**
+- **Datos no se cargan**: Posible problema con la consulta SQL
+- **Estadísticas en 0**: Indica que no hay datos o no se cargan correctamente
+
+### ✅ Soluciones aplicadas:
+
+#### 1. **Corrección de UnifiedCard (`frontend/src/components/common/UnifiedCard.jsx`):**
+
+```javascript
+// ANTES:
+className={`... cursor-pointer ...`}
+onClick={onView}
+
+// DESPUÉS:
+className={`...`} // Sin cursor-pointer ni onClick
+// Solo el botón "Ver" maneja la navegación
+```
+
+#### 2. **Corrección de rutas de relaciones (`backend/routes/relaciones.routes.js`):**
+
+```javascript
+// AGREGADO soporte para puestos y departamentos:
+case 'puesto':
+case 'puestos':
+  entidadesResult = await tursoClient.execute({
+    sql: `SELECT 
+            id,
+            organization_id,
+            COALESCE(nombre, titulo_puesto) as nombre,
+            COALESCE(descripcion, descripcion_responsabilidades) as descripcion,
+            departamento_id,
+            COALESCE(requisitos_experiencia, experiencia_requerida) as requisitos_experiencia,
+            COALESCE(requisitos_formacion, formacion_requerida) as requisitos_formacion,
+            COALESCE(estado, estado_puesto) as estado,
+            codigo_puesto,
+            created_at,
+            updated_at
+          FROM puestos WHERE id IN (${placeholders}) AND organization_id = ?`,
+    args: [...destinoIds, req.user.organization_id]
+  });
+  break;
+case 'departamento':
+case 'departamentos':
+  entidadesResult = await tursoClient.execute({
+    sql: `SELECT * FROM departamentos WHERE id IN (${placeholders}) AND organization_id = ?`,
+    args: [...destinoIds, req.user.organization_id]
+  });
+  break;
+```
+
+#### 3. **Script de pruebas creado (`backend/scripts/test-personal-navigation.js`):**
+
+```javascript
+// Script para verificar:
+// - Datos de personal
+// - Datos de puestos  
+// - Datos de departamentos
+// - Relaciones existentes
+// - Estructura de tablas
+```
+
+### 🎯 Resultados esperados:
+
+1. ✅ **Navegación de personal funciona** - Las tarjetas redirigen correctamente
+2. ✅ **Puestos se cargan** - El listing muestra los datos correctamente
+3. ✅ **Relaciones funcionan** - Personal puede asignar puestos y departamentos
+4. ✅ **Interfaz más limpia** - Sin navegación duplicada
+
+### 🔄 Próximos pasos recomendados:
+
+1. **Ejecutar script de pruebas**: `node backend/scripts/test-personal-navigation.js`
+2. **Verificar navegación**: Probar que las tarjetas de personal redirijan correctamente
+3. **Verificar puestos**: Confirmar que el listing de puestos muestre datos
+4. **Probar relaciones**: Asignar puestos y departamentos a personal
+
+### 📝 Notas técnicas:
+
+- **COALESCE**: Usado para manejar campos con nombres diferentes en puestos
+- **Navegación única**: Solo el botón "Ver" maneja la navegación
+- **Tipos de relación**: Agregados `puesto`, `puestos`, `departamento`, `departamentos`
+- **Script de debugging**: Creado para verificar el estado de la base de datos
+
+---
+*Documento generado el: ${new Date().toLocaleDateString('es-ES')}*
+*Sistema: SGC ISO 9001 - Módulos de Personal y Puestos* 

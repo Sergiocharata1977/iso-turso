@@ -56,7 +56,7 @@ export default function PuestoCard({ puesto, onEdit, onDelete, onViewDetails, th
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            <h3 className="font-bold text-lg truncate">{puesto.titulo_puesto || puesto.nombre}</h3>
+            <h3 className="font-bold text-lg truncate">{puesto.nombre}</h3>
           </div>
           {puesto.codigo_puesto && (
             <div className="bg-white/20 text-white border-white/30 px-2 py-1 rounded text-xs font-medium">

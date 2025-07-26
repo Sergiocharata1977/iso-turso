@@ -23,6 +23,7 @@ const PersonalListing = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+
   useEffect(() => {
     fetchPersonal();
   }, []);
@@ -62,9 +63,30 @@ const PersonalListing = () => {
   };
 
   const handleCardClick = (person) => {
-    if (!person) return;
-    const urlId = person.id || person.displayId;
-    navigate(`/personal/${urlId}`, { state: { person } });
+    console.log('🔍 handleCardClick INICIADO con:', person);
+    if (!person) {
+      console.log('❌ handleCardClick: person es null o undefined');
+      return;
+    }
+    if (!person.id) {
+      console.log('❌ handleCardClick: person.id es null o undefined');
+      return;
+    }
+    console.log('🎯 Navegando a:', `/app/personal/${person.id}`);
+    console.log('📍 Estado a pasar:', { person: person });
+    console.log('🌍 URL actual:', window.location.href);
+    console.log('🗺️ Pathname actual:', window.location.pathname);
+    // Navegar al componente single con el ID del personal
+    navigate(`/app/personal/${person.id}`, { 
+      state: { person: person } 
+    });
+    console.log('🚀 Navigate ejecutado');
+    // Verificar después de un momento
+    setTimeout(() => {
+      console.log('🔍 URL después de navigate:', window.location.href);
+      console.log('🔍 Pathname después de navigate:', window.location.pathname);
+    }, 100);
+    console.log('✅ handleCardClick COMPLETADO');
   };
 
   const handleSave = async (personData) => {
@@ -264,6 +286,7 @@ const PersonalListing = () => {
             }] : [])
           ];
 
+          console.log('🎨 Renderizando tarjeta para:', person.nombres, person.apellidos, 'ID:', person.id);
           return (
             <UnifiedCard
               key={person.displayId}
@@ -290,7 +313,6 @@ const PersonalListing = () => {
         personal={filteredPersonal}
         onEdit={handleOpenModal}
         onDelete={handleDelete}
-        onView={handleCardClick}
         loading={loading}
       />
     );

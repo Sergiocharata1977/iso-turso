@@ -48,7 +48,7 @@ function PuestosListing() {
       console.log('Cargando puestos para organization_id:', user.organization_id);
       const data = await puestosService.getAll(user.organization_id);
       console.log('Puestos recibidos:', data);
-      setPuestos(data);
+      setPuestos(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error al cargar puestos:", error);
       toast({
@@ -114,7 +114,7 @@ function PuestosListing() {
     if (puestoToDelete) {
       try {
         await puestosService.delete(puestoToDelete.id, user.organization_id);
-        toast({ title: "Puesto eliminado", description: `El puesto ${puestoToDelete.titulo_puesto} ha sido eliminado.` });
+        toast({ title: "Puesto eliminado", description: `El puesto ${puestoToDelete.nombre} ha sido eliminado.` });
         setPuestos(prev => prev.filter(p => p.id !== puestoToDelete.id));
         if (currentPuesto && currentPuesto.id === puestoToDelete.id) {
           setShowSingle(false);
@@ -348,7 +348,7 @@ function PuestosListing() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el puesto {puestoToDelete?.titulo_puesto}.
+              Esta acción no se puede deshacer. Se eliminará permanentemente el puesto {puestoToDelete?.nombre}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

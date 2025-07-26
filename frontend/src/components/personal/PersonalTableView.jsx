@@ -42,6 +42,8 @@ function PersonalTableView({ personal, onEdit, onDelete }) {
   };
 
   const handleRowClick = (person) => {
+    console.log('📋 PersonalTableView handleRowClick llamado con:', person);
+    console.log('🎯 Navegando a:', `/personal/${person.id}`);
     navigate(`/personal/${person.id}`);
   };
 

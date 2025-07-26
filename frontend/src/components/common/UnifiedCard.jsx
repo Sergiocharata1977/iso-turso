@@ -95,8 +95,28 @@ const UnifiedCard = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-xl ${colors.hoverBorder} transition-all duration-300 flex flex-col h-full group cursor-pointer overflow-hidden ${className}`}
-      onClick={onView}
+      className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-xl ${colors.hoverBorder} transition-all duration-300 flex flex-col h-full group overflow-hidden cursor-pointer ${className}`}
+      onClick={(e) => {
+        console.log('🖱️ UnifiedCard onClick INICIADO');
+        console.log('🎯 Target:', e.target);
+        console.log('🎯 Closest button:', e.target.closest('button'));
+        
+        // Evitar que el click se propague a los botones de acción
+        if (e.target.closest('button')) {
+          console.log('❌ UnifiedCard: Click en botón, ignorando');
+          return;
+        }
+        
+        console.log('✅ UnifiedCard: Click válido, llamando onView');
+        console.log('🔧 onView function:', onView);
+        
+        if (onView) {
+          onView();
+          console.log('✅ UnifiedCard: onView ejecutado');
+        } else {
+          console.log('❌ UnifiedCard: onView no está definido');
+        }
+      }}
       {...props}
     >
       {/* Header con gradiente */}
@@ -156,35 +176,48 @@ const UnifiedCard = ({
       </CardContent>
 
       {/* Footer con acciones */}
-      <CardFooter className="border-t border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className={colors.viewButton}
-          onClick={(e) => { e.stopPropagation(); onView && onView(); }}
-        >
-          <Eye className="h-4 w-4 mr-1" />
-          Ver
-        </Button>
-        <div className="flex gap-1">
-          {onEdit && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+        <div className="flex gap-2">
+          {onView && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={colors.viewButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                onView();
+              }}
             >
-              <Pencil className="h-3 w-3" />
+              <Eye className="h-4 w-4 mr-1" />
+              Ver
+            </Button>
+          )}
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-1" />
+              Editar
             </Button>
           )}
           {onDelete && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4 mr-1" />
+              Eliminar
             </Button>
           )}
         </div>

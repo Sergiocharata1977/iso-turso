@@ -53,36 +53,20 @@ const personalService = {
     try {
       console.log('🔄 [PersonalService] Obteniendo personal con relaciones...');
       
-      // Obtener datos del personal
-      const personalData = await personalService.getPersonalById(personalId);
+      // Obtener datos del personal directamente
+      const personalResponse = await personalApi.get(`/${personalId}`);
+      const personalData = personalResponse.data || personalResponse;
       
-      // Obtener relaciones de puestos
-      const puestosResponse = await relacionesApi.get('/entidades-relacionadas', {
-        params: { 
-          origenTipo: 'personal', 
-          origenId: personalId, 
-          destinoTipo: 'puesto' 
-        }
-      });
+      console.log('✅ [PersonalService] Datos básicos obtenidos:', personalData);
       
-      // Obtener relaciones de departamentos
-      const departamentosResponse = await relacionesApi.get('/entidades-relacionadas', {
-        params: { 
-          origenTipo: 'personal', 
-          origenId: personalId, 
-          destinoTipo: 'departamento' 
-        }
-      });
-      
-      const puestos = puestosResponse?.data || [];
-      const departamentos = departamentosResponse?.data || [];
-      
+      // Por ahora, solo devolver los datos básicos sin relaciones
+      // TODO: Implementar relaciones cuando el endpoint esté listo
       return {
         ...personalData,
-        puestos_relacionados: puestos,
-        departamentos_relacionados: departamentos,
-        puesto_actual: puestos[0] || null,
-        departamento_actual: departamentos[0] || null
+        puestos_relacionados: [],
+        departamentos_relacionados: [],
+        puesto_actual: null,
+        departamento_actual: null
       };
     } catch (error) {
       console.error('❌ [PersonalService] Error obteniendo personal con relaciones:', error);
