@@ -102,6 +102,9 @@ const EvaluacionesIndividualesPage = lazy(() => import('../pages/EvaluacionCompe
 // Base de Datos y Esquemas
 const DatabaseSchemaPage = lazy(() => import("../pages/DatabaseSchemaPage"));
 
+// Política de Calidad
+const PoliticaCalidadPage = lazy(() => import("../pages/PoliticaCalidadPage"));
+
 
 const AppRoutes = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -157,6 +160,7 @@ const AppRoutes = () => {
                   <Route path="auditorias/:id/editar" element={<AuditoriaFormPage />} />
                   <Route path="procesos" element={<ProcesosPage />} />
                   <Route path="procesos/:id" element={<ProcesoSingle />} />
+                  <Route path="politica-calidad" element={<PoliticaCalidadPage />} />
                   <Route path="documentos" element={<DocumentosPage />} />
                   <Route path="documentos/:id" element={<DocumentoSingle />} />
                   <Route path="normas" element={<NormasPage />} />

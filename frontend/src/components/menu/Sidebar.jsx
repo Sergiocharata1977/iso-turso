@@ -97,6 +97,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
       items: [
         { name: 'Calendario', path: '/app/calendario', icon: Calendar },
         { name: 'Planificación Estratégica', path: '/app/planificacion-estrategica', icon: Target },
+        { name: 'Política de Calidad', path: '/app/politica-calidad', icon: Target },
         { name: 'Revisión por la Dirección', path: '/app/revision-direccion', icon: BarChart3 },
         { name: 'Objetivos y Metas', path: '/app/objetivos-metas', icon: TrendingUp },
       ]

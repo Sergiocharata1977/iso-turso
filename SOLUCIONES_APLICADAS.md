@@ -201,14 +201,14 @@ FROM puestos WHERE organization_id = 2
 
 ---
 
-## 📊 RESULTADOS FINALES
+## RESULTADOS FINALES
 
-### **✅ Módulos Funcionando:**
+### Módulos Funcionando:
 - **Personal**: 5 personas cargando correctamente
 - **Puestos**: 3 puestos cargando correctamente  
 - **Departamentos**: 3 departamentos cargando correctamente
 
-### **✅ Funcionalidades Implementadas:**
+### Funcionalidades Implementadas:
 - Autenticación y autorización
 - Multi-tenancy por organización
 - Sistema de relaciones flexible
@@ -531,5 +531,72 @@ case 'departamentos':
 - **Script de debugging**: Creado para verificar el estado de la base de datos
 
 ---
+
+## 🔧 PROBLEMA: NAVEGACIÓN EN MÓDULO PERSONAL NO FUNCIONABA
+
+### **Fecha:** 2025-01-26
+### **Descripción del Problema:**
+- Al hacer click en "Ver" en las tarjetas de personal, redirigía automáticamente a `/app/departamentos`
+- La navegación `navigate('personal/${person.id}')` no funcionaba correctamente
+- El componente `PersonalSingle` nunca se montaba
+- Los logs mostraban que después del navigate, la URL cambiaba a departamentos
+
+### **Causa Raíz:**
+- **Problema de routing con React Router v6:** Las rutas están definidas dentro del layout `/app/*` en `AppRoutes.jsx`
+- **Rutas incorrectas:** Usar `navigate('/personal/per_001')` no funciona porque las rutas internas no incluyen el prefijo `/app`
+- **React Router necesita la ruta completa** incluyendo el prefijo del layout para navegar correctamente
+
+### **Estructura de Rutas Identificada:**
+```javascript
+// En AppRoutes.jsx:
+<Route path="/*" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+  <Route path="personal" element={<PersonalListing />} />
+  <Route path="personal/:id" element={<PersonalSingle />} />
+</Route>
+
+// Layout principal: /app/*
+// Rutas internas: personal, personal/:id (sin /app)
+// Navegación debe usar: /app/personal, /app/personal/:id (con /app)
+```
+
+### **Solución Aplicada:**
+
+#### **1. PersonalListing.jsx - Función handleCardClick:**
+```javascript
+// ANTES (INCORRECTO):
+navigate(`personal/${person.id}`, { state: { person: person } });
+// También probado: navigate(`/personal/${person.id}`) - tampoco funcionaba
+
+// DESPUÉS (CORRECTO):
+navigate(`/app/personal/${person.id}`, { state: { person: person } });
+```
+
+#### **2. PersonalSingle.jsx - Función handleBack:**
+```javascript
+// ANTES (INCORRECTO):
+navigate('/personal');
+
+// DESPUÉS (CORRECTO):
+navigate('/app/personal');
+```
+
+### **Archivos Modificados:**
+- ✅ `frontend/src/components/personal/PersonalListing.jsx` - línea 80
+- ✅ `frontend/src/components/personal/PersonalSingle.jsx` - línea 36
+
+### **Resultado:**
+- ✅ **Navegación funciona correctamente** - Al hacer click en "Ver" navega a la vista de detalle
+- ✅ **PersonalSingle se monta correctamente** - Muestra los datos del personal seleccionado
+- ✅ **Botón "Volver" funciona** - Regresa al listado de personal
+- ✅ **URLs correctas** - `http://localhost:3001/app/personal/per_XXX`
+
+### **Lecciones Aprendidas:**
+1. **En React Router v6 con layouts anidados**, siempre usar rutas completas que incluyan el prefijo del layout
+2. **Las rutas relativas pueden causar problemas** cuando hay redirecciones por defecto configuradas
+3. **Importante debuggear con logs** para identificar exactamente dónde ocurre la redirección
+4. **La estructura `/app/*` requiere navegación con `/app/ruta`** no solo `/ruta`
+
+---
+
 *Documento generado el: ${new Date().toLocaleDateString('es-ES')}*
 *Sistema: SGC ISO 9001 - Módulos de Personal y Puestos* 
