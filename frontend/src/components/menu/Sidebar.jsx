@@ -189,6 +189,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           show: () => ['admin', 'super_admin'].includes(user?.role)
         },
         { name: 'Usuarios', path: '/app/usuarios', icon: Users },
+        { name: 'Planes', path: '/app/planes', icon: Star },
         { 
           name: 'Esquema de BD', 
           path: '/app/database-schema', 

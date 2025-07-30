@@ -82,6 +82,9 @@ const AccionSingle = lazy(() => import('../components/acciones/AccionSingle'));
 // Componente de prueba
 const TestSimpleComponent = lazy(() => import("../components/TestSimpleComponent"));
 
+// Planes y Suscripciones
+const PlanesPage = lazy(() => import("../components/planes/PlanesListing"));
+
 // Programaciones de Evaluación de Competencias (Temporalmente deshabilitado)
 // const EvalcompeProgramacionListing = lazy(() => import('../components/competencias/EvalcompeProgramacionListing'));
 // const EvalcompeProgramacionSingle = lazy(() => import('../components/competencias/EvalcompeProgramacionSingle'));
@@ -220,6 +223,9 @@ const AppRoutes = () => {
 
                   {/* Prueba de renderizado */}
                   <Route path="test-simple" element={<TestSimpleComponent />} />
+
+                  {/* Planes y Suscripciones */}
+                  <Route path="planes" element={<PlanesPage />} />
 
                   {/* Redirección por defecto dentro del layout */}
                   <Route path="/" element={<Navigate to="/departamentos" replace />} />

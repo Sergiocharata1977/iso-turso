@@ -42,6 +42,7 @@ const simpleAuth = async (req, res, next) => {
     };
 
     console.log(`🔓 Usuario autenticado: ${req.user.email} - ACCESO TOTAL`);
+    console.log(`🔓 User object:`, req.user);
     next();
     
   } catch (error) {

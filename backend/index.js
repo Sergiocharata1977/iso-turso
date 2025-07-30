@@ -57,6 +57,8 @@ import actividadRoutes from './routes/actividad.routes.js';
 import minutasRouter from './routes/minutas.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import politicaCalidadRouter from './routes/politica-calidad.routes.js';
+import planesRouter from './routes/planes.js';
+import suscripcionesRouter from './routes/suscripciones.js';
 
 
 console.log('🔥 MODO ULTRA SIMPLE: Sin restricciones');
@@ -108,6 +110,8 @@ app.use('/api', direccionRoutes);
 app.use('/api/auditorias', auditoriasRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/politica-calidad', politicaCalidadRouter);
+app.use('/api/planes', planesRouter);
+app.use('/api/suscripciones', suscripcionesRouter);
 
 console.log('✅ TODAS las rutas después de /api/auth están protegidas');
 
