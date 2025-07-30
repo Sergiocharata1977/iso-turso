@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { direccionService } from '@/services/direccionService';
-import minutasService from '@/services/minutasService';
-import { useToast } from "@/components/ui/use-toast";
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,15 +18,12 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useToastEffect } from '@/hooks/useToastEffect';
-import { useErrorHandler } from '@/lib/errorHandler';
-
-
+import { useDireccionConfig, useUpdateDireccionConfig, useMinutas, useCreateMinuta } from '@/services/direccionServiceWithQuery';
 
 const TextTabContent = ({ title, description, content, fieldName, onSave, isSaving }) => {
   const [text, setText] = useState(content || '');
 
-  useEffect(() => {
+  React.useEffect(() => {
     setText(content || '');
   }, [content]);
 
@@ -63,7 +57,6 @@ const TextTabContent = ({ title, description, content, fieldName, onSave, isSavi
 };
 
 const ImageTabContent = ({ title, description, imageUrl, onSave, isSaving }) => {
-  // La lógica de subida de archivos se implementará más adelante
   return (
     <Card>
       <CardHeader>
@@ -245,75 +238,60 @@ const CompromisoExcelencia = ({ config, onSave, isSaving }) => {
   );
 };
 
-const PlanificacionDireccionPage = () => {
-  const [config, setConfig] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('tarjetas'); // 'tarjetas' o 'tabla'
+const PlanificacionDireccionPageWithQuery = () => {
+  const [viewMode, setViewMode] = useState('tarjetas');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterArea, setFilterArea] = useState('todas'); // Cambiado de '' a 'todas'
+  const [filterArea, setFilterArea] = useState('todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [minutas, setMinutas] = useState([]); // Aquí almacenaremos las minutas
-  const { toast } = useToast();
-  
-  // Usar el hook personalizado para manejo de errores y toasts
-  const { handleError, withErrorHandling } = useErrorHandler(toast);
-  const { showSuccessToast, showErrorToast, setToastRef } = useToastEffect();
-  
-  // Configurar la referencia del toast
-  useEffect(() => {
-    setToastRef(toast);
-  }, [toast]);
 
-  useEffect(() => {
-    const fetchData = withErrorHandling(async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      // Cargar configuración
-      const configData = await direccionService.getConfiguracion();
-      setConfig(configData);
-      
-      // Cargar minutas
-      const minutasData = await minutasService.getAll();
-      setMinutas(minutasData || []);
-      
-      setIsLoading(false);
-    }, { silent: true }); // No mostrar toast automático, manejar manualmente
+  // Usar React Query para obtener datos
+  const { 
+    data: config = {}, 
+    isLoading: isLoadingConfig, 
+    error: configError 
+  } = useDireccionConfig();
 
-    fetchData().catch((errorInfo) => {
-      setError('Error al cargar los datos.');
-      showErrorToast(errorInfo.originalError, {
-        title: "Error de Carga",
-        description: "No se pudo obtener la información del servidor."
-      });
-      setIsLoading(false);
-    });
-  }, []); // Sin dependencias para evitar bucles infinitos
+  const { 
+    data: minutas = [], 
+    isLoading: isLoadingMinutas, 
+    error: minutasError 
+  } = useMinutas();
 
-  const handleSave = withErrorHandling(async (updatedData) => {
-    setIsSaving(true);
-    const updatedConfig = await direccionService.updateConfiguracion(updatedData);
-    setConfig(updatedConfig);
-    showSuccessToast(
-      "Éxito",
-      "La configuración se ha guardado correctamente."
-    );
-    setIsSaving(false);
-  }, {
-    onError: () => {
-      setIsSaving(false);
+  // Usar React Query para mutaciones
+  const { 
+    mutate: updateConfig, 
+    isPending: isSavingConfig 
+  } = useUpdateDireccionConfig();
+
+  const { 
+    mutate: createMinuta, 
+    isPending: isCreatingMinuta 
+  } = useCreateMinuta({
+    onSuccess: () => {
+      setIsModalOpen(false);
     }
   });
+
+  const isLoading = isLoadingConfig || isLoadingMinutas;
+  const error = configError || minutasError;
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-12 w-12 animate-spin text-teal-500"/></div>;
   }
 
   if (error) {
-    return <div className="text-red-500 bg-red-100 p-4 rounded-md text-center">{error}</div>;
+    return <div className="text-red-500 bg-red-100 p-4 rounded-md text-center">
+      Error al cargar los datos: {error.message}
+    </div>;
   }
+
+  const handleSave = (updatedData) => {
+    updateConfig(updatedData);
+  };
+
+  const handleCreateMinuta = (formData) => {
+    createMinuta(formData);
+  };
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -370,7 +348,7 @@ const PlanificacionDireccionPage = () => {
         </div>
       </div>
 
-      <CompromisoExcelencia config={config} onSave={handleSave} isSaving={isSaving} />
+      <CompromisoExcelencia config={config} onSave={handleSave} isSaving={isSavingConfig} />
 
       {/* Vista de tarjetas */}
       {viewMode === 'tarjetas' && (
@@ -500,7 +478,7 @@ const PlanificacionDireccionPage = () => {
             content={config?.politica_calidad}
             fieldName="politica_calidad"
             onSave={handleSave}
-            isSaving={isSaving}
+            isSaving={isSavingConfig}
           />
         </TabsContent>
 
@@ -511,7 +489,7 @@ const PlanificacionDireccionPage = () => {
             content={config?.alcance}
             fieldName="alcance"
             onSave={handleSave}
-            isSaving={isSaving}
+            isSaving={isSavingConfig}
           />
         </TabsContent>
 
@@ -522,7 +500,7 @@ const PlanificacionDireccionPage = () => {
             content={config?.estrategia}
             fieldName="estrategia"
             onSave={handleSave}
-            isSaving={isSaving}
+            isSaving={isSavingConfig}
           />
         </TabsContent>
 
@@ -532,7 +510,7 @@ const PlanificacionDireccionPage = () => {
             description="Suba una imagen del organigrama actualizado de la organización."
             imageUrl={config?.organigrama_url}
             onSave={handleSave}
-            isSaving={isSaving}
+            isSaving={isSavingConfig}
           />
         </TabsContent>
 
@@ -542,7 +520,7 @@ const PlanificacionDireccionPage = () => {
             description="Suba una imagen que muestre cómo interactúan los procesos del SGC."
             imageUrl={config?.mapa_procesos_url}
             onSave={handleSave}
-            isSaving={isSaving}
+            isSaving={isSavingConfig}
           />
         </TabsContent>
       </Tabs>
@@ -551,29 +529,10 @@ const PlanificacionDireccionPage = () => {
       <NuevaMinutaModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSave={withErrorHandling(async (formData) => {
-          // Crear la minuta usando el servicio
-          const nuevaMinuta = await minutasService.create(formData);
-          
-          // Actualizar la lista de minutas
-          setMinutas(prevMinutas => [...prevMinutas, nuevaMinuta.data]);
-          
-          setIsModalOpen(false);
-          showSuccessToast(
-            "Éxito",
-            "Minuta creada correctamente"
-          );
-        }, {
-          onError: (errorInfo) => {
-            showErrorToast(errorInfo.originalError, {
-              title: "Error",
-              description: "No se pudo crear la minuta"
-            });
-          }
-        })}
+        onSave={handleCreateMinuta}
       />
     </div>
   );
 };
 
-export default PlanificacionDireccionPage;
+export default PlanificacionDireccionPageWithQuery; 

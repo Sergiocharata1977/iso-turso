@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 import { 
   Plus, 
   Search, 
@@ -46,6 +48,19 @@ function DepartamentosListing() {
   const [viewMode, setViewMode] = useState("grid");
   const [departamentos, setDepartamentos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Paginación con filtros
+  const {
+    data: paginatedDepartamentos,
+    paginationInfo,
+    searchTerm: paginationSearchTerm,
+    updateSearchTerm,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(departamentos, {
+    itemsPerPage: 10,
+    searchTerm: searchTerm,
+  });
 
   useEffect(() => {
     loadDepartamentos();
@@ -184,18 +199,12 @@ function DepartamentosListing() {
     });
   };
 
-  const filteredDepartamentos = departamentos.filter(dept => {
-    const matchesSearch = dept.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         dept.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         dept.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
-  const mainDepartamentos = filteredDepartamentos.filter(d => !d.departamentoPadreId);
+  // Usar datos paginados en lugar de filtrados manualmente
+  const mainDepartamentos = paginatedDepartamentos.filter(d => !d.departamentoPadreId);
 
   // Función para obtener subdepartamentos
   const getSubdepartamentos = (parentId) => {
-    return filteredDepartamentos.filter(d => d.departamentoPadreId === parentId);
+    return paginatedDepartamentos.filter(d => d.departamentoPadreId === parentId);
   };
 
   if (showSingle) {
@@ -348,6 +357,24 @@ function DepartamentosListing() {
         <div className="divide-y divide-slate-200 dark:divide-slate-800">
           {mainDepartamentos.map(departamento => renderDepartamento(departamento))}
         </div>
+        
+        {/* Paginación */}
+        {!isLoading && paginationInfo.totalPages > 1 && (
+          <div className="mt-6">
+            <Pagination
+              currentPage={paginationInfo.currentPage}
+              totalPages={paginationInfo.totalPages}
+              totalItems={paginationInfo.totalItems}
+              itemsPerPage={paginationInfo.itemsPerPage}
+              startItem={paginationInfo.startItem}
+              endItem={paginationInfo.endItem}
+              onPageChange={goToPage}
+              onItemsPerPageChange={changeItemsPerPage}
+              showInfo={true}
+              showItemsPerPage={true}
+            />
+          </div>
+        )}
       </div>
     );
   };
