@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verificar Frontend Auth</title>
+</head>
+<body>
+    <h1>🔍 Verificar Estado de Autenticación</h1>
+    
+    <div id="status">
+        <h2>Estado del Frontend:</h2>
+        <div id="auth-status">Verificando...</div>
+        <div id="token-status">Verificando token...</div>
+        <div id="api-status">Verificando API...</div>
+    </div>
+
+    <script>
+        async function verificarAuth() {
+            const statusDiv = document.getElementById('auth-status');
+            const tokenDiv = document.getElementById('token-status');
+            const apiDiv = document.getElementById('api-status');
+
+            try {
+                // 1. Verificar si hay token en localStorage
+                const token = localStorage.getItem('token');
+                const authStore = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+                
+                statusDiv.innerHTML = `
+                    <strong>Token en localStorage:</strong> ${token ? '✅ SÍ' : '❌ NO'}<br>
+                    <strong>Auth Store:</strong> ${authStore.accessToken ? '✅ SÍ' : '❌ NO'}<br>
+                    <strong>Usuario:</strong> ${authStore.user ? authStore.user.email : '❌ NO'}
+                `;
+
+                // 2. Probar API con token
+                if (token) {
+                    try {
+                        const response = await fetch('http://localhost:5000/api/reuniones', {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            const reuniones = await response.json();
+                            apiDiv.innerHTML = `
+                                <strong>API Status:</strong> ✅ FUNCIONA<br>
+                                <strong>Reuniones encontradas:</strong> ${reuniones.length}
+                            `;
+                        } else {
+                            apiDiv.innerHTML = `
+                                <strong>API Status:</strong> ❌ ERROR ${response.status}<br>
+                                <strong>Error:</strong> ${await response.text()}
+                            `;
+                        }
+                    } catch (error) {
+                        apiDiv.innerHTML = `
+                            <strong>API Status:</strong> ❌ ERROR DE CONEXIÓN<br>
+                            <strong>Error:</strong> ${error.message}
+                        `;
+                    }
+                } else {
+                    apiDiv.innerHTML = '<strong>API Status:</strong> ❌ NO HAY TOKEN';
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        }
+
+        // Ejecutar verificación
+        verificarAuth();
+    </script>
+</body>
+</html> 

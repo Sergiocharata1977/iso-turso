@@ -54,7 +54,7 @@ import usuariosRouter from './routes/usuarios.routes.js';
 import auditoriasRoutes from './routes/auditorias.routes.js';
 // import auditoriaRoutes from './routes/auditorias.routes.js'; // ELIMINADO - Empezando desde cero
 import actividadRoutes from './routes/actividad.routes.js';
-import reunionesRoutes from './src/routes/reunionesRoutes.js';
+import minutasRouter from './routes/minutas.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import politicaCalidadRouter from './routes/politica-calidad.routes.js';
 
@@ -75,6 +75,7 @@ app.use('/api', simpleAuth);
 // ===============================================
 // RUTAS PROTEGIDAS
 // ===============================================
+app.use('/api/minutas', minutasRouter);
 
 app.use('/api/users', userRoutes);
 app.use('/api/usuarios', usuariosRouter);
@@ -105,7 +106,6 @@ app.use('/api/evaluacion-programacion', evalcompeProgramacionRouter);
 app.use('/api/evaluacion-detalle', evalcompeDetalleRouter);
 app.use('/api', direccionRoutes);
 app.use('/api/auditorias', auditoriasRoutes);
-app.use('/api/reuniones', reunionesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/politica-calidad', politicaCalidadRouter);
 

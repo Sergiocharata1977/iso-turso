@@ -99,6 +99,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
         { name: 'Planificación Estratégica', path: '/app/planificacion-estrategica', icon: Target },
         { name: 'Política de Calidad', path: '/app/politica-calidad', icon: Target },
         { name: 'Revisión por la Dirección', path: '/app/revision-direccion', icon: BarChart3 },
+        { name: 'Minutas', path: '/app/minutas', icon: FileText },
         { name: 'Objetivos y Metas', path: '/app/objetivos-metas', icon: TrendingUp },
       ]
     },

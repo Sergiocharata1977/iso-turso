@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { direccionService } from '@/services/direccionService';
-import { reunionesService } from '@/services/reunionesService';
+import minutasService from '@/services/minutasService';
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, Filter, Download, Plus, LayoutGrid, Table, Eye, Edit, Calendar, Users, FileText } from 'lucide-react';
+import { Loader2, Search, Filter, Download, Plus, LayoutGrid, Table, Eye, Edit, Calendar, Users, FileText, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import NuevaReunionModal from '@/components/direccion/NuevaReunionModal';
+import NuevaMinutaModal from '@/components/direccion/NuevaMinutaModal';
 import {
   Table as TableComponent,
   TableBody,
@@ -252,7 +252,7 @@ const PlanificacionDireccionPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState('todas'); // Cambiado de '' a 'todas'
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reuniones, setReuniones] = useState([]); // Aquí almacenaremos las reuniones
+  const [minutas, setMinutas] = useState([]); // Aquí almacenaremos las minutas
   const { toast } = useToast();
 
   useEffect(() => {
@@ -270,13 +270,13 @@ const PlanificacionDireccionPage = () => {
           setConfig({}); // Configuración vacía por defecto
         }
         
-        // Cargar reuniones
+        // Cargar minutas
         try {
-          const reunionesData = await reunionesService.getAllReuniones();
-          setReuniones(reunionesData || []);
-        } catch (reunionesErr) {
-          console.error('Error al cargar reuniones:', reunionesErr);
-          setReuniones([]); // Lista vacía por defecto
+          const minutasData = await minutasService.getAll();
+          setMinutas(minutasData || []);
+        } catch (minutasErr) {
+          console.error('Error al cargar minutas:', minutasErr);
+          setMinutas([]); // Lista vacía por defecto
         }
       } catch (err) {
         console.error('Error general:', err);
@@ -381,153 +381,111 @@ const PlanificacionDireccionPage = () => {
 
       <CompromisoExcelencia config={config} onSave={handleSave} isSaving={isSaving} />
 
-      {viewMode === 'tabla' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Reuniones de Revisión por la Dirección</CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Vista de tarjetas */}
+      {viewMode === 'tarjetas' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(minutas || [])
+            .filter(item => 
+              item.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              item.responsable?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .map((item) => (
+              <Card key={item.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{item.titulo}</CardTitle>
+                    <Badge variant="secondary">
+                      Minuta
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    {item.created_at && format(new Date(item.created_at), 'PPP', { locale: es })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-4">{item.descripcion}</p>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <User className="w-4 h-4" />
+                    <span>{item.responsable || 'Sin responsable'}</span>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button variant="outline" size="sm">
+                    <Eye className="w-4 h-4 mr-1" />
+                    Ver
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Edit className="w-4 h-4 mr-1" />
+                    Editar
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+
+          {(minutas || []).length === 0 && (
+            <div className="col-span-full text-center py-12">
+              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">No hay minutas registradas</h3>
+              <p className="text-gray-500">Comience creando una nueva minuta de revisión</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Vista de tabla */}
+      {viewMode === 'tabla' && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold mb-4">Minutas de Revisión por la Dirección</h2>
+          
+          {(minutas || []).length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-600 mb-2">No hay minutas programadas</h3>
+              <p className="text-gray-500">Comience creando una nueva minuta de revisión</p>
+            </div>
+          ) : (
             <TableComponent>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fecha</TableHead>
                   <TableHead>Título</TableHead>
-                  <TableHead>Área</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Participantes</TableHead>
+                  <TableHead>Responsable</TableHead>
+                  <TableHead>Fecha Creación</TableHead>
+                  <TableHead>Descripción</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(reuniones || [])
-                  .filter(reunion => 
-                    (searchTerm === '' || reunion.titulo?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-                    (filterArea === 'todas' || reunion.area === filterArea)
+                {(minutas || [])
+                  .filter(item => 
+                    item.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.responsable?.toLowerCase().includes(searchTerm.toLowerCase())
                   )
-                  .map((reunion) => (
-                  <TableRow key={reunion.id}>
-                    <TableCell>{reunion.fecha_hora ? format(new Date(reunion.fecha_hora), 'dd/MM/yyyy', { locale: es }) : 'Sin fecha'}</TableCell>
-                    <TableCell className="font-medium">{reunion.titulo}</TableCell>
-                    <TableCell>
-                      {reunion.area === 'calidad' && 'Calidad'}
-                      {reunion.area === 'produccion' && 'Producción'}
-                      {reunion.area === 'comercial' && 'Comercial'}
-                      {reunion.area === 'direccion' && 'Dirección'}
-                      {!reunion.area && 'General'}
-                    </TableCell>
-                    <TableCell>
-                      {reunion.estado === 'planificada' && (
-                        <Badge variant="outline" className="bg-blue-100 text-blue-800">Planificada</Badge>
-                      )}
-                      {reunion.estado === 'en_curso' && (
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800">En curso</Badge>
-                      )}
-                      {reunion.estado === 'completada' && (
-                        <Badge variant="outline" className="bg-green-100 text-green-800">Completada</Badge>
-                      )}
-                      {reunion.estado === 'cancelada' && (
-                        <Badge variant="outline" className="bg-red-100 text-red-800">Cancelada</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{reunion.participantes_count || 0} participantes</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" title="Ver detalles">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" title="Editar reunión">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(reuniones || []).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-gray-500">
-                      No hay reuniones registradas
-                    </TableCell>
-                  </TableRow>
-                )}
+                  .map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.titulo}</TableCell>
+                      <TableCell>{item.responsable || 'Sin responsable'}</TableCell>
+                      <TableCell>
+                        {item.created_at && format(new Date(item.created_at), 'PPP', { locale: es })}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {item.descripcion || 'Sin descripción'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </TableComponent>
-          </CardContent>
-        </Card>
-      ) : (
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Reuniones de Revisión por la Dirección</h2>
-          
-          {(reuniones || []).length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex flex-col items-center justify-center gap-2">
-                <Calendar className="h-12 w-12 text-gray-400" />
-                <h3 className="text-xl font-medium text-gray-600">No hay reuniones programadas</h3>
-                <p className="text-gray-500 max-w-md">Crea una nueva reunión para comenzar a planificar la revisión por la dirección.</p>
-                <Button onClick={() => setIsModalOpen(true)} className="mt-4">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nueva Reunión
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(reuniones || [])
-                .filter(reunion => 
-                  (searchTerm === '' || reunion.titulo?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-                  (filterArea === 'todas' || reunion.area === filterArea)
-                )
-                .map(reunion => (
-                  <Card key={reunion.id} className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-teal-500">
-                    <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-2" />
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg group-hover:text-teal-600">{reunion.titulo}</CardTitle>
-                        <Badge 
-                          variant="outline" 
-                          className={`
-                            ${reunion.estado === 'planificada' ? 'bg-blue-100 text-blue-800' : ''}
-                            ${reunion.estado === 'en_curso' ? 'bg-amber-100 text-amber-800' : ''}
-                            ${reunion.estado === 'completada' ? 'bg-green-100 text-green-800' : ''}
-                            ${reunion.estado === 'cancelada' ? 'bg-red-100 text-red-800' : ''}
-                          `}
-                        >
-                          {reunion.estado === 'planificada' && 'Planificada'}
-                          {reunion.estado === 'en_curso' && 'En curso'}
-                          {reunion.estado === 'completada' && 'Completada'}
-                          {reunion.estado === 'cancelada' && 'Cancelada'}
-                        </Badge>
-                      </div>
-                      <CardDescription>
-                        {reunion.fecha_hora ? format(new Date(reunion.fecha_hora), "EEEE d 'de' MMMM 'de' yyyy, HH:mm 'hs'" , { locale: es }) : 'Fecha no definida'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                        <Users className="h-4 w-4" />
-                        <span>{reunion.participantes_count || 0} participantes</span>
-                      </div>
-                      {reunion.temas && (
-                        <div className="text-sm text-gray-600 mb-2">
-                          <strong>Temas:</strong> {reunion.temas.length > 100 ? `${reunion.temas.substring(0, 100)}...` : reunion.temas}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FileText className="h-4 w-4" />
-                        <span>{reunion.documentos_count || 0} documentos</span>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-2 flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" className="text-gray-600">
-                        <Eye className="h-4 w-4 mr-1" /> Ver
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-gray-600">
-                        <Edit className="h-4 w-4 mr-1" /> Editar
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))
-              }
-            </div>
           )}
         </div>
       )}
@@ -599,28 +557,28 @@ const PlanificacionDireccionPage = () => {
       </Tabs>
       </div>
 
-      <NuevaReunionModal
+      <NuevaMinutaModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={async (formData) => {
           try {
-            // Guardar la reunión en el backend
-            const nuevaReunion = await reunionesService.createReunion(formData);
+            // Crear la minuta usando el servicio
+            const nuevaMinuta = await minutasService.create(formData);
             
-            // Actualizar la lista de reuniones
-            setReuniones(prevReuniones => [...prevReuniones, nuevaReunion]);
+            // Actualizar la lista de minutas
+            setMinutas(prevMinutas => [...prevMinutas, nuevaMinuta.data]);
             
             setIsModalOpen(false);
             toast({
               title: "Éxito",
-              description: "Reunión creada correctamente",
+              description: "Minuta creada correctamente",
               className: "bg-green-500 text-white",
             });
           } catch (error) {
-            console.error('Error al crear la reunión:', error);
+            console.error('Error al crear la minuta:', error);
             toast({
               title: "Error",
-              description: error.message || "No se pudo crear la reunión",
+              description: error.message || "No se pudo crear la minuta",
               variant: "destructive",
             });
           }
