@@ -26,7 +26,9 @@ import {
   Target,
   Package,
   Database,
-  Star
+  Star,
+  BookOpen,
+  HelpCircle
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 
@@ -193,6 +195,25 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
         { 
           name: 'Esquema de BD', 
           path: '/app/database-schema', 
+          icon: Database,
+          role: 'super_admin',
+          show: () => user?.role === 'super_admin'
+        },
+        { 
+          name: 'Manual del Sistema', 
+          path: '/app/documentacion', 
+          icon: BookOpen,
+          show: () => true
+        },
+        { 
+          name: 'Ayuda y Soporte', 
+          path: '/app/ayuda', 
+          icon: HelpCircle,
+          show: () => true
+        },
+        { 
+          name: 'Documentación Técnica', 
+          path: '/app/documentacion/arquitectura', 
           icon: Database,
           role: 'super_admin',
           show: () => user?.role === 'super_admin'

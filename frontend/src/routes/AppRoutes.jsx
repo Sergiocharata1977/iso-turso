@@ -24,7 +24,12 @@ const RegisterPage = lazy(() => import("../pages/Registroylogeo/RegisterPage"));
 const DocumentacionLayout = lazy(() => import("../pages/Documentacion/DocumentacionLayout"));
 const DocumentacionHome = lazy(() => import("../pages/Documentacion/DocumentacionHome"));
 const CasosUsoPage = lazy(() => import("../pages/Documentacion/CasosUsoPage"));
+const ManualUsuarioPage = lazy(() => import("../pages/Documentacion/funcional/ManualUsuarioPage"));
+const SoportePage = lazy(() => import("../pages/Documentacion/funcional/SoportePage"));
 const ArquitecturaPage = lazy(() => import("../pages/Documentacion/ArquitecturaPage"));
+const BaseDatosPage = lazy(() => import("../pages/Documentacion/tecnica/BaseDatosPage"));
+const DesarrolloPage = lazy(() => import("../pages/Documentacion/tecnica/DesarrolloPage"));
+const AdministracionPage = lazy(() => import("../pages/Documentacion/tecnica/AdministracionPage"));
 const ApiDocsPage = lazy(() => import("../pages/Documentacion/ApiDocsPage"));
 const GuiasPage = lazy(() => import("../pages/Documentacion/GuiasPage"));
 
@@ -124,7 +129,7 @@ const AppRoutes = () => {
         <Route path="/encuestas/responder/:id" element={<ResponderEncuesta />} />
 
         {/* Redirección en la raíz */}
-        <Route path="/" element={isAuthenticated ? <Navigate to="/departamentos" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/" element={isAuthenticated ? <Navigate to="/documentacion" replace /> : <Navigate to="/login" replace />} />
         
         {/* Rutas Protegidas */}
         <Route 
@@ -209,9 +214,38 @@ const AppRoutes = () => {
                   <Route path="documentacion" element={<DocumentacionLayout />}>
                     <Route index element={<DocumentacionHome />} />
                     <Route path="casos-uso" element={<CasosUsoPage />} />
-                    <Route path="arquitectura" element={<ArquitecturaPage />} />
-                    <Route path="api" element={<ApiDocsPage />} />
-                    <Route path="guias" element={<GuiasPage />} />
+                    <Route path="manual-usuario" element={<ManualUsuarioPage />} />
+                    <Route path="soporte" element={<SoportePage />} />
+                    <Route path="arquitectura" element={
+                      <SuperAdminRoute>
+                        <ArquitecturaPage />
+                      </SuperAdminRoute>
+                    } />
+                    <Route path="base-datos" element={
+                      <SuperAdminRoute>
+                        <BaseDatosPage />
+                      </SuperAdminRoute>
+                    } />
+                    <Route path="desarrollo" element={
+                      <SuperAdminRoute>
+                        <DesarrolloPage />
+                      </SuperAdminRoute>
+                    } />
+                    <Route path="administracion" element={
+                      <SuperAdminRoute>
+                        <AdministracionPage />
+                      </SuperAdminRoute>
+                    } />
+                    <Route path="api" element={
+                      <SuperAdminRoute>
+                        <ApiDocsPage />
+                      </SuperAdminRoute>
+                    } />
+                    <Route path="guias" element={
+                      <SuperAdminRoute>
+                        <GuiasPage />
+                      </SuperAdminRoute>
+                    } />
                   </Route>
 
                   {/* Base de Datos y Esquemas */}
@@ -228,8 +262,8 @@ const AppRoutes = () => {
                   <Route path="planes" element={<PlanesPage />} />
 
                   {/* Redirección por defecto dentro del layout */}
-                  <Route path="/" element={<Navigate to="/departamentos" replace />} />
-                  <Route path="*" element={<Navigate to="/departamentos" replace />} />
+                  <Route path="/" element={<Navigate to="/documentacion" replace />} />
+                  <Route path="*" element={<Navigate to="/documentacion" replace />} />
                 </Routes>
               </MainLayout>
             </ProtectedRoute>

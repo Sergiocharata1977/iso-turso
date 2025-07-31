@@ -21,7 +21,7 @@ const SuperAdminRoute = ({ children }) => {
   }
 
   if (user?.role !== 'super_admin') {
-    return <Navigate to="/departamentos" replace />;
+    return <Navigate to="/documentacion" replace />;
   }
 
   return children;

@@ -30,7 +30,7 @@ function App() {
                    path="/" 
                    element={
                      isAuthenticated 
-                       ? <Navigate to="/app/departamentos" replace /> 
+                       ? <Navigate to="/app/documentacion" replace /> 
                        : <Navigate to="/web" replace />
                    } 
                  />
@@ -44,7 +44,7 @@ function App() {
                    path="*" 
                    element={
                      isAuthenticated 
-                       ? <Navigate to="/app/departamentos" replace /> 
+                       ? <Navigate to="/app/documentacion" replace /> 
                        : <Navigate to="/web" replace />
                    } 
                  />
