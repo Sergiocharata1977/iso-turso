@@ -1,141 +1,94 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
-import { testConnection } from './lib/tursoClient.js';
-import errorHandler from './middleware/errorHandler.js';
-// import setupDatabase from './scripts/setupDatabase.js'; // Comentado temporalmente
-import simpleAuth from './middleware/simpleAuth.js';
-import competenciasRouter from './routes/competencias.routes.js';
-import evalcompeProgramacionRouter from './routes/evalcompeProgramacion.routes.js';
-import evalcompeDetalleRouter from './routes/evalcompe-detalle.routes.js';
-import evaluacionesRouter from './routes/evaluaciones.routes.js';
-import relacionesRouter from './routes/relaciones.routes.js';
+import { tursoClient } from './lib/tursoClient.js';
 
-// Load environment variables explicitly
-dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
+// 🔒 IMPORTAR MIDDLEWARES DE SEGURIDAD
+import {
+  createRateLimiter,
+  corsOptions,
+  securityHeaders,
+  sanitizeInput,
+  requestLogger,
+  errorHandler,
+  requestSizeLimiter
+} from './middleware/security.js';
 
-const app = express();
-const PORT = process.env.PORT || 5000; 
-
-// Middleware básico
-app.use(cors()); 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true })); 
-
-// Rutas de la API
-app.get('/', (req, res) => {
-  res.send('API de ISOFlow3 funcionando - MODO ULTRA SIMPLE');
-});
-
-// Importar rutas
-import departamentosRouter from './routes/departamentos.routes.js';
-import puestosRouter from './routes/puestos.routes.js';
-import procesosRouter from './routes/procesos.routes.js';
-import documentosRouter from './routes/documentos.routes.js';
-import personalRouter from './routes/personal.routes.js';
-import objetivosCalidadRouter from './routes/objetivos_calidad.routes.js';
-import normasRouter from './routes/normas.routes.js';
-import capacitacionesRouter from './routes/capacitaciones.routes.js';
-
-import indicadoresRouter from './routes/indicadores.routes.js';
-import medicionesRouter from './routes/mediciones.routes.js';
-import ticketsRouter from './routes/tickets.routes.js';
-import productosRouter from './routes/productos.routes.js';
-import encuestasRouter from './routes/encuestas.routes.js';
-import direccionRoutes from './routes/direccion.routes.js';
-import authRoutes from './routes/authRoutes.js';
-import hallazgosRouter from './routes/mejoras.routes.js';
-import tratamientosRouter from './routes/tratamientos.routes.js';
-import verificacionesRouter from './routes/verificaciones.routes.js';
-import accionesRouter from './routes/acciones.routes.js';
-import userRoutes from './routes/userRoutes.js';
-import usuariosRouter from './routes/usuarios.routes.js';
-import auditoriasRoutes from './routes/auditorias.routes.js';
-// import auditoriaRoutes from './routes/auditorias.routes.js'; // ELIMINADO - Empezando desde cero
-import actividadRoutes from './routes/actividad.routes.js';
-import minutasRouter from './routes/minutas.routes.js';
-import adminRoutes from './routes/admin.routes.js';
-import politicaCalidadRouter from './routes/politica-calidad.routes.js';
+// 🛡️ IMPORTAR RUTAS
+import authRouter from './routes/auth.js';
+import personalRouter from './routes/personal.js';
+import departamentosRouter from './routes/departamentos.js';
+import puestosRouter from './routes/puestos.js';
+import capacitacionesRouter from './routes/capacitaciones.js';
+import evaluacionesRouter from './routes/evaluaciones.js';
+import normasRouter from './routes/normas.js';
+import documentosRouter from './routes/documentos.js';
+import auditoriasRouter from './routes/auditorias.js';
+import hallazgosRouter from './routes/hallazgos.js';
+import accionesRouter from './routes/acciones.js';
 import planesRouter from './routes/planes.js';
 import suscripcionesRouter from './routes/suscripciones.js';
 
+// 📊 CONFIGURACIÓN DE ENTORNO
+dotenv.config();
 
-console.log('🔥 MODO ULTRA SIMPLE: Sin restricciones');
+const app = express();
+const PORT = process.env.PORT || 3001;
 
-// ===============================================
-// RUTAS PÚBLICAS (para login y registro)
-// ===============================================
-app.use('/api/auth', authRoutes);
+// 🚨 SECURITY MIDDLEWARES (CRÍTICO)
+app.use(securityHeaders);
+app.use(cors(corsOptions));
+app.use(requestSizeLimiter);
+app.use(requestLogger);
 
-// ===============================================
-// MIDDLEWARE DE AUTENTICACIÓN
-// A partir de aquí, todas las rutas requerirán un token válido
-// ===============================================
-app.use('/api', simpleAuth);
+// 🛡️ RATE LIMITING POR RUTA
+const generalLimiter = createRateLimiter(15 * 60 * 1000, 100); // 100 requests per 15 minutes
+const authLimiter = createRateLimiter(15 * 60 * 1000, 5); // 5 login attempts per 15 minutes
+const apiLimiter = createRateLimiter(15 * 60 * 1000, 1000); // 1000 API calls per 15 minutes
 
-// ===============================================
-// RUTAS PROTEGIDAS
-// ===============================================
-app.use('/api/minutas', minutasRouter);
+app.use(generalLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api', apiLimiter);
 
-app.use('/api/users', userRoutes);
-app.use('/api/usuarios', usuariosRouter);
+// 🔍 INPUT SANITIZATION
+app.use(sanitizeInput);
+
+// 📝 PARSING MIDDLEWARE
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 🛡️ RUTAS CON SEGURIDAD
+app.use('/api/auth', authRouter);
+app.use('/api/personal', personalRouter);
 app.use('/api/departamentos', departamentosRouter);
 app.use('/api/puestos', puestosRouter);
-app.use('/api/personal', personalRouter);
-app.use('/api/procesos', procesosRouter);
-app.use('/api/documentos', documentosRouter);
+app.use('/api/capacitaciones', capacitacionesRouter);
+app.use('/api/evaluaciones', evaluacionesRouter);
 app.use('/api/normas', normasRouter);
-app.use('/api/objetivos-calidad', objetivosCalidadRouter);
-app.use('/api/indicadores', indicadoresRouter);
-app.use('/api/mediciones', medicionesRouter);
+app.use('/api/documentos', documentosRouter);
+app.use('/api/auditorias', auditoriasRouter);
 app.use('/api/hallazgos', hallazgosRouter);
 app.use('/api/acciones', accionesRouter);
-// app.use('/api/auditorias', auditoriaRoutes); // ELIMINADO - Empezando desde cero
-app.use('/api/capacitaciones', capacitacionesRouter);
-
-app.use('/api/tickets', ticketsRouter);
-app.use('/api/productos', productosRouter);
-app.use('/api/encuestas', encuestasRouter);
-app.use('/api/tratamientos', tratamientosRouter);
-app.use('/api/verificaciones', verificacionesRouter);
-app.use('/api/actividad', actividadRoutes);
-app.use('/api/competencias', competenciasRouter);
-app.use('/api/evaluaciones', evaluacionesRouter);
-app.use('/api/relaciones', relacionesRouter);
-app.use('/api/evaluacion-programacion', evalcompeProgramacionRouter);
-app.use('/api/evaluacion-detalle', evalcompeDetalleRouter);
-app.use('/api', direccionRoutes);
-app.use('/api/auditorias', auditoriasRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/politica-calidad', politicaCalidadRouter);
 app.use('/api/planes', planesRouter);
 app.use('/api/suscripciones', suscripcionesRouter);
 
-console.log('✅ TODAS las rutas después de /api/auth están protegidas');
+// 🔍 HEALTH CHECK
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
-// Middleware de manejo de errores
+// 🚨 ERROR HANDLER (DEBE SER EL ÚLTIMO)
 app.use(errorHandler);
 
-const startServer = () => {
-  testConnection()
-    // .then(setupDatabase) // Comentado temporalmente
-    .then(() => {
-      if (process.env.NODE_ENV !== 'test') {
-        app.listen(PORT, () => {
-          console.log(`🚀 Servidor ULTRA SIMPLE listo en http://localhost:${PORT}`);
-          console.log(`🔓 ACCESO TOTAL: Solo login requerido`);
-          console.log(`👀 TODOS ven TODOS los registros`);
-        });
-      }
-    })
-    .catch(error => {
-      console.error('❌ Error al iniciar servidor:', error);
-      process.exit(1);
-    });
-};
-
-startServer();
+// 🚀 INICIAR SERVIDOR
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🛡️ Seguridad habilitada`);
+});
 
 export default app;

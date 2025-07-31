@@ -1,41 +1,55 @@
 {
-  "name": "iso-flow-backend",
+  "name": "isoflow-backend",
   "version": "1.0.0",
-  "description": "Backend para la aplicación ISO Flow",
-  "type": "module",
+  "description": "Backend para Sistema de Gestión de Calidad ISO 9001",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon -r dotenv/config index.js",
-    "init-db": "node initDb.js",
-    "create-all-tables": "node -r dotenv/config scripts/createAllTables.js",
-    "create-procesos-tables": "node -r dotenv/config scripts/createProcesosTables.js",
-    "create-puestos-table": "node -r dotenv/config scripts/createPuestosTable.js",
-    "reset-puestos-table": "node -r dotenv/config scripts/resetPuestosTable.js",
-    "insert-test-data": "node -r dotenv/config scripts/insertTestData.js",
-    "insert-puestos-data": "node -r dotenv/config scripts/insertPuestosData.js",
-    "insert-procesos-data": "node -r dotenv/config scripts/insertTestDataProcesos.js",
-    "insert-auditorias-data": "node -r dotenv/config scripts/insertTestDataAuditorias.js",
-    "insert-documentos-data": "node -r dotenv/config scripts/insertTestDataDocumentos.js",
-    "insert-test-user": "node -r dotenv/config scripts/insertTestUser.js"
+    "dev": "nodemon index.js",
+    "test": "jest",
+    "security-check": "npm audit",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "dependencies": {
-    "@langchain/openai": "^0.5.11",
-    "@libsql/client": "^0.15.4",
-    "axios": "^1.10.0",
-    "bcrypt": "^6.0.0",
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
+    "dotenv": "^16.3.1",
     "jsonwebtoken": "^9.0.2",
-    "langchain": "^0.3.27",
-    "multer": "^2.0.1",
-    "node-fetch": "^3.3.2",
-    "openai": "^5.1.0",
-    "pdf-parse": "^1.1.1",
-    "sqlite3": "^5.1.7"
+    "bcryptjs": "^2.4.3",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "express-session": "^1.17.3",
+    "connect-sqlite3": "^0.9.13",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.7",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0",
+    "express-brute": "^1.0.1",
+    "express-brute-redis": "^0.0.1",
+    "sqlite3": "^5.1.6",
+    "turso": "^0.0.15"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
-  }
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "iso9001",
+    "quality-management",
+    "express",
+    "nodejs",
+    "sqlite",
+    "turso"
+  ],
+  "author": "Tu Nombre",
+  "license": "MIT"
 }
