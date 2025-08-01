@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { db } from '../lib/tursoClient.js';
+import { tursoClient as db } from '../lib/tursoClient.js';
 
 // @desc    Registrar una nueva organización y su usuario admin
 // @route   POST /api/auth/register

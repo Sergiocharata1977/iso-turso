@@ -6,43 +6,43 @@ import crypto from 'crypto';
 
 const router = express.Router();
 
-// GET /api/indicadores - Obtener todos los indicadores
+// GET /api/documentos - Obtener todos los documentos
 router.get('/', authMiddleware, async (req, res, next) => {
   try {
     const organizationId = req.user?.organization_id || req.user?.org_id || 2;
-    console.log('📊 Obteniendo indicadores para organización:', organizationId);
+    console.log('📄 Obteniendo documentos para organización:', organizationId);
     
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM indicadores WHERE organization_id = ? ORDER BY created_at DESC',
+      sql: 'SELECT * FROM documentos WHERE organization_id = ? ORDER BY created_at DESC',
       args: [organizationId]
     });
     
-    console.log(`✅ Encontrados ${result.rows.length} indicadores`);
+    console.log(`✅ Encontrados ${result.rows.length} documentos`);
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Error al obtener indicadores:', error);
+    console.error('❌ Error al obtener documentos:', error);
     next({
       statusCode: 500,
-      message: 'Error al obtener indicadores',
+      message: 'Error al obtener documentos',
       error: error.message
     });
   }
 });
 
-// GET /api/indicadores/:id - Obtener indicador por ID
+// GET /api/documentos/:id - Obtener documento por ID
 router.get('/:id', authMiddleware, async (req, res, next) => {
   const { id } = req.params;
   try {
     const organizationId = req.user?.organization_id || req.user?.org_id || 2;
-    console.log(`🔍 Obteniendo indicador ${id} para organización ${organizationId}`);
+    console.log(`🔍 Obteniendo documento ${id} para organización ${organizationId}`);
     
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM indicadores WHERE id = ? AND organization_id = ?',
+      sql: 'SELECT * FROM documentos WHERE id = ? AND organization_id = ?',
       args: [id, organizationId],
     });
 
     if (result.rows.length === 0) {
-      const err = new Error('Indicador no encontrado en tu organización.');
+      const err = new Error('Documento no encontrado en tu organización.');
       err.statusCode = 404;
       return next(err);
     }
@@ -52,13 +52,13 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
   }
 });
 
-// POST /api/indicadores - Crear nuevo indicador
+// POST /api/documentos - Crear nuevo documento
 router.post('/', authMiddleware, async (req, res, next) => {
-  const { nombre, descripcion, tipo, unidad, organization_id } = req.body;
+  const { titulo, descripcion, tipo, url, organization_id } = req.body;
   const usuario = req.user || { id: null, nombre: 'Sistema' };
 
-  if (!nombre || !organization_id) {
-    const err = new Error('Los campos "nombre" y "organization_id" son obligatorios.');
+  if (!titulo || !organization_id) {
+    const err = new Error('Los campos "titulo" y "organization_id" son obligatorios.');
     err.statusCode = 400;
     return next(err);
   }
@@ -68,25 +68,25 @@ router.post('/', authMiddleware, async (req, res, next) => {
     const now = new Date().toISOString();
 
     await tursoClient.execute({
-      sql: 'INSERT INTO indicadores (id, nombre, descripcion, tipo, unidad, organization_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [id, nombre, descripcion || null, tipo || 'general', unidad || null, organization_id, now, now]
+      sql: 'INSERT INTO documentos (id, titulo, descripcion, tipo, url, organization_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, titulo, descripcion || null, tipo || 'general', url || null, organization_id, now, now]
     });
 
     // Registrar en la bitácora
     await ActivityLogService.registrarCreacion(
-      'indicador',
+      'documento',
       id,
-      { nombre, descripcion, tipo, unidad, organization_id },
+      { titulo, descripcion, tipo, url, organization_id },
       usuario,
       organization_id
     );
 
     res.status(201).json({ 
       id, 
-      nombre, 
+      titulo, 
       descripcion, 
       tipo, 
-      unidad, 
+      url, 
       organization_id,
       created_at: now,
       updated_at: now
@@ -96,23 +96,23 @@ router.post('/', authMiddleware, async (req, res, next) => {
   }
 });
 
-// PUT /api/indicadores/:id - Actualizar indicador
+// PUT /api/documentos/:id - Actualizar documento
 router.put('/:id', authMiddleware, async (req, res, next) => {
   const { id } = req.params;
-  const { nombre, descripcion, tipo, unidad } = req.body;
+  const { titulo, descripcion, tipo, url } = req.body;
   const usuario = req.user || { id: null, nombre: 'Sistema' };
 
   try {
     const organizationId = req.user?.organization_id || req.user?.org_id || 2;
     
-    // Verificar que el indicador existe y pertenece a la organización
+    // Verificar que el documento existe y pertenece a la organización
     const existing = await tursoClient.execute({
-      sql: 'SELECT * FROM indicadores WHERE id = ? AND organization_id = ?',
+      sql: 'SELECT * FROM documentos WHERE id = ? AND organization_id = ?',
       args: [id, organizationId],
     });
 
     if (existing.rows.length === 0) {
-      const err = new Error('Indicador no encontrado en tu organización.');
+      const err = new Error('Documento no encontrado en tu organización.');
       err.statusCode = 404;
       return next(err);
     }
@@ -120,27 +120,27 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
     const now = new Date().toISOString();
     
     await tursoClient.execute({
-      sql: `UPDATE indicadores 
-            SET nombre = ?, descripcion = ?, tipo = ?, unidad = ?, updated_at = ?
+      sql: `UPDATE documentos 
+            SET titulo = ?, descripcion = ?, tipo = ?, url = ?, updated_at = ?
             WHERE id = ? AND organization_id = ?`,
-      args: [nombre, descripcion, tipo, unidad, now, id, organizationId]
+      args: [titulo, descripcion, tipo, url, now, id, organizationId]
     });
 
     // Registrar en la bitácora
     await ActivityLogService.registrarActualizacion(
-      'indicador',
+      'documento',
       id,
-      { nombre, descripcion, tipo, unidad },
+      { titulo, descripcion, tipo, url },
       usuario,
       organizationId
     );
 
     res.json({ 
       id, 
-      nombre, 
+      titulo, 
       descripcion, 
       tipo, 
-      unidad,
+      url,
       organization_id: organizationId,
       updated_at: now
     });
@@ -149,7 +149,7 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
   }
 });
 
-// DELETE /api/indicadores/:id - Eliminar indicador
+// DELETE /api/documentos/:id - Eliminar documento
 router.delete('/:id', authMiddleware, async (req, res, next) => {
   const { id } = req.params;
   const usuario = req.user || { id: null, nombre: 'Sistema' };
@@ -158,28 +158,28 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
     const organizationId = req.user?.organization_id || req.user?.org_id || 2;
     
     const result = await tursoClient.execute({
-      sql: 'DELETE FROM indicadores WHERE id = ? AND organization_id = ? RETURNING id',
+      sql: 'DELETE FROM documentos WHERE id = ? AND organization_id = ? RETURNING id',
       args: [id, organizationId],
     });
 
     if (result.rows.length === 0) {
-      const err = new Error('Indicador no encontrado en tu organización.');
+      const err = new Error('Documento no encontrado en tu organización.');
       err.statusCode = 404;
       return next(err);
     }
 
     // Registrar en la bitácora
     await ActivityLogService.registrarEliminacion(
-      'indicador',
+      'documento',
       id,
       usuario,
       organizationId
     );
 
-    res.json({ message: 'Indicador eliminado exitosamente' });
+    res.json({ message: 'Documento eliminado exitosamente' });
   } catch (error) {
     next(error);
   }
 });
 
-export default router;
+export default router; 

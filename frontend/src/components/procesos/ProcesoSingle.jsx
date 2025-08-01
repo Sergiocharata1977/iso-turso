@@ -9,7 +9,7 @@ import { ArrowLeft, Hash, GitBranch, Users, Target, Maximize, Book, Workflow, Fi
 import { useToast } from '@/components/ui/use-toast';
 import { relacionesService } from '@/services/relacionesService';
 import normasService from '@/services/normasService';
-import { documentosService } from '@/services/documentosService';
+import documentosService from '@/services/documentosService';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 

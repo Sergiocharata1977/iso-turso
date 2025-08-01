@@ -1,44 +1,23 @@
 import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { loadEnvConfig } from '../config/env-setup.js';
 
-// Construye la ruta al archivo .env
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const envPath = path.resolve(__dirname, '../.env');
+// Cargar configuración de entorno
+loadEnvConfig();
 
-// Carga las variables de entorno
-dotenv.config({ path: envPath });
-
-// Valida que las variables de entorno requeridas existan
-if (!process.env.DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
-  console.error(
-    'Error Crítico: Las variables de entorno DATABASE_URL y/o TURSO_AUTH_TOKEN no están definidas en el archivo .env.'
-  );
+// Verificar credenciales
+if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+  console.error('❌ Error: Faltan credenciales de Turso');
+  console.log('📝 Crea un archivo .env.local con:');
+  console.log('   TURSO_DATABASE_URL=libsql://tu-base-desarrollo.turso.io');
+  console.log('   TURSO_AUTH_TOKEN=tu-token-aqui');
   process.exit(1);
 }
 
-// Crea y exporta el cliente de Turso
+// Crear el cliente de Turso
 export const tursoClient = createClient({
-  url: process.env.DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN
 });
 
-// Función para probar la conexión
-export async function testConnection() {
-  try {
-    console.log('Probando conexión con la base de datos Turso...');
-    const result = await tursoClient.execute('SELECT 1');
-    if (result.rows.length > 0) {
-      console.log('✅ Conexión con la base de datos Turso establecida exitosamente.');
-    } else {
-      throw new Error('La consulta de prueba no devolvió resultados.');
-    }
-  } catch (error) {
-    console.error('❌ Error al conectar con la base de datos Turso:', error.message);
-    throw error; 
-  }
-}
-
-export { tursoClient as db };
+console.log('🌐 Conectado a Turso:', process.env.TURSO_DATABASE_URL);
+console.log('🔧 Entorno:', process.env.NODE_ENV || 'development');

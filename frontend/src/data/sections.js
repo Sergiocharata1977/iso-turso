@@ -76,7 +76,12 @@ export const sections = [
     component: 'tickets/TicketsListing',
     description: 'Gestión de Tickets',
     icon: 'ticket'
-  },
+  }
+  // Puedes agregar más secciones según necesites
+];
+
+// Usuarios al final (solo para administradores)
+export const adminSections = [
   {
     id: 'usuarios',
     title: 'Usuarios',
@@ -84,5 +89,4 @@ export const sections = [
     description: 'Gestión de Usuarios',
     icon: 'users'
   }
-  // Puedes agregar más secciones según necesites
 ];

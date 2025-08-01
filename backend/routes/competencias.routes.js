@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import competenciasController from '../controllers/competenciasController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = Router();
 
 // Listar todas las competencias
-router.get('/', competenciasController.getCompetencias);
+router.get('/', authMiddleware, competenciasController.getCompetencias);
 // Crear una competencia
-router.post('/', competenciasController.createCompetencia);
+router.post('/', authMiddleware, competenciasController.createCompetencia);
 // Actualizar una competencia
-router.put('/:id', competenciasController.updateCompetencia);
+router.put('/:id', authMiddleware, competenciasController.updateCompetencia);
 // Eliminar una competencia
-router.delete('/:id', competenciasController.deleteCompetencia);
+router.delete('/:id', authMiddleware, competenciasController.deleteCompetencia);
 
 export default router; 

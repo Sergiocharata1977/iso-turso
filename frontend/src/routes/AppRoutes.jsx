@@ -30,6 +30,7 @@ const ArquitecturaPage = lazy(() => import("../pages/Documentacion/ArquitecturaP
 const BaseDatosPage = lazy(() => import("../pages/Documentacion/tecnica/BaseDatosPage"));
 const DesarrolloPage = lazy(() => import("../pages/Documentacion/tecnica/DesarrolloPage"));
 const AdministracionPage = lazy(() => import("../pages/Documentacion/tecnica/AdministracionPage"));
+const ConfiguracionEntornos = lazy(() => import("../pages/Documentacion/ConfiguracionEntornos"));
 const ApiDocsPage = lazy(() => import("../pages/Documentacion/ApiDocsPage"));
 const GuiasPage = lazy(() => import("../pages/Documentacion/GuiasPage"));
 
@@ -236,6 +237,11 @@ const AppRoutes = () => {
                         <AdministracionPage />
                       </SuperAdminRoute>
                     } />
+                    <Route path="configuracion-entornos" element={
+                      <SuperAdminRoute>
+                        <ConfiguracionEntornos />
+                      </SuperAdminRoute>
+                    } />
                     <Route path="api" element={
                       <SuperAdminRoute>
                         <ApiDocsPage />
@@ -262,8 +268,8 @@ const AppRoutes = () => {
                   <Route path="planes" element={<PlanesPage />} />
 
                   {/* Redirección por defecto dentro del layout */}
-                  <Route path="/" element={<Navigate to="/documentacion" replace />} />
-                  <Route path="*" element={<Navigate to="/documentacion" replace />} />
+                  <Route path="/" element={<Navigate to="/personal" replace />} />
+                  <Route path="*" element={<Navigate to="/personal" replace />} />
                 </Routes>
               </MainLayout>
             </ProtectedRoute>

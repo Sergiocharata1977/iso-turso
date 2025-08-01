@@ -1,4 +1,4 @@
-import { db as turso } from '../lib/tursoClient.js';
+import { tursoClient as turso } from '../lib/tursoClient.js';
 
 // Obtener todos los detalles de una programación de evaluación
 export const getDetallesPorProgramacion = async (req, res) => {

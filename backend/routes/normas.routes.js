@@ -1,5 +1,6 @@
 import express from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const router = express.Router();
 // ===========================================
 
 // Obtener TODAS las normas de la organización del usuario
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const organization_id = req.user?.organization_id;
 
@@ -48,7 +49,7 @@ router.get('/', async (req, res) => {
 });
 
 // Obtener norma específica por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -85,7 +86,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Crear nueva norma
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { 
       codigo, 

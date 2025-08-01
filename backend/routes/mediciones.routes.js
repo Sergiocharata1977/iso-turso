@@ -1,244 +1,184 @@
-import { Router } from 'express';
+import express from 'express';
 import { tursoClient } from '../lib/tursoClient.js';
+import ActivityLogService from '../services/activityLogService.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 import crypto from 'crypto';
 
-const router = Router();
+const router = express.Router();
 
-// GET /api/mediciones - Listar todas las mediciones
-router.get('/', async (req, res) => {
-  const { indicador_id } = req.query;
+// GET /api/mediciones - Obtener todas las mediciones
+router.get('/', authMiddleware, async (req, res, next) => {
   try {
-    let sql = `
-      SELECT m.*, i.nombre as indicador_nombre 
-      FROM mediciones m
-      LEFT JOIN indicadores i ON m.indicador_id = i.id
-    `;
-    const params = [];
-
-    if (indicador_id) {
-      sql += ' WHERE m.indicador_id = ?';
-      params.push(indicador_id);
-    }
-
-    sql += ' ORDER BY m.fecha_medicion DESC';
-
-    const result = await tursoClient.execute({ sql, args: params });
+    const organizationId = req.user?.organization_id || req.user?.org_id || 2;
+    console.log('📈 Obteniendo mediciones para organización:', organizationId);
+    
+    const result = await tursoClient.execute({
+      sql: 'SELECT * FROM mediciones WHERE organization_id = ? ORDER BY created_at DESC',
+      args: [organizationId]
+    });
+    
+    console.log(`✅ Encontradas ${result.rows.length} mediciones`);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener mediciones:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('❌ Error al obtener mediciones:', error);
+    next({
+      statusCode: 500,
+      message: 'Error al obtener mediciones',
+      error: error.message
+    });
   }
 });
 
-// POST /api/mediciones - Crear una nueva medición
-router.post('/', async (req, res) => {
-  const { indicador_id, valor, fecha_medicion, observaciones, responsable } = req.body;
-
-  if (!indicador_id || valor === undefined || valor === null) {
-    return res.status(400).json({ error: 'Los campos "indicador_id" y "valor" son obligatorios.' });
-  }
-
-  try {
-    // Verificar que el indicador existe
-    const indicador = await tursoClient.execute({
-      sql: 'SELECT id FROM indicadores WHERE id = ?',
-      args: [indicador_id],
-    });
-
-    if (indicador.rows.length === 0) {
-      return res.status(404).json({ error: 'El indicador especificado no existe.' });
-    }
-
-    const fechaCreacion = new Date().toISOString();
-    const fechaMedicionFinal = fecha_medicion || fechaCreacion;
-    const id = crypto.randomUUID();
-    
-    const result = await tursoClient.execute({
-      sql: `INSERT INTO mediciones (
-              id, indicador_id, valor, fecha_medicion, 
-              observaciones, responsable, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        id, 
-        indicador_id, 
-        valor, 
-        fechaMedicionFinal, 
-        observaciones || null, 
-        responsable || null,
-        fechaCreacion
-      ],
-    });
-
-    // Devolver la medición recién creada
-    const newMedicion = await tursoClient.execute({
-      sql: `
-        SELECT m.*, i.nombre as indicador_nombre 
-        FROM mediciones m
-        LEFT JOIN indicadores i ON m.indicador_id = i.id
-        WHERE m.id = ?
-      `,
-      args: [id]
-    });
-    
-    if (newMedicion.rows.length > 0) {
-      res.status(201).json(newMedicion.rows[0]);
-    } else {
-      res.status(201).json({ 
-        id, 
-        indicador_id, 
-        valor, 
-        fecha_medicion: fechaMedicionFinal, 
-        observaciones, 
-        responsable,
-        fecha_creacion: fechaCreacion
-      });
-    }
-  } catch (error) {
-    console.error('Error al crear la medición:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// GET /api/mediciones/:id - Obtener una medición por ID
-router.get('/:id', async (req, res) => {
+// GET /api/mediciones/:id - Obtener medición por ID
+router.get('/:id', authMiddleware, async (req, res, next) => {
   const { id } = req.params;
   try {
+    const organizationId = req.user?.organization_id || req.user?.org_id || 2;
+    console.log(`🔍 Obteniendo medición ${id} para organización ${organizationId}`);
+    
     const result = await tursoClient.execute({
-      sql: `
-        SELECT m.*, i.nombre as indicador_nombre 
-        FROM mediciones m
-        LEFT JOIN indicadores i ON m.indicador_id = i.id
-        WHERE m.id = ?
-      `,
-      args: [id],
+      sql: 'SELECT * FROM mediciones WHERE id = ? AND organization_id = ?',
+      args: [id, organizationId],
     });
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Medición no encontrada.' });
+      const err = new Error('Medición no encontrada en tu organización.');
+      err.statusCode = 404;
+      return next(err);
     }
     res.json(result.rows[0]);
   } catch (error) {
-    console.error(`Error al obtener la medición ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
-// PUT /api/mediciones/:id - Actualizar una medición
-router.put('/:id', async (req, res) => {
-  const { id } = req.params;
-  const { indicador_id, valor, fecha_medicion, observaciones, responsable } = req.body;
+// POST /api/mediciones - Crear nueva medición
+router.post('/', authMiddleware, async (req, res, next) => {
+  const { indicador_id, valor, fecha_medicion, observaciones, organization_id } = req.body;
+  const usuario = req.user || { id: null, nombre: 'Sistema' };
 
-  if (!indicador_id || valor === undefined || valor === null) {
-    return res.status(400).json({ error: 'Los campos "indicador_id" y "valor" son obligatorios.' });
+  if (!indicador_id || !valor || !organization_id) {
+    const err = new Error('Los campos "indicador_id", "valor" y "organization_id" son obligatorios.');
+    err.statusCode = 400;
+    return next(err);
   }
 
   try {
-    // Verificar que el indicador existe
-    const indicador = await tursoClient.execute({
-      sql: 'SELECT id FROM indicadores WHERE id = ?',
-      args: [indicador_id],
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    await tursoClient.execute({
+      sql: 'INSERT INTO mediciones (id, indicador_id, valor, fecha_medicion, observaciones, organization_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, indicador_id, valor, fecha_medicion || now, observaciones || null, organization_id, now, now]
     });
 
-    if (indicador.rows.length === 0) {
-      return res.status(404).json({ error: 'El indicador especificado no existe.' });
-    }
+    // Registrar en la bitácora
+    await ActivityLogService.registrarCreacion(
+      'medicion',
+      id,
+      { indicador_id, valor, fecha_medicion, observaciones, organization_id },
+      usuario,
+      organization_id
+    );
 
-    // Verificar que la medición existe
-    const existsCheck = await tursoClient.execute({
-      sql: 'SELECT id FROM mediciones WHERE id = ?',
-      args: [id]
+    res.status(201).json({ 
+      id, 
+      indicador_id, 
+      valor, 
+      fecha_medicion, 
+      observaciones, 
+      organization_id,
+      created_at: now,
+      updated_at: now
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/mediciones/:id - Actualizar medición
+router.put('/:id', authMiddleware, async (req, res, next) => {
+  const { id } = req.params;
+  const { indicador_id, valor, fecha_medicion, observaciones } = req.body;
+  const usuario = req.user || { id: null, nombre: 'Sistema' };
+
+  try {
+    const organizationId = req.user?.organization_id || req.user?.org_id || 2;
     
-    if (existsCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Medición no encontrada.' });
-    }
-
-    const result = await tursoClient.execute({
-      sql: `UPDATE mediciones SET 
-              indicador_id = ?, valor = ?, fecha_medicion = ?, 
-              observaciones = ?, responsable = ?
-            WHERE id = ?`,
-      args: [
-        indicador_id, 
-        valor, 
-        fecha_medicion || null, 
-        observaciones || null, 
-        responsable || null,
-        id
-      ],
+    // Verificar que la medición existe y pertenece a la organización
+    const existing = await tursoClient.execute({
+      sql: 'SELECT * FROM mediciones WHERE id = ? AND organization_id = ?',
+      args: [id, organizationId],
     });
 
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ error: 'Medición no encontrada.' });
+    if (existing.rows.length === 0) {
+      const err = new Error('Medición no encontrada en tu organización.');
+      err.statusCode = 404;
+      return next(err);
     }
 
-    // Devolver la medición actualizada
-    const updatedMedicion = await tursoClient.execute({
-      sql: `
-        SELECT m.*, i.nombre as indicador_nombre 
-        FROM mediciones m
-        LEFT JOIN indicadores i ON m.indicador_id = i.id
-        WHERE m.id = ?
-      `,
-      args: [id]
+    const now = new Date().toISOString();
+    
+    await tursoClient.execute({
+      sql: `UPDATE mediciones 
+            SET indicador_id = ?, valor = ?, fecha_medicion = ?, observaciones = ?, updated_at = ?
+            WHERE id = ? AND organization_id = ?`,
+      args: [indicador_id, valor, fecha_medicion, observaciones, now, id, organizationId]
     });
 
-    res.json(updatedMedicion.rows[0]);
+    // Registrar en la bitácora
+    await ActivityLogService.registrarActualizacion(
+      'medicion',
+      id,
+      { indicador_id, valor, fecha_medicion, observaciones },
+      usuario,
+      organizationId
+    );
+
+    res.json({ 
+      id, 
+      indicador_id, 
+      valor, 
+      fecha_medicion, 
+      observaciones,
+      organization_id: organizationId,
+      updated_at: now
+    });
   } catch (error) {
-    console.error(`Error al actualizar la medición ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
-// DELETE /api/mediciones/:id - Eliminar una medición
-router.delete('/:id', async (req, res) => {
+// DELETE /api/mediciones/:id - Eliminar medición
+router.delete('/:id', authMiddleware, async (req, res, next) => {
   const { id } = req.params;
+  const usuario = req.user || { id: null, nombre: 'Sistema' };
+
   try {
+    const organizationId = req.user?.organization_id || req.user?.org_id || 2;
+    
     const result = await tursoClient.execute({
-      sql: 'DELETE FROM mediciones WHERE id = ?',
-      args: [id],
+      sql: 'DELETE FROM mediciones WHERE id = ? AND organization_id = ? RETURNING id',
+      args: [id, organizationId],
     });
 
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ error: 'Medición no encontrada.' });
-    }
-    res.status(204).send(); // No content
-  } catch (error) {
-    console.error(`Error al eliminar la medición ${id}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// GET /api/mediciones/indicador/:indicadorId - Obtener mediciones por indicador
-router.get('/indicador/:indicadorId', async (req, res) => {
-  const { indicadorId } = req.params;
-  try {
-    // Verificar que el indicador existe
-    const indicador = await tursoClient.execute({
-      sql: 'SELECT id, nombre, descripcion FROM indicadores WHERE id = ?',
-      args: [indicadorId],
-    });
-
-    if (indicador.rows.length === 0) {
-      return res.status(404).json({ error: 'Indicador no encontrado.' });
+    if (result.rows.length === 0) {
+      const err = new Error('Medición no encontrada en tu organización.');
+      err.statusCode = 404;
+      return next(err);
     }
 
-    const result = await tursoClient.execute({
-      sql: `
-        SELECT * FROM mediciones 
-        WHERE indicador_id = ?
-        ORDER BY fecha_medicion DESC
-      `,
-      args: [indicadorId],
-    });
+    // Registrar en la bitácora
+    await ActivityLogService.registrarEliminacion(
+      'medicion',
+      id,
+      usuario,
+      organizationId
+    );
 
-    res.json({
-      indicador: indicador.rows[0],
-      mediciones: result.rows
-    });
+    res.json({ message: 'Medición eliminada exitosamente' });
   } catch (error) {
-    console.error(`Error al obtener mediciones para el indicador ${indicadorId}:`, error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    next(error);
   }
 });
 
