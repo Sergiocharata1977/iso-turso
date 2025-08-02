@@ -1,0 +1,31 @@
+# 📋 INSTRUCCIONES PARA CONFIGURAR TU ENTORNO LOCAL
+# 
+# 1. Copia este contenido a un nuevo archivo llamado .env.local
+# 2. Ve a https://turso.tech y crea una nueva base de datos para desarrollo
+# 3. Copia las credenciales y pégalas aquí
+# 4. Guarda el archivo
+
+# === CONTENIDO PARA .env.local ===
+
+# Turso Database - DESARROLLO
+TURSO_DATABASE_URL=libsql://tu-base-desarrollo.turso.io
+TURSO_AUTH_TOKEN=eyJ... (tu token completo aquí)
+
+# Compatibilidad con código antiguo
+DATABASE_URL=libsql://tu-base-desarrollo.turso.io
+DATABASE_AUTH_TOKEN=eyJ... (mismo token que arriba)
+
+# JWT Secret (puede ser cualquier string largo)
+JWT_SECRET=desarrollo-local-secret-key-123456789
+
+# Puerto del servidor
+PORT=5000
+
+# Entorno
+NODE_ENV=development
+
+# Configuración de sesión
+SESSION_SECRET=desarrollo-session-secret-987654321
+
+# Organización por defecto
+DEFAULT_ORG_ID=1

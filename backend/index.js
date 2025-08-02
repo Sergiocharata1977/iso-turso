@@ -15,19 +15,26 @@ import {
 } from './middleware/security.js';
 
 // 🛡️ IMPORTAR RUTAS
-import authRouter from './routes/auth.js';
-import personalRouter from './routes/personal.js';
-import departamentosRouter from './routes/departamentos.js';
-import puestosRouter from './routes/puestos.js';
+import authRouter from './routes/authRoutes.js';
+import personalRouter from './routes/personal.routes.js';
+import departamentosRouter from './routes/departamentos.routes.js';
+import puestosRouter from './routes/puestos.routes.js';
 import capacitacionesRouter from './routes/capacitaciones.js';
+import competenciasRouter from './routes/competencias.routes.js';
 import evaluacionesRouter from './routes/evaluaciones.js';
-import normasRouter from './routes/normas.js';
+import normasRouter from './routes/normas.routes.js';
 import documentosRouter from './routes/documentos.js';
-import auditoriasRouter from './routes/auditorias.js';
+import procesosRouter from './routes/procesos.routes.js';
+import identificacionProcesosRouter from './routes/identificacion-procesos.routes.js';
+import objetivosCalidadRouter from './routes/objetivos-calidad.routes.js';
+import indicadoresRouter from './routes/indicadores.routes.js';
+import medicionesRouter from './routes/mediciones.routes.js';
+import auditoriasRouter from './routes/auditorias.routes.js';
 import hallazgosRouter from './routes/hallazgos.js';
-import accionesRouter from './routes/acciones.js';
+import accionesRouter from './routes/acciones.routes.js';
 import planesRouter from './routes/planes.js';
 import suscripcionesRouter from './routes/suscripciones.js';
+import sgcHierarchyRouter from './routes/sgc-hierarchy.routes.js';
 
 // 📊 CONFIGURACIÓN DE ENTORNO
 dotenv.config();
@@ -63,14 +70,21 @@ app.use('/api/personal', personalRouter);
 app.use('/api/departamentos', departamentosRouter);
 app.use('/api/puestos', puestosRouter);
 app.use('/api/capacitaciones', capacitacionesRouter);
+app.use('/api/competencias', competenciasRouter);
 app.use('/api/evaluaciones', evaluacionesRouter);
 app.use('/api/normas', normasRouter);
 app.use('/api/documentos', documentosRouter);
+app.use('/api/procesos', procesosRouter);
+app.use('/api/identificacion-procesos', identificacionProcesosRouter);
+app.use('/api/objetivos-calidad', objetivosCalidadRouter);
+app.use('/api/indicadores', indicadoresRouter);
+app.use('/api/mediciones', medicionesRouter);
 app.use('/api/auditorias', auditoriasRouter);
 app.use('/api/hallazgos', hallazgosRouter);
 app.use('/api/acciones', accionesRouter);
 app.use('/api/planes', planesRouter);
 app.use('/api/suscripciones', suscripcionesRouter);
+app.use('/api/sgc', sgcHierarchyRouter);
 
 // 🔍 HEALTH CHECK
 app.get('/health', (req, res) => {

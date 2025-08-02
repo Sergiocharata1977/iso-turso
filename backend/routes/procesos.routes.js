@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     console.log('📋 Obteniendo todos los procesos...');
     const result = await tursoClient.execute({
       sql: 'SELECT * FROM procesos WHERE organization_id = ? ORDER BY nombre',
-      args: [req.user?.organization_id || 1]
+      args: [req.user?.organization_id || 2]
     });
     
     console.log(`✅ Encontrados ${result.rows.length} procesos`);
@@ -33,7 +33,7 @@ router.get('/:id', async (req, res) => {
     
     const result = await tursoClient.execute({
       sql: 'SELECT * FROM procesos WHERE id = ? AND organization_id = ?',
-      args: [id, req.user?.organization_id || 1]
+      args: [id, req.user?.organization_id || 2]
     });
 
     if (result.rows.length === 0) {
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
 
     const result = await tursoClient.execute({
       sql: 'INSERT INTO procesos (id, nombre, responsable, descripcion, organization_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime")) RETURNING *',
-      args: [id, nombre, responsable || '', descripcion || '', req.user?.organization_id || 1]
+      args: [id, nombre, responsable || '', descripcion || '', req.user?.organization_id || 2]
     });
 
     console.log(`✅ Proceso creado con ID: ${result.rows[0].id}`);

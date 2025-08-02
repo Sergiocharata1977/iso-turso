@@ -98,6 +98,7 @@ const PlanesPage = lazy(() => import("../components/planes/PlanesListing"));
 // Competencias
 const CompetenciasListing = lazy(() => import('../pages/Competencias/CompetenciasListing'));
 const CompetenciaSingle = lazy(() => import('../pages/Competencias/CompetenciaSingle'));
+const SGCHierarchyPage = lazy(() => import('../components/sgc/SGCHierarchyView'));
 
 // Evaluaciones de Competencias Individuales
 const EvaluacionesDashboard = lazy(() => import('../pages/EvaluacionCompetencias/EvaluacionesDashboardSimple'));
@@ -266,6 +267,9 @@ const AppRoutes = () => {
 
                   {/* Planes y Suscripciones */}
                   <Route path="planes" element={<PlanesPage />} />
+
+                  {/* Jerarquía SGC */}
+                  <Route path="sgc-hierarchy" element={<SGCHierarchyPage />} />
 
                   {/* Redirección por defecto dentro del layout */}
                   <Route path="/" element={<Navigate to="/personal" replace />} />

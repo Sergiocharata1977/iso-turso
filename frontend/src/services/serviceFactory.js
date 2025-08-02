@@ -4,7 +4,7 @@ import { createApiClient } from './apiService';
 import { createMockApiClient } from './mockApiService';
 
 // Lee la variable de entorno. Si no está definida, usará la API real por defecto.
-const API_MODE = import.meta.env.VITE_API_MODE || 'mock'; // Puede ser 'real' o 'mock'
+const API_MODE = import.meta.env.VITE_API_MODE || 'real'; // Cambiado a 'real' por defecto
 
 /**
  * Crea un cliente de servicio (real o mock) basado en la configuración del entorno.

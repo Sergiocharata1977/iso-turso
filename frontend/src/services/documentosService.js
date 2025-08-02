@@ -6,11 +6,12 @@ const documentosService = {
     try {
       console.log('📄 Obteniendo todos los documentos...');
       const response = await apiService.get('/documentos');
-      console.log(`✅ ${response.length} documentos obtenidos`);
-      return response;
+      console.log(`✅ ${response?.data?.length || 0} documentos obtenidos`);
+      console.log('📄 Respuesta completa:', response);
+      return Array.isArray(response?.data) ? response.data : [];
     } catch (error) {
       console.error('❌ Error al obtener documentos:', error);
-      throw new Error('Error al cargar los documentos');
+      return [];
     }
   },
 

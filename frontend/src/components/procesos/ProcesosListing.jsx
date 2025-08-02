@@ -210,8 +210,8 @@ export default function ProcesosListing() {
       const response = await procesosService.getAll();
       console.log('📋 Respuesta completa:', response);
       
-      // Extraer el array de datos del response de axios
-      const data = response.data || [];
+      // Extraer el array de datos del response
+      const data = Array.isArray(response) ? response : (response.data || []);
       console.log('📋 Procesos extraídos:', data);
       
       setProcesos(Array.isArray(data) ? data : []);

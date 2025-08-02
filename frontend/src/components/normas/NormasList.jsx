@@ -45,7 +45,7 @@ const NormasList = () => {
       console.log('Datos de normas cargados:', response);
       
       if (response.success) {
-        setNormas(response.data || []);
+        setNormas(Array.isArray(response) ? response : (response.data || []));
       } else {
         setLocalError(response.message || 'Error al cargar los datos');
         setNormas([]);

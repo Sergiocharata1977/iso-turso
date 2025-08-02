@@ -13,7 +13,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
     console.log('📈 Obteniendo mediciones para organización:', organizationId);
     
     const result = await tursoClient.execute({
-      sql: 'SELECT * FROM mediciones WHERE organization_id = ? ORDER BY created_at DESC',
+      sql: 'SELECT * FROM mediciones WHERE organization_id = ? ORDER BY fecha_medicion DESC',
       args: [organizationId]
     });
     
@@ -68,8 +68,8 @@ router.post('/', authMiddleware, async (req, res, next) => {
     const now = new Date().toISOString();
 
     await tursoClient.execute({
-      sql: 'INSERT INTO mediciones (id, indicador_id, valor, fecha_medicion, observaciones, organization_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [id, indicador_id, valor, fecha_medicion || now, observaciones || null, organization_id, now, now]
+      sql: 'INSERT INTO mediciones (id, indicador_id, valor, fecha_medicion, observaciones, organization_id) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [id, indicador_id, valor, fecha_medicion || now, observaciones || null, organization_id]
     });
 
     // Registrar en la bitácora

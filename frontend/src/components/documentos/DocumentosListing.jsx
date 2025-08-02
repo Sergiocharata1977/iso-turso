@@ -25,9 +25,11 @@ const DocumentosListing = () => {
     try {
       setLoading(true);
       const data = await documentosService.getDocumentos();
-      setDocumentos(data || []);
+      console.log('📄 Datos recibidos:', data);
+      setDocumentos(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error al cargar documentos:', error);
+      setDocumentos([]);
       toast({
         title: "Error",
         description: "No se pudieron cargar los documentos",
@@ -83,10 +85,10 @@ const DocumentosListing = () => {
     }
   };
 
-  const filteredDocumentos = (documentos || []).filter(doc =>
+  const filteredDocumentos = Array.isArray(documentos) ? documentos.filter(doc =>
     doc.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doc.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   return (
     <div className="p-6">

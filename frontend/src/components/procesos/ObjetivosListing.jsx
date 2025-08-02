@@ -56,7 +56,7 @@ function ObjetivosListing({ procesoId, procesoNombre, onBack }) {
     setIsLoading(true);
     try {
       let response = await objetivosCalidadService.getAll();
-      let fetchedObjetivos = response.data || [];
+      let fetchedObjetivos = Array.isArray(response) ? response : (response.data || []);
       if (procesoId) {
         fetchedObjetivos = fetchedObjetivos.filter(obj => obj.proceso_id === procesoId);
       }

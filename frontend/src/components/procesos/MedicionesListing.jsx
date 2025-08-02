@@ -184,7 +184,7 @@ export default function MedicionesListing() {
     try {
       setIsLoading(true);
       const response = await medicionesService.getAll();
-      const data = response.data || [];
+      const data = Array.isArray(response) ? response : (response.data || []);
       setMediciones(data);
     } catch (error) {
       toast({ 
