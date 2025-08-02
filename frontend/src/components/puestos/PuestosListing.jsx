@@ -23,12 +23,13 @@ import { puestosService } from "@/services/puestosService";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 
 function PuestosListing() {
   const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPuesto, setSelectedPuesto] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [puestoToDelete, setPuestoToDelete] = useState(null);
@@ -38,6 +39,18 @@ function PuestosListing() {
   const [showSingle, setShowSingle] = useState(false);
   const [currentPuesto, setCurrentPuesto] = useState(null);
   const { user } = useAuth();
+
+  // Hook de paginación con filtros
+  const {
+    data: paginatedPuestos,
+    paginationInfo,
+    searchTerm,
+    updateSearchTerm,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(puestos, {
+    itemsPerPage: 12
+  });
 
   useEffect(() => {
     loadPuestos();
@@ -143,10 +156,7 @@ function PuestosListing() {
     });
   };
 
-  const filteredPuestos = puestos.filter((puesto) =>
-    (puesto.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (puesto.codigo_puesto?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-  );
+  // Los datos ya están filtrados y paginados por el hook
 
   const getStats = () => {
     const total = puestos.length;
@@ -198,7 +208,7 @@ function PuestosListing() {
         </div>
       );
     }
-    if (filteredPuestos.length === 0) {
+    if (paginatedPuestos.length === 0) {
       return (
         <div className="text-center py-12">
           <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -212,7 +222,7 @@ function PuestosListing() {
     }
     return (
       <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredPuestos.map((puesto) => (
+        {paginatedPuestos.map((puesto) => (
           <PuestoCard 
             key={puesto.id} 
             puesto={puesto} 
@@ -246,7 +256,7 @@ function PuestosListing() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-            {filteredPuestos.map((puesto) => (
+            {paginatedPuestos.map((puesto) => (
               <motion.tr 
                 key={puesto.id} 
                 layout
@@ -284,7 +294,7 @@ function PuestosListing() {
             ))}
           </tbody>
         </table>
-        {filteredPuestos.length === 0 && !isLoading && (
+        {paginatedPuestos.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
             <p className="mt-4 text-muted-foreground">No hay puestos que coincidan con la búsqueda.</p>
@@ -300,7 +310,7 @@ function PuestosListing() {
         title="Gestión de Puestos"
         description="Administra los puestos de trabajo según ISO 9001"
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={updateSearchTerm}
         onNew={handleNew}
         onExport={handleExport}
         viewMode={viewMode}
@@ -355,6 +365,25 @@ function PuestosListing() {
       <motion.div layout className="mt-6">
         {viewMode === 'grid' ? renderGridContent() : renderListContent()}
       </motion.div>
+
+      {/* Paginación */}
+      {!isLoading && paginationInfo.totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            totalItems={paginationInfo.totalItems}
+            itemsPerPage={paginationInfo.itemsPerPage}
+            startItem={paginationInfo.startItem}
+            endItem={paginationInfo.endItem}
+            onPageChange={goToPage}
+            onItemsPerPageChange={changeItemsPerPage}
+            itemsPerPageOptions={[8, 12, 24, 48]}
+            showItemsPerPage={true}
+            showInfo={true}
+          />
+        </div>
+      )}
 
       <PuestoModal
         isOpen={isModalOpen}

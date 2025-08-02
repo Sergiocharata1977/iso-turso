@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,12 +29,23 @@ const NormasList = () => {
   
   const [normas, setNormas] = useState([]);
   const [viewMode, setViewMode] = useState('grid'); 
-  const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [localError, setLocalError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [normaToDelete, setNormaToDelete] = useState(null);
+
+  // Hook de paginación con filtros
+  const {
+    data: paginatedNormas,
+    paginationInfo,
+    searchTerm,
+    updateSearchTerm,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(normas, {
+    itemsPerPage: 12
+  });
   
   // Cargar datos usando useCallback para evitar recreaciones innecesarias
   const fetchData = useCallback(async () => {
@@ -73,21 +86,7 @@ const NormasList = () => {
     fetchData();
   }, [fetchData]);
 
-  // Memoizar las normas filtradas para evitar recálculos innecesarios
-  const filteredNormas = useMemo(() => {
-    // Asegurar que normas es un array válido
-    const validNormas = Array.isArray(normas) ? normas : [];
-    
-    if (!searchTerm.trim()) return validNormas;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return validNormas.filter(norma => 
-      norma.codigo?.toLowerCase().includes(searchLower) ||
-      norma.titulo?.toLowerCase().includes(searchLower) ||
-      norma.descripcion?.toLowerCase().includes(searchLower) ||
-      norma.observaciones?.toLowerCase().includes(searchLower)
-    );
-  }, [normas, searchTerm]);
+  // Los datos ya están filtrados y paginados por el hook
 
   // Memoizar handlers para evitar recreaciones
   const handleViewSingle = useCallback((id) => {
@@ -231,7 +230,7 @@ const NormasList = () => {
       );
     }
 
-    if (filteredNormas.length === 0) {
+    if (paginatedNormas.length === 0) {
       return (
         <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-gray-400" />
@@ -254,7 +253,7 @@ const NormasList = () => {
     if (viewMode === 'grid') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredNormas.map(norma => (
+          {paginatedNormas.map(norma => (
             <Card 
               key={norma.id} 
               className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
@@ -336,7 +335,7 @@ const NormasList = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredNormas.map(norma => (
+                {paginatedNormas.map(norma => (
                   <tr 
                     key={norma.id} 
                     className="hover:bg-gray-50 cursor-pointer"
@@ -387,7 +386,7 @@ const NormasList = () => {
         </CardContent>
       </Card>
     );
-  }, [filteredNormas, handleViewSingle]);
+  }, [paginatedNormas, handleViewSingle]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -422,7 +421,7 @@ const NormasList = () => {
                   type="text"
                   placeholder="Buscar puntos de norma..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => updateSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -454,6 +453,25 @@ const NormasList = () => {
         {/* Content Area */}
         <div className="flex-1 p-6 overflow-auto">
           {renderContent}
+          
+          {/* Paginación */}
+          {!loadingData && paginationInfo.totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={paginationInfo.currentPage}
+                totalPages={paginationInfo.totalPages}
+                totalItems={paginationInfo.totalItems}
+                itemsPerPage={paginationInfo.itemsPerPage}
+                startItem={paginationInfo.startItem}
+                endItem={paginationInfo.endItem}
+                onPageChange={goToPage}
+                onItemsPerPageChange={changeItemsPerPage}
+                itemsPerPageOptions={[6, 12, 24, 48]}
+                showItemsPerPage={true}
+                showInfo={true}
+              />
+            </div>
+          )}
         </div>
       </div>
 
