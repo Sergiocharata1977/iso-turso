@@ -11,18 +11,31 @@ import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 // import { PersonalCardSkeleton, TableSkeleton, HeaderSkeleton } from "@/components/ui/skeleton";
 
 const PersonalListing = () => {
   const [personal, setPersonal] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Hook de paginación con filtros personalizados
+  const {
+    data: paginatedPersonal,
+    paginationInfo,
+    searchTerm,
+    updateSearchTerm,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(personal, {
+    itemsPerPage: 12
+  });
 
 
   useEffect(() => {
@@ -149,13 +162,7 @@ const PersonalListing = () => {
     toast({ title: "Exportar", description: "Función de exportación en desarrollo." });
   };
 
-  const filteredPersonal = Array.isArray(personal) ? personal.filter(person =>
-    `${person.nombres || ''} ${person.apellidos || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (person.puesto && person.puesto.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (person.departamento && person.departamento.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (person.documento_identidad && person.documento_identidad.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (person.email && person.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) : [];
+  // Los datos ya están filtrados y paginados por el hook
 
   const getInitials = (nombres, apellidos) => {
     const firstInitial = nombres ? nombres.charAt(0).toUpperCase() : '';
@@ -308,7 +315,7 @@ const PersonalListing = () => {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredPersonal.map((person) => {
+        {paginatedPersonal.map((person) => {
           const StatusIcon = getStatusIcon(person.estado);
           const fields = [
             ...(person.puesto ? [{ 
@@ -357,7 +364,7 @@ const PersonalListing = () => {
   const renderListView = () => {
     return (
       <PersonalTableView
-        personal={filteredPersonal}
+        personal={paginatedPersonal}
         onEdit={handleOpenModal}
         onDelete={handleDelete}
         loading={loading}
@@ -371,7 +378,7 @@ const PersonalListing = () => {
         title="Gestión de Personal"
         description="Administra los empleados de la organización según ISO 9001"
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={updateSearchTerm}
         onNew={() => handleOpenModal()}
         onExport={handleExport}
         viewMode={viewMode}
@@ -424,6 +431,25 @@ const PersonalListing = () => {
       </div>
 
       {viewMode === 'grid' ? renderGridView() : renderListView()}
+
+      {/* Paginación */}
+      {!loading && paginationInfo.totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            totalItems={paginationInfo.totalItems}
+            itemsPerPage={paginationInfo.itemsPerPage}
+            startItem={paginationInfo.startItem}
+            endItem={paginationInfo.endItem}
+            onPageChange={goToPage}
+            onItemsPerPageChange={changeItemsPerPage}
+            itemsPerPageOptions={[8, 12, 24, 48]}
+            showItemsPerPage={true}
+            showInfo={true}
+          />
+        </div>
+      )}
 
       <PersonalModal
         isOpen={isModalOpen}

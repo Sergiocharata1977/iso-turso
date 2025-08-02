@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 import { 
   Plus, 
   Calendar, 
@@ -38,13 +40,26 @@ import UnifiedCard from "../common/UnifiedCard";
 export default function CapacitacionesListing() {
   const [capacitaciones, setCapacitaciones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("todos");
   const [viewMode, setViewMode] = useState("grid"); // grid | list | kanban
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCapacitacion, setSelectedCapacitacion] = useState(null);
   const [showSingle, setShowSingle] = useState(false);
   const [singleCapacitacionId, setSingleCapacitacionId] = useState(null);
+
+  // Hook de paginación con filtros
+  const {
+    data: paginatedCapacitaciones,
+    paginationInfo,
+    searchTerm,
+    updateSearchTerm,
+    filters,
+    updateFilters,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(capacitaciones, {
+    itemsPerPage: 12
+  });
 
   useEffect(() => {
     fetchCapacitaciones();
@@ -123,15 +138,10 @@ export default function CapacitacionesListing() {
     setViewMode(mode);
   };
 
-  const filteredCapacitaciones = capacitaciones.filter((capacitacion) => {
-    const titleField = capacitacion.nombre || capacitacion.titulo || '';
-    const descriptionField = capacitacion.descripcion || '';
-    
-    const matchesSearch = titleField.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         descriptionField.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtrar por estado (el hook ya maneja la búsqueda por texto)
+  const filteredCapacitaciones = paginatedCapacitaciones.filter((capacitacion) => {
     const matchesEstado = filterEstado === "todos" || capacitacion.estado === filterEstado;
-    
-    return matchesSearch && matchesEstado;
+    return matchesEstado;
   });
 
   const getEstadoBadgeColor = (estado) => {
@@ -214,7 +224,7 @@ export default function CapacitacionesListing() {
           title="Gestión de Capacitaciones"
           description="Administra las capacitaciones del personal según ISO 9001"
           searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          onSearchChange={updateSearchTerm}
           onNew={handleCreate}
           onExport={handleExport}
           viewMode={viewMode}
@@ -479,7 +489,7 @@ export default function CapacitacionesListing() {
         title="Gestión de Capacitaciones"
         description="Administra las capacitaciones del personal según ISO 9001"
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={updateSearchTerm}
         onNew={handleCreate}
         onExport={handleExport}
         viewMode={viewMode}
@@ -579,6 +589,25 @@ export default function CapacitacionesListing() {
       </div>
 
       {viewMode === 'grid' ? renderGridView() : renderListView()}
+
+      {/* Paginación */}
+      {!loading && paginationInfo.totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            totalItems={paginationInfo.totalItems}
+            itemsPerPage={paginationInfo.itemsPerPage}
+            startItem={paginationInfo.startItem}
+            endItem={paginationInfo.endItem}
+            onPageChange={goToPage}
+            onItemsPerPageChange={changeItemsPerPage}
+            itemsPerPageOptions={[8, 12, 24, 48]}
+            showItemsPerPage={true}
+            showInfo={true}
+          />
+        </div>
+      )}
 
       <CapacitacionModal
         isOpen={modalOpen}
