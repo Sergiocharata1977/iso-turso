@@ -12,11 +12,15 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  XCircle
+  XCircle,
+  Grid,
+  List
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 import ProductoModal from './ProductoModal';
 import ProductoSingle from './ProductoSingle';
 import productosService from '@/services/productosService';
@@ -29,9 +33,21 @@ function ProductosListing() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState(null);
   const [currentProducto, setCurrentProducto] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productoToDelete, setProductoToDelete] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // grid | list
+
+  // Hook de paginación con filtros
+  const {
+    data: paginatedProductos,
+    paginationInfo,
+    searchTerm,
+    updateSearchTerm,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(productos, {
+    itemsPerPage: 12
+  });
 
   const loadProductos = useCallback(async () => {
     setIsLoading(true);
@@ -147,10 +163,122 @@ function ProductosListing() {
     );
   };
 
-  const filteredProductos = productos.filter(p =>
-    p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.codigo && p.codigo.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Los datos ya están filtrados y paginados por el hook
+
+  const renderGridView = () => {
+    if (paginatedProductos.length === 0) {
+      return (
+        <div className="col-span-full text-center py-12 bg-gray-50 border rounded-lg">
+          <Package className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-4 text-gray-500">
+            No se encontraron productos. {searchTerm ? 'Intenta con otra búsqueda.' : "Haz clic en 'Nuevo Producto' para comenzar."}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
+        {paginatedProductos.map((producto) => (
+          <motion.div
+            key={producto.id}
+            layoutId={`producto-card-${producto.id}`}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between group transition-all duration-300 hover:shadow-lg hover:border-teal-500"
+          >
+            <div className="p-4 cursor-pointer" onClick={() => handleViewDetail(producto)}>
+              <h2 className="text-lg font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{producto.nombre}</h2>
+              <div className="flex items-center gap-2 mt-3">
+                {getEstadoBadge(producto.estado)}
+              </div>
+            </div>
+            <div className="bg-gray-50 p-2 flex justify-end items-center space-x-1 rounded-b-lg border-t">
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(producto); }}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); confirmDelete(producto); }}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderListView = () => {
+    if (paginatedProductos.length === 0) {
+      return (
+        <div className="text-center py-12 bg-gray-50 border rounded-lg">
+          <Package className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-4 text-gray-500">
+            No se encontraron productos. {searchTerm ? 'Intenta con otra búsqueda.' : "Haz clic en 'Nuevo Producto' para comenzar."}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="pt-6">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Producto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Código
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedProductos.map((producto) => (
+                  <tr key={producto.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewDetail(producto)}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Package className="h-5 w-5 text-teal-600 mr-3" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {producto.nombre}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {producto.descripcion || 'Sin descripción'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {producto.codigo || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getEstadoBadge(producto.estado)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(producto)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => confirmDelete(producto)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (currentProducto) {
     return (
@@ -191,12 +319,33 @@ function ProductosListing() {
               placeholder="Buscar por nombre o código..."
               className="pl-10"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => updateSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" /> Filtros
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            {/* Selector de vista */}
+            <div className="flex items-center gap-1 bg-white border rounded-lg p-1">
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <Button variant="outline">
+              <Filter className="mr-2 h-4 w-4" /> Filtros
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -212,39 +361,29 @@ function ProductosListing() {
             <Button variant="outline" onClick={loadProductos}>Reintentar</Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
-            {filteredProductos.length === 0 ? (
-              <div className="col-span-full text-center py-12 bg-gray-50 border rounded-lg">
-                <Package className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-4 text-gray-500">
-                  No se encontraron productos. {searchTerm ? 'Intenta con otra búsqueda.' : "Haz clic en 'Nuevo Producto' para comenzar."}
-                </p>
+          <>
+            {/* Renderizado según vista seleccionada */}
+            {viewMode === 'grid' ? renderGridView() : renderListView()}
+
+            {/* Paginación */}
+            {!isLoading && paginationInfo.totalPages > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={paginationInfo.currentPage}
+                  totalPages={paginationInfo.totalPages}
+                  totalItems={paginationInfo.totalItems}
+                  itemsPerPage={paginationInfo.itemsPerPage}
+                  startItem={paginationInfo.startItem}
+                  endItem={paginationInfo.endItem}
+                  onPageChange={goToPage}
+                  onItemsPerPageChange={changeItemsPerPage}
+                  itemsPerPageOptions={[6, 12, 24, 48]}
+                  showItemsPerPage={true}
+                  showInfo={true}
+                />
               </div>
-            ) : (
-              filteredProductos.map((producto) => (
-                <motion.div
-                  key={producto.id}
-                  layoutId={`producto-card-${producto.id}`}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between group transition-all duration-300 hover:shadow-lg hover:border-teal-500"
-                >
-                  <div className="p-4 cursor-pointer" onClick={() => handleViewDetail(producto)}>
-                    <h2 className="text-lg font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{producto.nombre}</h2>
-                    <div className="flex items-center gap-2 mt-3">
-                      {getEstadoBadge(producto.estado)}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 p-2 flex justify-end items-center space-x-1 rounded-b-lg border-t">
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(producto); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); confirmDelete(producto); }}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ))
             )}
-          </div>
+          </>
         )}
       </main>
 
