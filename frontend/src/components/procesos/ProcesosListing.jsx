@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, Pencil, Trash2, FileText, User, GitBranch, Hash, Workflow, Grid3X3, List, Eye, Calendar } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, FileText, User, GitBranch, Hash, Workflow, Grid3X3, List, Eye, Calendar, Filter, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import UnifiedHeader from '@/components/common/UnifiedHeader';
 import ProcesoModal from './ProcesoModal';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { usePaginationWithFilters } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 import procesosService from '@/services/procesosService';
 
 const ProcesoCard = React.memo(({ proceso, onEdit, onDelete, onNavigate }) => (
@@ -198,11 +201,28 @@ export default function ProcesosListing() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [procesos, setProcesos] = useState([]);
-  const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentProceso, setCurrentProceso] = useState(null);
   const [procesoToDelete, setProcesoToDelete] = useState(null);
+  
+  // Estados para filtros avanzados
+  const [filterEstado, setFilterEstado] = useState('todos');
+  const [filterResponsable, setFilterResponsable] = useState('todos');
+  const [filterTipo, setFilterTipo] = useState('todos');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Hook de paginación con filtros
+  const {
+    data: paginatedProcesos,
+    paginationInfo,
+    searchTerm,
+    updateSearchTerm,
+    goToPage,
+    changeItemsPerPage,
+  } = usePaginationWithFilters(procesos, {
+    itemsPerPage: 12
+  });
 
   const loadProcesos = async () => {
     try {
@@ -281,20 +301,33 @@ export default function ProcesosListing() {
     navigate(`/procesos/${proceso.id}`);
   };
 
+  // Aplicar filtros adicionales a los datos ya paginados y filtrados por texto
   const filteredProcesos = useMemo(() => {
-    // Asegurar que procesos sea un array antes de filtrar
-    if (!Array.isArray(procesos)) {
-      console.warn('⚠️ procesos no es un array:', procesos);
-      return [];
-    }
+    return paginatedProcesos.filter(proceso => {
+      // Filtro por estado
+      const matchesEstado = filterEstado === 'todos' || 
+        proceso.estado?.toLowerCase() === filterEstado.toLowerCase();
+      
+      // Filtro por responsable
+      const matchesResponsable = filterResponsable === 'todos' || 
+        proceso.responsable?.toLowerCase().includes(filterResponsable.toLowerCase());
+      
+      // Filtro por tipo
+      const matchesTipo = filterTipo === 'todos' || 
+        proceso.tipo?.toLowerCase() === filterTipo.toLowerCase();
+      
+      return matchesEstado && matchesResponsable && matchesTipo;
+    });
+  }, [paginatedProcesos, filterEstado, filterResponsable, filterTipo]);
+
+  // Obtener opciones únicas para los filtros
+  const filterOptions = useMemo(() => {
+    const estados = [...new Set(procesos.map(p => p.estado).filter(Boolean))];
+    const responsables = [...new Set(procesos.map(p => p.responsable).filter(Boolean))];
+    const tipos = [...new Set(procesos.map(p => p.tipo).filter(Boolean))];
     
-    return procesos.filter(proceso =>
-      (proceso.nombre || '').toLowerCase().includes(searchText.toLowerCase()) ||
-      (proceso.descripcion || '').toLowerCase().includes(searchText.toLowerCase()) ||
-      (proceso.responsable || '').toLowerCase().includes(searchText.toLowerCase()) ||
-      (proceso.codigo || '').toLowerCase().includes(searchText.toLowerCase())
-    );
-  }, [procesos, searchText]);
+    return { estados, responsables, tipos };
+  }, [procesos]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -303,8 +336,8 @@ export default function ProcesosListing() {
         title="Gestión de Procesos"
         description="Administra los procesos de la organización según ISO 9001"
         icon={FileText}
-        searchTerm={searchText}
-        onSearchChange={setSearchText}
+        searchTerm={searchTerm}
+        onSearchChange={updateSearchTerm}
         onNew={() => { setCurrentProceso(null); setIsModalOpen(true); }}
         newButtonText="Nuevo Proceso"
         viewMode={viewMode}
@@ -316,6 +349,85 @@ export default function ProcesosListing() {
         showExport={false}
       />
 
+      {/* Filtros Avanzados */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="p-4">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className="mb-4"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros Avanzados
+            <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+          </Button>
+          
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Filtro por Estado */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Estado
+                </label>
+                <Select value={filterEstado} onValueChange={setFilterEstado}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los estados</SelectItem>
+                    {filterOptions.estados.map(estado => (
+                      <SelectItem key={estado} value={estado}>
+                        {estado}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro por Responsable */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Responsable
+                </label>
+                <Select value={filterResponsable} onValueChange={setFilterResponsable}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los responsables" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los responsables</SelectItem>
+                    {filterOptions.responsables.map(responsable => (
+                      <SelectItem key={responsable} value={responsable}>
+                        {responsable}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro por Tipo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tipo
+                </label>
+                <Select value={filterTipo} onValueChange={setFilterTipo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los tipos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los tipos</SelectItem>
+                    {filterOptions.tipos.map(tipo => (
+                      <SelectItem key={tipo} value={tipo}>
+                        {tipo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Contenido */}
       {isLoading ? (
         <div className="flex justify-center py-12">
@@ -325,12 +437,12 @@ export default function ProcesosListing() {
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <FileText className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-            {searchText ? 'No se encontraron procesos' : 'No hay procesos registrados'}
+            {searchTerm ? 'No se encontraron procesos' : 'No hay procesos registrados'}
           </h3>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {searchText ? 'Intenta con otros términos de búsqueda.' : 'Empieza creando un nuevo proceso para tu organización.'}
+            {searchTerm ? 'Intenta con otros términos de búsqueda.' : 'Empieza creando un nuevo proceso para tu organización.'}
           </p>
-          {!searchText && (
+          {!searchTerm && (
             <Button variant="outline" className="mt-4" onClick={() => { setCurrentProceso(null); setIsModalOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" /> Crear Primer Proceso
             </Button>
@@ -364,6 +476,25 @@ export default function ProcesosListing() {
             </div>
           )}
         </>
+      )}
+
+      {/* Paginación */}
+      {!isLoading && paginationInfo.totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            totalItems={paginationInfo.totalItems}
+            itemsPerPage={paginationInfo.itemsPerPage}
+            startItem={paginationInfo.startItem}
+            endItem={paginationInfo.endItem}
+            onPageChange={goToPage}
+            onItemsPerPageChange={changeItemsPerPage}
+            itemsPerPageOptions={[8, 12, 24, 48]}
+            showItemsPerPage={true}
+            showInfo={true}
+          />
+        </div>
       )}
 
       {/* Modal de Proceso */}
